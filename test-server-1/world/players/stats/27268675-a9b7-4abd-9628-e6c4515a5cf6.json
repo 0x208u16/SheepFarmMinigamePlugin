@@ -1,14 +1,41 @@
 {
   "stats": {
     "minecraft:custom": {
-      "minecraft:time_since_rest": 131,
-      "minecraft:walk_one_cm": 24,
-      "minecraft:total_world_time": 131,
-      "minecraft:leave_game": 1,
-      "minecraft:sneak_time": 8,
-      "minecraft:play_time": 131,
-      "minecraft:jump": 1,
-      "minecraft:time_since_death": 131
+      "minecraft:interact_with_crafting_table": 3,
+      "minecraft:time_since_rest": 9151,
+      "minecraft:walk_one_cm": 4693,
+      "minecraft:leave_game": 13,
+      "minecraft:damage_taken": 240,
+      "minecraft:play_time": 14409,
+      "minecraft:jump": 27,
+      "minecraft:time_since_death": 9112,
+      "minecraft:sprint_one_cm": 1949,
+      "minecraft:total_world_time": 14409,
+      "minecraft:fly_one_cm": 1697,
+      "minecraft:crouch_one_cm": 261,
+      "minecraft:sneak_time": 96,
+      "minecraft:climb_one_cm": 96,
+      "minecraft:deaths": 2
+    },
+    "minecraft:picked_up": {
+      "minecraft:jungle_planks": 7,
+      "minecraft:jungle_log": 4
+    },
+    "minecraft:crafted": {
+      "minecraft:stick": 4,
+      "minecraft:jungle_planks": 16,
+      "minecraft:wooden_pickaxe": 1,
+      "minecraft:crafting_table": 1
+    },
+    "minecraft:used": {
+      "minecraft:stone": 3,
+      "minecraft:crafting_table": 2,
+      "minecraft:wooden_pickaxe": 1
+    },
+    "minecraft:mined": {
+      "minecraft:jungle_log": 4,
+      "minecraft:jungle_leaves": 1,
+      "minecraft:stone": 1
     }
   },
   "DataVersion": 4790

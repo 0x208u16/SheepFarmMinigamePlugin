@@ -13,4 +13,7 @@ commands:
   ping:
     description: Responds with pong
     usage: /ping
+  personalworld:
+    description: Teleports you to your sheep farm world
+    usage: /sheepmerge
 ... # Denotes the end of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
