@@ -9,6 +9,9 @@ package dev.thehale.papermc_plugin_template;
 import java.io.File;
 import java.util.logging.Logger;
 
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
@@ -47,7 +50,10 @@ public class SheepMergePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         log = getLogger();
+        SheepMergeManager.initialize(this);
         setup();
+        scheduleSheepEggDistribution();
+        getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
     }
 
@@ -55,13 +61,33 @@ public class SheepMergePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PapermcPluginTemplateListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmWorldProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmWorldCleanupListener(), this);
+        getServer().getPluginManager().registerEvents(new SheepFarmGameListener(), this);
         getCommand("ping").setExecutor(new PingCommand());
         getCommand("sheepmerge").setExecutor(new SheepFarmWorldCommand());
         new Metrics(this, BSTATS_PLUGIN_ID); // Enable bStats metrics
     }
 
+    private void scheduleSheepEggDistribution() {
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            for (Player player : getServer().getOnlinePlayers()) {
+                if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+                    continue;
+                }
+
+                if (player.getInventory().firstEmpty() == -1) {
+                    continue;
+                }
+
+                ItemStack egg = new ItemStack(Material.SHEEP_SPAWN_EGG, 1);
+                player.getInventory().addItem(egg);
+                player.sendMessage("A sheep spawn egg has appeared in your inventory.");
+            }
+        }, 20L * 10, 20L * 10);
+    }
+
     @Override
     public void onDisable() {
+        SheepMergeManager.saveData();
         log.info("Thanks for using " + NAME + "!");
     }
 }

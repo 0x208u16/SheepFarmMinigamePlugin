@@ -24,6 +24,27 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             return true;
         }
 
+        if (args.length == 1 && args[0].equalsIgnoreCase("upgrade")) {
+            if (SheepMergeManager.upgradeLimit(player)) {
+                player.sendMessage("Your sheep limit was increased by "
+                        + SheepMergeManager.getLimitUpgradeStep() + " for "
+                        + SheepMergeManager.getUpgradeCost() + " points. New limit: "
+                        + SheepMergeManager.getPlayerLimit(player));
+            } else {
+                player.sendMessage("You need " + SheepMergeManager.getUpgradeCost()
+                        + " points to upgrade your sheep limit. Current points: "
+                        + SheepMergeManager.getPlayerPoints(player));
+            }
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
+            player.sendMessage("Points: " + SheepMergeManager.getPlayerPoints(player)
+                    + ", Sheep limit: " + SheepMergeManager.getPlayerLimit(player)
+                    + ", Spawn eggs every 10 seconds in your farm world.");
+            return true;
+        }
+
         String worldName = getWorldName(player.getUniqueId());
         World world = Bukkit.getWorld(worldName);
 
@@ -38,9 +59,21 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             world = Bukkit.createWorld(creator);
 
             if (world != null) {
-                for (int x = -3; x <= 3; x++) {
-                    for (int z = -3; z <= 3; z++) {
-                        world.getBlockAt(x, 100, z).setType(Material.STONE);
+                int radius = 5;
+                int platformY = 100;
+                for (int x = -radius; x <= radius; x++) {
+                    for (int z = -radius; z <= radius; z++) {
+                        world.getBlockAt(x, platformY, z).setType(Material.GRASS_BLOCK);
+                        world.getBlockAt(x, platformY - 1, z).setType(Material.DIRT);
+                    }
+                }
+
+                Material fence = Material.OAK_FENCE;
+                for (int x = -radius; x <= radius; x++) {
+                    for (int z = -radius; z <= radius; z++) {
+                        if (Math.abs(x) == radius || Math.abs(z) == radius) {
+                            world.getBlockAt(x, platformY + 1, z).setType(fence);
+                        }
                     }
                 }
             }
