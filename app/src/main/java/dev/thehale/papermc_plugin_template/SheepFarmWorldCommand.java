@@ -25,23 +25,19 @@ public class SheepFarmWorldCommand implements CommandExecutor {
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("upgrade")) {
-            if (SheepMergeManager.upgradeLimit(player)) {
-                player.sendMessage("Your sheep limit was increased by "
-                        + SheepMergeManager.getLimitUpgradeStep() + " for "
-                        + SheepMergeManager.getUpgradeCost() + " points. New limit: "
-                        + SheepMergeManager.getPlayerLimit(player));
-            } else {
-                player.sendMessage("You need " + SheepMergeManager.getUpgradeCost()
-                        + " points to upgrade your sheep limit. Current points: "
-                        + SheepMergeManager.getPlayerPoints(player));
-            }
+            SheepMergeManager.openUpgradeMenu(player);
             return true;
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
             player.sendMessage("Points: " + SheepMergeManager.getPlayerPoints(player)
                     + ", Sheep limit: " + SheepMergeManager.getPlayerLimit(player)
-                    + ", Spawn eggs every 10 seconds in your farm world.");
+                    + " (Lv." + SheepMergeManager.getLimitUpgradeLevel(player) + ")"
+                    + ", Spawn eggs every " + SheepMergeManager.getEggIntervalSeconds(player) + " seconds"
+                    + " (Lv." + SheepMergeManager.getEggSpeedLevel(player) + ")"
+                    + ", Wool regen level: " + SheepMergeManager.getWoolRegenLevel(player)
+                    + ", Higher-tier spawn chance: " + SheepMergeManager.getHigherTierChancePercent(player) + "%"
+                    + " (Lv." + SheepMergeManager.getHigherTierChanceLevel(player) + ")");
             return true;
         }
 

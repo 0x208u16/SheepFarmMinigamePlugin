@@ -35,7 +35,7 @@ public class SheepFarmGameListener implements Listener {
         }
 
         Sheep sheep = (Sheep) event.getEntity();
-        SheepMergeManager.setSheepTier(sheep, SheepTier.WHITE);
+        SheepMergeManager.setSheepTier(sheep, SheepMergeManager.rollSpawnTier(world));
     }
 
     @EventHandler
@@ -53,7 +53,7 @@ public class SheepFarmGameListener implements Listener {
         sheep.setAI(false);
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
         SheepMergeManager.setNextEatTimestamp(sheep,
-                System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
+                System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(sheep, tier) * 1000L);
         SheepMergeManager.updateSheepName(sheep);
 
         int points = tier.getPointsOnShear();

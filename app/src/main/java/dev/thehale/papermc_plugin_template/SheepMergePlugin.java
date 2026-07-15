@@ -9,11 +9,9 @@ package dev.thehale.papermc_plugin_template;
 import java.io.File;
 import java.util.logging.Logger;
 
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
@@ -86,19 +84,9 @@ public class SheepMergePlugin extends JavaPlugin {
     private void scheduleSheepEggDistribution() {
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player player : getServer().getOnlinePlayers()) {
-                if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
-                    continue;
-                }
-
-                if (player.getInventory().firstEmpty() == -1) {
-                    continue;
-                }
-
-                ItemStack egg = new ItemStack(Material.SHEEP_SPAWN_EGG, 1);
-                player.getInventory().addItem(egg);
-                player.sendMessage("A sheep spawn egg has appeared in your inventory.");
+                SheepMergeManager.tickEggDistribution(player);
             }
-        }, 20L * 10, 20L * 10);
+        }, 20L, 20L);
     }
 
     @Override

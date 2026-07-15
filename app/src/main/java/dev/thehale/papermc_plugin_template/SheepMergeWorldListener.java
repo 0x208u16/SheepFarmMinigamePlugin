@@ -1,14 +1,13 @@
 package dev.thehale.papermc_plugin_template;
 
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.ItemStack;
 
 public class SheepMergeWorldListener implements Listener {
 
@@ -22,13 +21,28 @@ public class SheepMergeWorldListener implements Listener {
             player.getInventory().setItemInMainHand(SheepMergeManager.getSheepMergeShears());
             SheepMergeManager.showPointsScoreboard(player);
             SheepMergeManager.updatePointsScoreboard(player);
+            SheepMergeManager.resetEggTimer(player);
         } else if (SheepMergeManager.isSheepFarmWorld(event.getFrom())
                 && !SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.saveData();
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);
+            SheepMergeManager.clearEggTimer(player);
             SheepMergeManager.clearPickedUpSheep(player);
         }
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!SheepMergeManager.isUpgradeMenuTitle(event.getView().getTitle())) {
+            return;
+        }
+
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        SheepMergeManager.handleUpgradeMenuClick(player, event.getRawSlot());
     }
 
     @EventHandler
