@@ -50,6 +50,7 @@ public class SheepFarmGameListener implements Listener {
 
         event.setCancelled(true);
         sheep.setSheared(true);
+        sheep.setAI(false);
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
         SheepMergeManager.setNextEatTimestamp(sheep,
                 System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
@@ -63,19 +64,31 @@ public class SheepFarmGameListener implements Listener {
                         + SheepMergeManager.getPlayerPoints(event.getPlayer()));
     }
 
-    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = false)
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         if (!(event.getEntity() instanceof Sheep sheep)) {
             return;
         }
 
         Block block = event.getBlock();
-        if (block.getType() != Material.GRASS_BLOCK) {
+        if (block.getType() != Material.GRASS_BLOCK && event.getTo() != Material.DIRT) {
             return;
         }
 
         if (!SheepMergeManager.isSheepFarmWorld(block.getWorld())) {
             return;
+        }
+
+        if (sheep.isSheared()) {
+            long now = System.currentTimeMillis();
+            long nextEat = SheepMergeManager.getNextEatTimestamp(sheep);
+            if (now >= nextEat && nextEat > 0L) {
+                sheep.setSheared(false);
+                SheepMergeManager.setNextEatTimestamp(sheep, 0L);
+            } else {
+                sheep.setSheared(true);
+            }
+            SheepMergeManager.updateSheepName(sheep);
         }
 
         event.setCancelled(true);

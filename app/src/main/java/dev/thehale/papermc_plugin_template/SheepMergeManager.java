@@ -101,9 +101,14 @@ public final class SheepMergeManager {
         }
 
         long now = System.currentTimeMillis();
-        if (now >= getNextEatTimestamp(sheep)) {
+        long nextEat = getNextEatTimestamp(sheep);
+        if (now >= nextEat && nextEat > 0L) {
             sheep.setSheared(false);
+            sheep.setAI(true);
             setNextEatTimestamp(sheep, 0L);
+        } else {
+            sheep.setSheared(true);
+            sheep.setAI(false);
         }
         updateSheepName(sheep);
     }
