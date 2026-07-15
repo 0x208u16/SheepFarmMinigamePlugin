@@ -19,6 +19,11 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.savePlayerInventory(player);
             player.getInventory().clear();
             player.getInventory().setItemInMainHand(SheepMergeManager.getSheepMergeShears());
+            int extraEggs = SheepMergeManager.getStartEggsBonus(player);
+            if (extraEggs > 0) {
+                player.getInventory()
+                        .addItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.SHEEP_SPAWN_EGG, extraEggs));
+            }
             SheepMergeManager.showPointsScoreboard(player);
             SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
@@ -34,7 +39,10 @@ public class SheepMergeWorldListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!SheepMergeManager.isUpgradeMenuTitle(event.getView().getTitle())) {
+        String title = event.getView().getTitle();
+        if (!SheepMergeManager.isUpgradeMenuTitle(title)
+                && !SheepMergeManager.isPrestigeMenuTitle(title)
+                && !SheepMergeManager.isShopMenuTitle(title)) {
             return;
         }
 
@@ -42,7 +50,15 @@ public class SheepMergeWorldListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        SheepMergeManager.handleUpgradeMenuClick(player, event.getRawSlot());
+        if (SheepMergeManager.isUpgradeMenuTitle(title)) {
+            SheepMergeManager.handleUpgradeMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isPrestigeMenuTitle(title)) {
+            SheepMergeManager.handlePrestigeMenuClick(player, event.getRawSlot());
+            return;
+        }
+        SheepMergeManager.handleShopMenuClick(player, event.getRawSlot());
     }
 
     @EventHandler

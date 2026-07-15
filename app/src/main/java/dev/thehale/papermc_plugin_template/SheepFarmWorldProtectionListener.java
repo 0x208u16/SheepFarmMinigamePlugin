@@ -30,6 +30,6 @@ public class SheepFarmWorldProtectionListener implements Listener {
     }
 
     private boolean isPersonalWorld(World world) {
-        return world != null && (world.getName().startsWith("sheepfarm_"));
+        return SheepMergeManager.isSheepFarmWorld(world);
     }
 }

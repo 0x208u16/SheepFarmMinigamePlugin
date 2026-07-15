@@ -12,6 +12,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -56,8 +58,12 @@ public class SheepFarmGameListener implements Listener {
                 System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(sheep, tier) * 1000L);
         SheepMergeManager.updateSheepName(sheep);
 
-        int points = tier.getPointsOnShear();
+        int points = SheepMergeManager.calculateShearPoints(event.getPlayer(), tier);
         SheepMergeManager.addPoints(event.getPlayer(), points);
+        if (SheepMergeManager.isTutorialWorld(sheep.getWorld())) {
+            SheepMergeManager.recordTutorialShear(event.getPlayer());
+            event.getPlayer().sendMessage(SheepMergeManager.getTutorialProgressLine(event.getPlayer()));
+        }
         SheepMergeManager.updatePointsScoreboard(event.getPlayer());
         event.getPlayer()
                 .sendMessage("You sheared a " + tier.getDisplayName() + " and earned " + points + " points. Total: "
@@ -94,6 +100,17 @@ public class SheepFarmGameListener implements Listener {
         event.setCancelled(true);
     }
 
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onSheepDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Sheep sheep)) {
+            return;
+        }
+        if (!SheepMergeManager.isSheepFarmWorld(sheep.getWorld())) {
+            return;
+        }
+        event.setCancelled(true);
+    }
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -114,6 +131,12 @@ public class SheepFarmGameListener implements Listener {
             player.sendMessage(
                     "You have reached the sheep limit for this world. Spend points with /sheepmerge upgrade to raise it. Or shift + right-click a sheep to merge it with another of the same tier.");
             event.setCancelled(true);
+            return;
+        }
+
+        if (SheepMergeManager.isTutorialWorld(player.getWorld())) {
+            SheepMergeManager.recordTutorialSpawn(player);
+            player.sendMessage(SheepMergeManager.getTutorialProgressLine(player));
         }
     }
 
@@ -189,6 +212,10 @@ public class SheepFarmGameListener implements Listener {
 
         player.sendMessage("You merged two " + carriedTier.getDisplayName() + " sheep into a "
                 + mergedTier.getDisplayName() + "!");
+        if (SheepMergeManager.isTutorialWorld(world)) {
+            SheepMergeManager.recordTutorialMerge(player);
+            player.sendMessage(SheepMergeManager.getTutorialProgressLine(player));
+        }
         SheepMergeManager.clearPickedUpSheep(player);
     }
 
@@ -220,6 +247,18 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
         event.setKeepInventory(true);
+        event.getDrops().clear();
+        event.setDroppedExp(0);
+    }
+
+    @EventHandler
+    public void onSheepDeath(EntityDeathEvent event) {
+        if (!(event.getEntity() instanceof Sheep sheep)) {
+            return;
+        }
+        if (!SheepMergeManager.isSheepFarmWorld(sheep.getWorld())) {
+            return;
+        }
         event.getDrops().clear();
         event.setDroppedExp(0);
     }
