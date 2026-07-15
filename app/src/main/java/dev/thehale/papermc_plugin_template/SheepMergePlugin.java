@@ -103,6 +103,7 @@ public class SheepMergePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        SheepMergeManager.restoreAllPlayerStates();
         SheepMergeManager.saveData();
         log.info("Thanks for using " + NAME + "!");
     }

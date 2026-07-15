@@ -262,6 +262,23 @@ public final class SheepMergeManager {
         }
     }
 
+    public static void restoreAllPlayerStates() {
+        if (plugin == null) {
+            return;
+        }
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (savedInventories.containsKey(player.getUniqueId())) {
+                restorePlayerInventory(player);
+            }
+            if (savedScoreboards.containsKey(player.getUniqueId())) {
+                restorePlayerScoreboard(player);
+            }
+            clearPickedUpSheep(player);
+        }
+        savedInventories.clear();
+        savedScoreboards.clear();
+    }
+
     public static ItemStack getSheepMergeShears() {
         ItemStack shears = new ItemStack(org.bukkit.Material.SHEARS, 1);
         var meta = shears.getItemMeta();
