@@ -67,7 +67,7 @@ public class SheepMergePlugin extends JavaPlugin {
                     continue;
                 }
                 for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
-                    SheepMergeManager.updateSheepName(sheep);
+                    SheepMergeManager.processSheepEatTimer(sheep);
                 }
             }
         }, 20L, 20L);

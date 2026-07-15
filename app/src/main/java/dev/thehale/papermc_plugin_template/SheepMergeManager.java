@@ -87,7 +87,25 @@ public final class SheepMergeManager {
         if (tier == null) {
             return 10;
         }
-        return 10 + tier.getLevel() * 2;
+        return 10 * (1 << tier.getLevel());
+    }
+
+    public static void processSheepEatTimer(Sheep sheep) {
+        if (sheep == null || !sheep.isValid() || sheep.getWorld() == null
+                || !isSheepFarmWorld(sheep.getWorld())) {
+            return;
+        }
+        if (!sheep.isSheared()) {
+            updateSheepName(sheep);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now >= getNextEatTimestamp(sheep)) {
+            sheep.setSheared(false);
+            setNextEatTimestamp(sheep, 0L);
+        }
+        updateSheepName(sheep);
     }
 
     public static long getNextEatTimestamp(Sheep sheep) {

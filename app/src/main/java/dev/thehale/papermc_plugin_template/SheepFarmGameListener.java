@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerKickEvent;
@@ -62,7 +63,7 @@ public class SheepFarmGameListener implements Listener {
                         + SheepMergeManager.getPlayerPoints(event.getPlayer()));
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         if (!(event.getEntity() instanceof Sheep sheep)) {
             return;
@@ -77,27 +78,6 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
-        if (!sheep.isSheared()) {
-            return;
-        }
-
-        SheepTier tier = SheepMergeManager.getSheepTier(sheep);
-        long now = System.currentTimeMillis();
-        if (now < SheepMergeManager.getNextEatTimestamp(sheep)) {
-            event.setCancelled(true);
-            return;
-        }
-
-        if (SheepMergeManager.shouldDelayGrassEat(tier)) {
-            SheepMergeManager.setNextEatTimestamp(sheep, now + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
-            SheepMergeManager.updateSheepName(sheep);
-            event.setCancelled(true);
-            return;
-        }
-
-        sheep.setSheared(false);
-        SheepMergeManager.setNextEatTimestamp(sheep, 0L);
-        SheepMergeManager.updateSheepName(sheep);
         event.setCancelled(true);
     }
 
@@ -201,13 +181,33 @@ public class SheepFarmGameListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
         SheepMergeManager.saveData();
-        SheepMergeManager.clearPickedUpSheep(event.getPlayer());
+        if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            SheepMergeManager.restorePlayerInventory(player);
+            SheepMergeManager.restorePlayerScoreboard(player);
+        }
+        SheepMergeManager.clearPickedUpSheep(player);
     }
 
     @EventHandler
     public void onPlayerKick(PlayerKickEvent event) {
+        Player player = event.getPlayer();
         SheepMergeManager.saveData();
-        SheepMergeManager.clearPickedUpSheep(event.getPlayer());
+        if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            SheepMergeManager.restorePlayerInventory(player);
+            SheepMergeManager.restorePlayerScoreboard(player);
+        }
+        SheepMergeManager.clearPickedUpSheep(player);
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        if (!SheepMergeManager.isSheepFarmWorld(event.getEntity().getWorld())) {
+            return;
+        }
+        event.setKeepInventory(true);
+        event.getDrops().clear();
+        event.setDroppedExp(0);
     }
 }
