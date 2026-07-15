@@ -112,7 +112,7 @@ public class SheepFarmGameListener implements Listener {
 
         if (SheepMergeManager.isWorldAtLimit(player.getWorld())) {
             player.sendMessage(
-                    "You have reached the sheep limit for this world. Spend points with /sheepmerge upgrade to raise it.");
+                    "You have reached the sheep limit for this world. Spend points with /sheepmerge upgrade to raise it. Or shift + right-click a sheep to merge it with another of the same tier.");
             event.setCancelled(true);
         }
     }
