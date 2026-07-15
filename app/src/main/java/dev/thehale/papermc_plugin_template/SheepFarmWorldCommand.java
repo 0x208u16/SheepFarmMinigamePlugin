@@ -2,24 +2,18 @@ package dev.thehale.papermc_plugin_template;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.WorldType;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 public class SheepFarmWorldCommand implements CommandExecutor {
 
     public static String getWorldName(java.util.UUID playerId) {
         return "sheepfarm_" + playerId.toString().replace("-", "");
-    }
-
-    public static String getTutorialWorldName(java.util.UUID playerId) {
-        return SheepMergeManager.getTutorialWorldName(playerId);
     }
 
     @Override
@@ -67,6 +61,38 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             return true;
         }
 
+        if (args.length == 1 && args[0].equalsIgnoreCase("mapsave")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+                player.sendMessage("Use this command while standing in a sheep farm world.");
+                return true;
+            }
+            if (!SheepMergeManager.saveSharedFarmLayoutFromWorld(player.getWorld())) {
+                player.sendMessage("Unable to save farm layout right now.");
+                return true;
+            }
+            int updated = SheepMergeManager.applySharedFarmLayoutToAllFarmWorlds();
+            player.sendMessage("Saved farm layout and applied it to " + updated + " farm world(s).");
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("mapload")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            if (!SheepMergeManager.hasSavedFarmLayout()) {
+                player.sendMessage("No saved farm layout found yet. Use /sheepmerge mapsave first.");
+                return true;
+            }
+            int updated = SheepMergeManager.applySharedFarmLayoutToAllFarmWorlds();
+            player.sendMessage("Loaded saved farm layout into " + updated + " farm world(s).");
+            return true;
+        }
+
         if (args.length >= 1 && args[0].equalsIgnoreCase("resetdata")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -109,21 +135,8 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             return true;
         }
 
-        if (!SheepMergeManager.isTutorialCompleted(player)) {
-            World tutorial = ensureTutorialWorld(player);
-            if (tutorial == null) {
-                player.sendMessage("Unable to create your tutorial world right now.");
-                return true;
-            }
-            tutorial.setSpawnLocation(0, 101, 0);
-            player.teleport(new Location(tutorial, 0.5, 101, 0.5));
-            player.sendMessage("Complete the tutorial before entering your personal farm world.");
-            player.sendMessage(SheepMergeManager.getTutorialProgressLine(player));
-            return true;
-        }
-
         String worldName = getWorldName(player.getUniqueId());
-        World world = ensureFarmWorld(player, worldName);
+        World world = ensureFarmWorld(worldName);
 
         if (world == null) {
             player.sendMessage("Unable to create your sheep farm world right now.");
@@ -137,31 +150,15 @@ public class SheepFarmWorldCommand implements CommandExecutor {
         return true;
     }
 
-    private World ensureTutorialWorld(Player player) {
-        String worldName = getTutorialWorldName(player.getUniqueId());
+    private World ensureFarmWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             return world;
         }
-        world = createFlatWorld(worldName, 4);
-        if (world != null && world.getEntitiesByClass(org.bukkit.entity.Sheep.class).isEmpty()) {
-            world.spawnEntity(new Location(world, 0.5, 101, 0.5), EntityType.SHEEP);
-            world.spawnEntity(new Location(world, 1.5, 101, 0.5), EntityType.SHEEP);
-        }
-        return world;
+        return createFlatWorld(worldName);
     }
 
-    private World ensureFarmWorld(Player player, String worldName) {
-        int radius = 5 + SheepMergeManager.getPrestigeExpandFarmLevel(player) * 2;
-        World world = Bukkit.getWorld(worldName);
-        if (world != null) {
-            applyFarmLayout(world, radius);
-            return world;
-        }
-        return createFlatWorld(worldName, radius);
-    }
-
-    private World createFlatWorld(String worldName, int radius) {
+    private World createFlatWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             return world;
@@ -178,26 +175,7 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             return null;
         }
 
-        applyFarmLayout(world, radius);
+        SheepMergeManager.applyFarmLayout(world);
         return world;
-    }
-
-    private void applyFarmLayout(World world, int radius) {
-        int platformY = 100;
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                world.getBlockAt(x, platformY, z).setType(Material.GRASS_BLOCK);
-                world.getBlockAt(x, platformY - 1, z).setType(Material.DIRT);
-            }
-        }
-
-        Material fence = Material.OAK_FENCE;
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                if (Math.abs(x) == radius || Math.abs(z) == radius) {
-                    world.getBlockAt(x, platformY + 1, z).setType(fence);
-                }
-            }
-        }
     }
 }

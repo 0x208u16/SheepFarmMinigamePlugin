@@ -60,14 +60,7 @@ public class SheepFarmGameListener implements Listener {
 
         int points = SheepMergeManager.calculateShearPoints(event.getPlayer(), tier);
         SheepMergeManager.addPoints(event.getPlayer(), points);
-        if (SheepMergeManager.isTutorialWorld(sheep.getWorld())) {
-            SheepMergeManager.recordTutorialShear(event.getPlayer());
-            event.getPlayer().sendMessage(SheepMergeManager.getTutorialProgressLine(event.getPlayer()));
-        }
         SheepMergeManager.updatePointsScoreboard(event.getPlayer());
-        event.getPlayer()
-                .sendMessage("You sheared a " + tier.getDisplayName() + " and earned " + points + " points. Total: "
-                        + SheepMergeManager.getPlayerPoints(event.getPlayer()));
     }
 
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = false)
@@ -134,10 +127,6 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
-        if (SheepMergeManager.isTutorialWorld(player.getWorld())) {
-            SheepMergeManager.recordTutorialSpawn(player);
-            player.sendMessage(SheepMergeManager.getTutorialProgressLine(player));
-        }
     }
 
     @EventHandler
@@ -210,12 +199,8 @@ public class SheepFarmGameListener implements Listener {
         mergedSheep.setVelocity(velocity);
         world.spawnParticle(Particle.VILLAGER_HAPPY, spawnLocation.add(0, 0.5, 0), 15, 0.3, 0.3, 0.3, 0.05);
 
-        player.sendMessage("You merged two " + carriedTier.getDisplayName() + " sheep into a "
-                + mergedTier.getDisplayName() + "!");
-        if (SheepMergeManager.isTutorialWorld(world)) {
-            SheepMergeManager.recordTutorialMerge(player);
-            player.sendMessage(SheepMergeManager.getTutorialProgressLine(player));
-        }
+        SheepMergeManager.showOverlay(player, "Merged: " + carriedTier.getDisplayName() + " + "
+                + carriedTier.getDisplayName() + " -> " + mergedTier.getDisplayName());
         SheepMergeManager.clearPickedUpSheep(player);
     }
 

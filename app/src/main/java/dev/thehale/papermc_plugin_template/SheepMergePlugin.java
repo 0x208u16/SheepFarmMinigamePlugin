@@ -22,7 +22,7 @@ public class SheepMergePlugin extends JavaPlugin {
 
     public static SheepMergePlugin instance;
     public static Logger log;
-    public final static String NAME = "PapermcPluginTemplate";
+    public final static String NAME = "SheepMerge";
     public final static int BSTATS_PLUGIN_ID = 20765; // Optional: Replace with your own bStats plugin ID
 
     /**
@@ -54,8 +54,16 @@ public class SheepMergePlugin extends JavaPlugin {
         setup();
         scheduleSheepEggDistribution();
         scheduleSheepNameUpdates();
+        scheduleLiveSheepCountUpdates();
         getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
+    }
+
+    private void scheduleLiveSheepCountUpdates() {
+        getServer().getScheduler().runTaskTimer(this,
+                () -> SheepMergeManager.refreshLiveSheepCounts(getServer().getWorlds()),
+                20L,
+                20L);
     }
 
     private void scheduleSheepNameUpdates() {
@@ -72,11 +80,9 @@ public class SheepMergePlugin extends JavaPlugin {
     }
 
     private void setup() {
-        getServer().getPluginManager().registerEvents(new PapermcPluginTemplateListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmWorldProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmWorldCleanupListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmGameListener(), this);
-        getCommand("ping").setExecutor(new PingCommand());
         getCommand("sheepmerge").setExecutor(new SheepFarmWorldCommand());
         new Metrics(this, BSTATS_PLUGIN_ID); // Enable bStats metrics
     }
