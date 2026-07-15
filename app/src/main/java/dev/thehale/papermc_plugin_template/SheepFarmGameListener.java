@@ -75,9 +75,21 @@ public class SheepFarmGameListener implements Listener {
         }
 
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
-        if (SheepMergeManager.shouldDelayGrassEat(tier)) {
+        long now = System.currentTimeMillis();
+        if (now < SheepMergeManager.getNextEatTimestamp(sheep)) {
             event.setCancelled(true);
+            return;
         }
+
+        if (SheepMergeManager.shouldDelayGrassEat(tier)) {
+            SheepMergeManager.setNextEatTimestamp(sheep, now + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
+            SheepMergeManager.updateSheepName(sheep);
+            event.setCancelled(true);
+            return;
+        }
+
+        SheepMergeManager.setNextEatTimestamp(sheep, now + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
+        SheepMergeManager.updateSheepName(sheep);
     }
 
     @EventHandler

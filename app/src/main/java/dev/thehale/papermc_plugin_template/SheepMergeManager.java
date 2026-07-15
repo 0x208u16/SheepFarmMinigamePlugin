@@ -30,7 +30,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Pattern OWNER_ID_PATTERN = Pattern.compile("^sheepfarm_([0-9a-fA-F]{32})$");
     private static final Random RANDOM = new Random();
-    private static final int BASE_SHEEP_LIMIT = 20;
+    private static final int BASE_SHEEP_LIMIT = 10;
     private static final int LIMIT_UPGRADE_STEP = 5;
     private static final int LIMIT_UPGRADE_COST = 20;
 
@@ -52,6 +52,10 @@ public final class SheepMergeManager {
         return new NamespacedKey(plugin, "sheep-tier");
     }
 
+    private static NamespacedKey getNextEatKey() {
+        return new NamespacedKey(plugin, "sheep-next-eat");
+    }
+
     public static boolean isSheepFarmWorld(World world) {
         return world != null && world.getName().startsWith("sheepfarm_");
     }
@@ -70,9 +74,43 @@ public final class SheepMergeManager {
             return;
         }
         sheep.setColor(tier.getColor() == null ? org.bukkit.DyeColor.WHITE : tier.getColor());
-        sheep.setCustomName(tier.getDisplayName());
-        sheep.setCustomNameVisible(true);
         sheep.getPersistentDataContainer().set(getTierKey(), PersistentDataType.INTEGER, tier.getLevel());
+        setNextEatTimestamp(sheep, System.currentTimeMillis() + getEatCooldownSeconds(tier) * 1000L);
+        updateSheepName(sheep);
+    }
+
+    public static int getEatCooldownSeconds(SheepTier tier) {
+        if (tier == null) {
+            return 10;
+        }
+        return 10 + tier.getLevel() * 2;
+    }
+
+    public static long getNextEatTimestamp(Sheep sheep) {
+        if (sheep == null) {
+            return 0L;
+        }
+        Long value = sheep.getPersistentDataContainer().get(getNextEatKey(), PersistentDataType.LONG);
+        return value == null ? 0L : value;
+    }
+
+    public static void setNextEatTimestamp(Sheep sheep, long timestamp) {
+        if (sheep == null) {
+            return;
+        }
+        sheep.getPersistentDataContainer().set(getNextEatKey(), PersistentDataType.LONG, timestamp);
+    }
+
+    public static void updateSheepName(Sheep sheep) {
+        if (sheep == null) {
+            return;
+        }
+        SheepTier tier = getSheepTier(sheep);
+        long remainingSeconds = Math.max(0L,
+                (getNextEatTimestamp(sheep) - System.currentTimeMillis() + 999L) / 1000L);
+        String name = tier.getDisplayName() + " - " + remainingSeconds + "s";
+        sheep.setCustomName(name);
+        sheep.setCustomNameVisible(true);
     }
 
     public static int getPlayerPoints(Player player) {

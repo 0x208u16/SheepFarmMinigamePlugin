@@ -6,6 +6,7 @@ import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -27,6 +28,14 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);
             SheepMergeManager.clearPickedUpSheep(player);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            event.setCancelled(true);
         }
     }
 

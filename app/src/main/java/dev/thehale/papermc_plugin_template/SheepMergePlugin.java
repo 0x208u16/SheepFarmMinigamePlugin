@@ -10,7 +10,9 @@ import java.io.File;
 import java.util.logging.Logger;
 
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Sheep;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -53,8 +55,22 @@ public class SheepMergePlugin extends JavaPlugin {
         SheepMergeManager.initialize(this);
         setup();
         scheduleSheepEggDistribution();
+        scheduleSheepNameUpdates();
         getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
+    }
+
+    private void scheduleSheepNameUpdates() {
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            for (World world : getServer().getWorlds()) {
+                if (!SheepMergeManager.isSheepFarmWorld(world)) {
+                    continue;
+                }
+                for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+                    SheepMergeManager.updateSheepName(sheep);
+                }
+            }
+        }, 20L, 20L);
     }
 
     private void setup() {
