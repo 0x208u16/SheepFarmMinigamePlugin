@@ -75,7 +75,11 @@ public final class SheepMergeManager {
         }
         sheep.setColor(tier.getColor() == null ? org.bukkit.DyeColor.WHITE : tier.getColor());
         sheep.getPersistentDataContainer().set(getTierKey(), PersistentDataType.INTEGER, tier.getLevel());
-        setNextEatTimestamp(sheep, System.currentTimeMillis() + getEatCooldownSeconds(tier) * 1000L);
+        if (sheep.isSheared()) {
+            setNextEatTimestamp(sheep, System.currentTimeMillis() + getEatCooldownSeconds(tier) * 1000L);
+        } else {
+            setNextEatTimestamp(sheep, 0L);
+        }
         updateSheepName(sheep);
     }
 
@@ -106,9 +110,12 @@ public final class SheepMergeManager {
             return;
         }
         SheepTier tier = getSheepTier(sheep);
-        long remainingSeconds = Math.max(0L,
-                (getNextEatTimestamp(sheep) - System.currentTimeMillis() + 999L) / 1000L);
-        String name = tier.getDisplayName() + " - " + remainingSeconds + "s";
+        String name = tier.getDisplayName();
+        if (sheep.isSheared()) {
+            long remainingSeconds = Math.max(0L,
+                    (getNextEatTimestamp(sheep) - System.currentTimeMillis() + 999L) / 1000L);
+            name += " - " + remainingSeconds + "s";
+        }
         sheep.setCustomName(name);
         sheep.setCustomNameVisible(true);
     }

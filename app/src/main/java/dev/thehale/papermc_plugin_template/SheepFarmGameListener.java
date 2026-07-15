@@ -49,8 +49,11 @@ public class SheepFarmGameListener implements Listener {
 
         event.setCancelled(true);
         sheep.setSheared(true);
-
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
+        SheepMergeManager.setNextEatTimestamp(sheep,
+                System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
+        SheepMergeManager.updateSheepName(sheep);
+
         int points = tier.getPointsOnShear();
         SheepMergeManager.addPoints(event.getPlayer(), points);
         SheepMergeManager.updatePointsScoreboard(event.getPlayer());
@@ -74,6 +77,10 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
+        if (!sheep.isSheared()) {
+            return;
+        }
+
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
         long now = System.currentTimeMillis();
         if (now < SheepMergeManager.getNextEatTimestamp(sheep)) {
@@ -88,8 +95,10 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
-        SheepMergeManager.setNextEatTimestamp(sheep, now + SheepMergeManager.getEatCooldownSeconds(tier) * 1000L);
+        sheep.setSheared(false);
+        SheepMergeManager.setNextEatTimestamp(sheep, 0L);
         SheepMergeManager.updateSheepName(sheep);
+        event.setCancelled(true);
     }
 
     @EventHandler
