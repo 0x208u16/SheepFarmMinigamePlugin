@@ -37,6 +37,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "world");
 
     private static final List<String> WORLD_SUBCOMMANDS = List.of("save", "load");
+    private static final List<String> ADMIN_AMOUNT_PLAYER_SUBCOMMANDS = List.of(
+            "givepoints",
+            "setpoints",
+            "givequestpoints",
+            "setprestige");
+    private static final List<String> ADMIN_PLAYER_TARGET_SUBCOMMANDS = List.of("resetdata");
 
     public static String getWorldName(java.util.UUID playerId) {
         return "sheepfarm_" + playerId.toString().replace("-", "");
@@ -400,28 +406,42 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(kickTargets, args[1]);
         }
 
-        if (args.length == 3 && sender.isOp() && (args[0].equalsIgnoreCase("givepoints")
-                || args[0].equalsIgnoreCase("setpoints")
-                || args[0].equalsIgnoreCase("givequestpoints")
-                || args[0].equalsIgnoreCase("setprestige"))) {
-            return Bukkit.getOnlinePlayers().stream()
-                    .map(player -> player.getName())
-                    .filter(name -> name != null && name.toLowerCase().startsWith(args[2].toLowerCase()))
-                    .toList();
+        if (!sender.isOp()) {
+            return List.of();
         }
 
-        if (args.length == 2 && (args[0].equalsIgnoreCase("resetdata")
-                || args[0].equalsIgnoreCase("givepoints")
-                || args[0].equalsIgnoreCase("setpoints")
-                || args[0].equalsIgnoreCase("givequestpoints")
-                || args[0].equalsIgnoreCase("setprestige"))) {
-            return Bukkit.getOnlinePlayers().stream()
-                    .map(player -> player.getName())
-                    .filter(name -> name != null && name.toLowerCase().startsWith(args[1].toLowerCase()))
-                    .toList();
+        if (args.length == 2 && matchesSubcommand(ADMIN_PLAYER_TARGET_SUBCOMMANDS, args[0])) {
+            return onlinePlayerNameSuggestions(args[1]);
+        }
+
+        if (args.length == 2 && matchesSubcommand(ADMIN_AMOUNT_PLAYER_SUBCOMMANDS, args[0])) {
+            return List.of();
+        }
+
+        if (args.length == 3 && matchesSubcommand(ADMIN_AMOUNT_PLAYER_SUBCOMMANDS, args[0])) {
+            return onlinePlayerNameSuggestions(args[2]);
         }
 
         return List.of();
+    }
+
+    private boolean matchesSubcommand(List<String> subcommands, String candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        for (String subcommand : subcommands) {
+            if (subcommand.equalsIgnoreCase(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> onlinePlayerNameSuggestions(String prefix) {
+        return Bukkit.getOnlinePlayers().stream()
+                .map(Player::getName)
+                .filter(name -> name != null && name.toLowerCase().startsWith(prefix.toLowerCase()))
+                .toList();
     }
 
     private List<String> filterSuggestions(List<String> suggestions, String prefix) {
