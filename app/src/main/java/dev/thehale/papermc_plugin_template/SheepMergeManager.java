@@ -2,6 +2,7 @@ package dev.thehale.papermc_plugin_template;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,7 +27,9 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.TextDisplay;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -50,6 +53,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> prestigeHigherMaxLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeStartEggsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeEggCapByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> highestAnnouncedTierByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearShopLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialCompletedByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> tutorialShearsByPlayer = new HashMap<>();
@@ -67,7 +71,7 @@ public final class SheepMergeManager {
     private static final Pattern TUTORIAL_OWNER_ID_PATTERN = Pattern.compile("^sheeptutorial_([0-9a-fA-F]{32})$");
     private static final Random RANDOM = new Random();
     private static final int BASE_SHEEP_LIMIT = 10;
-    private static final int LIMIT_UPGRADE_STEP = 10;
+    private static final int LIMIT_UPGRADE_STEP = 5;
     private static final int LIMIT_UPGRADE_COST = 20;
     private static final int BASE_EGG_INTERVAL_SECONDS = 10;
     private static final int MIN_EGG_INTERVAL_SECONDS = 2;
@@ -366,8 +370,17 @@ public final class SheepMergeManager {
         eggSpeedLevelByPlayer.remove(player.getUniqueId());
         woolRegenLevelByPlayer.remove(player.getUniqueId());
         higherTierChanceLevelByPlayer.remove(player.getUniqueId());
+        shearShopLevelByPlayer.remove(player.getUniqueId());
         clearMergeReminder(player);
         nextEggTimestampByPlayer.remove(player.getUniqueId());
+
+        World world = player.getWorld();
+        if (isSheepFarmWorld(world)) {
+            for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+                sheep.remove();
+            }
+            refreshLiveSheepCount(world);
+        }
 
         saveData();
         return true;
@@ -466,6 +479,7 @@ public final class SheepMergeManager {
         prestigeHigherMaxLevelByPlayer.remove(id);
         prestigeStartEggsByPlayer.remove(id);
         prestigeEggCapByPlayer.remove(id);
+        highestAnnouncedTierByPlayer.remove(id);
         lastPrestigeReminderTimestampByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
         tutorialCompletedByPlayer.remove(id);
@@ -769,6 +783,28 @@ public final class SheepMergeManager {
         playTierUnlockSound(player, tier);
     }
 
+    public static boolean shouldAnnounceTierUnlock(Player player, SheepTier tier) {
+        if (player == null || tier == null) {
+            return false;
+        }
+        int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(player.getUniqueId(),
+                SheepTier.WHITE.getLevel());
+        return tier.getLevel() > highestAnnounced;
+    }
+
+    public static void markTierUnlockAnnounced(Player player, SheepTier tier) {
+        if (player == null || tier == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(playerId, SheepTier.WHITE.getLevel());
+        if (tier.getLevel() <= highestAnnounced) {
+            return;
+        }
+        highestAnnouncedTierByPlayer.put(playerId, tier.getLevel());
+        saveData();
+    }
+
     private static String getTierUnlockMessage(Player player, SheepTier tier) {
         String playerName = player.getName() == null || player.getName().isBlank() ? "Someone" : player.getName();
         return switch (tier) {
@@ -839,24 +875,40 @@ public final class SheepMergeManager {
         }
 
         var inventory = player.getInventory();
-        ItemStack[] contents = inventory.getContents();
-        for (int slot = 0; slot < contents.length; slot++) {
+        ItemStack[] storageContents = inventory.getStorageContents();
+        boolean storageChanged = false;
+
+        for (int slot = 0; slot < storageContents.length; slot++) {
+            ItemStack itemStack = storageContents[slot];
             if (slot == FARM_UPGRADE_COMMAND_SLOT) {
+                if (itemStack == null
+                        || !isSheepMergeUpgradeCommandItem(itemStack)
+                        || itemStack.getAmount() != 1) {
+                    storageContents[slot] = getSheepMergeUpgradeCommandItem();
+                    storageChanged = true;
+                }
                 continue;
             }
-            ItemStack itemStack = contents[slot];
+
             if (itemStack == null) {
                 continue;
             }
+
             Material type = itemStack.getType();
             if (type == Material.SHEARS || type == Material.NETHER_STAR) {
-                contents[slot] = null;
+                storageContents[slot] = null;
+                storageChanged = true;
             }
         }
 
-        inventory.setContents(contents);
-        inventory.setItemInOffHand(getSheepMergeShears());
-        inventory.setItem(FARM_UPGRADE_COMMAND_SLOT, getSheepMergeUpgradeCommandItem());
+        if (storageChanged) {
+            inventory.setStorageContents(storageContents);
+        }
+
+        ItemStack offHand = inventory.getItemInOffHand();
+        if (offHand == null || offHand.getType() != Material.SHEARS || offHand.getAmount() != 1) {
+            inventory.setItemInOffHand(getSheepMergeShears());
+        }
     }
 
     public static void applyFarmSaturation(Player player) {
@@ -1223,8 +1275,8 @@ public final class SheepMergeManager {
 
         int woolLevel = woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
         int woolCost = getWoolRegenUpgradeCost(player);
-        inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, createMenuItem(
-                Material.SHEARS,
+        inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, createEnchantedMenuItem(
+                Material.WHITE_WOOL,
                 "Faster Wool Regen",
                 List.of(
                         "Level: " + woolLevel + " / " + getWoolRegenMaxLevel(player),
@@ -1510,6 +1562,17 @@ public final class SheepMergeManager {
         return item;
     }
 
+    private static ItemStack createEnchantedMenuItem(Material material, String name, List<String> lore) {
+        ItemStack item = createMenuItem(material, name, lore);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.addEnchant(Enchantment.DURABILITY, 1, true);
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
     private static int getEggSpeedUpgradeCost(Player player) {
         int level = getEggSpeedLevel(player);
         return getDoubledUpgradeCost(EGG_SPEED_UPGRADE_BASE_COST, level);
@@ -1650,6 +1713,7 @@ public final class SheepMergeManager {
         ItemStack offhand = player.getInventory().getItemInOffHand() == null ? null
                 : player.getInventory().getItemInOffHand().clone();
         savedInventories.put(player.getUniqueId(), new InventorySnapshot(contents, armor, offhand));
+        saveData();
     }
 
     public static void restorePlayerInventory(Player player) {
@@ -1664,10 +1728,21 @@ public final class SheepMergeManager {
         player.getInventory().setContents(cloneItemStackArray(snapshot.contents));
         player.getInventory().setArmorContents(cloneItemStackArray(snapshot.armor));
         player.getInventory().setItemInOffHand(snapshot.offhand == null ? null : snapshot.offhand.clone());
+        saveData();
     }
 
     public static boolean hasSavedInventory(Player player) {
         return player != null && savedInventories.containsKey(player.getUniqueId());
+    }
+
+    public static void restoreSavedInventoryOutsideFarm(Player player) {
+        if (player == null || isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        if (!hasSavedInventory(player)) {
+            return;
+        }
+        restorePlayerInventory(player);
     }
 
     public static void showPointsScoreboard(Player player) {
@@ -1763,12 +1838,14 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeHigherMax", null);
             dataConfig.set("prestigeStartEggs", null);
             dataConfig.set("prestigeEggCap", null);
+            dataConfig.set("highestAnnouncedTier", null);
             dataConfig.set("prestigeExpandFarm", null);
             dataConfig.set("shearShop", null);
             dataConfig.set("tutorialCompleted", null);
             dataConfig.set("tutorialShears", null);
             dataConfig.set("tutorialSpawns", null);
             dataConfig.set("tutorialMerges", null);
+            dataConfig.set("pendingInventory", null);
             for (Map.Entry<UUID, Integer> entry : pointsByPlayer.entrySet()) {
                 dataConfig.set("points." + entry.getKey().toString(), entry.getValue());
             }
@@ -1802,6 +1879,9 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : prestigeEggCapByPlayer.entrySet()) {
                 dataConfig.set("prestigeEggCap." + entry.getKey().toString(), entry.getValue());
             }
+            for (Map.Entry<UUID, Integer> entry : highestAnnouncedTierByPlayer.entrySet()) {
+                dataConfig.set("highestAnnouncedTier." + entry.getKey().toString(), entry.getValue());
+            }
             for (Map.Entry<UUID, Integer> entry : shearShopLevelByPlayer.entrySet()) {
                 dataConfig.set("shearShop." + entry.getKey().toString(), entry.getValue());
             }
@@ -1816,6 +1896,13 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : tutorialMergesByPlayer.entrySet()) {
                 dataConfig.set("tutorialMerges." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, InventorySnapshot> entry : savedInventories.entrySet()) {
+                String basePath = "pendingInventory." + entry.getKey();
+                InventorySnapshot snapshot = entry.getValue();
+                dataConfig.set(basePath + ".contents", serializeInventoryList(snapshot.contents));
+                dataConfig.set(basePath + ".armor", serializeInventoryList(snapshot.armor));
+                dataConfig.set(basePath + ".offhand", snapshot.offhand == null ? null : snapshot.offhand.clone());
             }
             dataConfig.save(dataFile);
         } catch (IOException exception) {
@@ -1944,6 +2031,18 @@ public final class SheepMergeManager {
                 }
             });
         }
+        if (dataConfig.isConfigurationSection("highestAnnouncedTier")) {
+            dataConfig.getConfigurationSection("highestAnnouncedTier").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    highestAnnouncedTierByPlayer.put(
+                            uuid,
+                            dataConfig.getInt("highestAnnouncedTier." + key, SheepTier.WHITE.getLevel()));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
         if (dataConfig.isConfigurationSection("shearShop")) {
             dataConfig.getConfigurationSection("shearShop").getKeys(false).forEach(key -> {
                 try {
@@ -1994,6 +2093,44 @@ public final class SheepMergeManager {
                 }
             });
         }
+        if (dataConfig.isConfigurationSection("pendingInventory")) {
+            dataConfig.getConfigurationSection("pendingInventory").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    String basePath = "pendingInventory." + key;
+                    ItemStack[] contents = deserializeInventoryList(dataConfig.getList(basePath + ".contents"));
+                    ItemStack[] armor = deserializeInventoryList(dataConfig.getList(basePath + ".armor"));
+                    ItemStack offhand = dataConfig.getItemStack(basePath + ".offhand");
+                    savedInventories.put(uuid,
+                            new InventorySnapshot(contents, armor, offhand == null ? null : offhand.clone()));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+    }
+
+    private static List<ItemStack> serializeInventoryList(ItemStack[] source) {
+        if (source == null) {
+            return null;
+        }
+        List<ItemStack> serialized = new ArrayList<>(source.length);
+        for (ItemStack itemStack : source) {
+            serialized.add(itemStack == null ? null : itemStack.clone());
+        }
+        return serialized;
+    }
+
+    private static ItemStack[] deserializeInventoryList(List<?> source) {
+        if (source == null) {
+            return null;
+        }
+        ItemStack[] deserialized = new ItemStack[source.size()];
+        for (int i = 0; i < source.size(); i++) {
+            Object value = source.get(i);
+            deserialized[i] = value instanceof ItemStack itemStack ? itemStack.clone() : null;
+        }
+        return deserialized;
     }
 
     private static ItemStack[] cloneItemStackArray(ItemStack[] source) {

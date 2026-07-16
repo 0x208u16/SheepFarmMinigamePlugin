@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.bukkit.Bukkit;
@@ -20,17 +21,28 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        deleteWorldForPlayer(event.getPlayer());
+        scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
     public void onPlayerKick(PlayerKickEvent event) {
-        deleteWorldForPlayer(event.getPlayer());
+        scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
     }
 
-    private void deleteWorldForPlayer(Player player) {
-        String worldName = SheepFarmWorldCommand.getWorldName(player.getUniqueId());
-        deleteWorld(worldName);
+    private void scheduleDeleteWorldForPlayer(UUID playerId) {
+        if (playerId == null || SheepMergePlugin.instance == null) {
+            return;
+        }
+
+        Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance, () -> {
+            Player stillOnline = Bukkit.getPlayer(playerId);
+            if (stillOnline != null && stillOnline.isOnline()) {
+                return;
+            }
+
+            String worldName = SheepFarmWorldCommand.getWorldName(playerId);
+            deleteWorld(worldName);
+        }, 40L);
     }
 
     private void deleteWorld(String worldName) {
