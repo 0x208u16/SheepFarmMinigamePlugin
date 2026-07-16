@@ -964,6 +964,9 @@ public final class SheepMergeManager {
         if (player == null || player.getWorld() == null || !isSheepFarmWorld(player.getWorld())) {
             return false;
         }
+        if (!isFarmOwner(player, player.getWorld())) {
+            return false;
+        }
 
         World world = player.getWorld();
         Map<Integer, Sheep> firstByTier = new HashMap<>();
