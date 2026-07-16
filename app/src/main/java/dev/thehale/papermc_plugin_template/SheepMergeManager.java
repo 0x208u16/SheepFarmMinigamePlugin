@@ -978,6 +978,7 @@ public final class SheepMergeManager {
 
             Sheep mergedSheep = world.spawn(spawnLocation, Sheep.class);
             setSheepTier(mergedSheep, mergedTier);
+            initializeMergedSheepAsSheared(mergedSheep, mergedTier);
             mergedSheep.setVelocity(new Vector(0.0D, 0.18D, 0.0D));
             world.spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
                     spawnLocation.clone().add(0.0D, 0.5D, 0.0D),
@@ -991,11 +992,22 @@ public final class SheepMergeManager {
                 announceTierUnlock(player, mergedTier);
                 markTierUnlockAnnounced(player, mergedTier);
             }
-            recordSheepMerge(player, tier);
+            recordSheepMerge(player, tier, mergedTier);
             recordQuestMerge(player);
             return true;
         }
         return false;
+    }
+
+    public static void initializeMergedSheepAsSheared(Sheep sheep, SheepTier tier) {
+        if (sheep == null || tier == null) {
+            return;
+        }
+        sheep.setSheared(true);
+        sheep.setAI(true);
+        sheep.setGravity(true);
+        setNextEatTimestamp(sheep, System.currentTimeMillis() + getEatCooldownSeconds(sheep, tier) * 1000L);
+        updateSheepName(sheep);
     }
 
     private static void tickAbilityVisual(Player player, UUID playerId, long now, Map<UUID, Long> activeUntil,
@@ -1174,24 +1186,29 @@ public final class SheepMergeManager {
         return true;
     }
 
-    public static boolean prestige(Player player) {
+    public static int prestige(Player player) {
         if (player == null) {
-            return false;
+            return 0;
         }
         int current = getPrestigeLevel(player);
         if (current >= PRESTIGE_MAX_LEVEL) {
-            return false;
-        }
-        if (getPlayerPoints(player) < getPrestigeCost(player)) {
-            return false;
-        }
-        if (!trySpendPoints(player, getPrestigeCost(player))) {
-            return false;
+            return 0;
         }
 
-        int nextPrestige = current + 1;
+        int affordableLevels = getAffordablePrestigeLevels(player);
+        if (affordableLevels <= 0) {
+            return 0;
+        }
+
+        int totalCost = getTotalPrestigeCostForNextLevels(current, affordableLevels);
+        if (!trySpendPoints(player, totalCost)) {
+            return 0;
+        }
+
+        int nextPrestige = current + affordableLevels;
+        int gainedPrestigePoints = getPrestigePointsRewardForNextLevels(current, affordableLevels);
         prestigeLevelByPlayer.put(player.getUniqueId(), nextPrestige);
-        prestigePointsByPlayer.put(player.getUniqueId(), getPrestigePoints(player) + nextPrestige);
+        prestigePointsByPlayer.put(player.getUniqueId(), getPrestigePoints(player) + gainedPrestigePoints);
         clearPrestigeReminder(player);
 
         // Reset regular progression purchased with normal points.
@@ -1214,11 +1231,53 @@ public final class SheepMergeManager {
         }
 
         saveData();
-        return true;
+        return affordableLevels;
     }
 
     public static int getPrestigeCost(Player player) {
         return getDoubledUpgradeCost(500, getPrestigeLevel(player));
+    }
+
+    private static int getPrestigeCostForLevel(int level) {
+        return getDoubledUpgradeCost(500, Math.max(0, level));
+    }
+
+    private static int getAffordablePrestigeLevels(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int level = getPrestigeLevel(player);
+        int points = getPlayerPoints(player);
+        int gained = 0;
+
+        while (level < PRESTIGE_MAX_LEVEL) {
+            int cost = getPrestigeCostForLevel(level);
+            if (points < cost) {
+                break;
+            }
+            points -= cost;
+            level++;
+            gained++;
+        }
+        return gained;
+    }
+
+    private static int getTotalPrestigeCostForNextLevels(int currentLevel, int levelsToBuy) {
+        int total = 0;
+        int cappedLevels = Math.max(0, levelsToBuy);
+        for (int i = 0; i < cappedLevels; i++) {
+            total += getPrestigeCostForLevel(currentLevel + i);
+        }
+        return total;
+    }
+
+    private static int getPrestigePointsRewardForNextLevels(int currentLevel, int levelsToBuy) {
+        int reward = 0;
+        int cappedLevels = Math.max(0, levelsToBuy);
+        for (int i = 1; i <= cappedLevels; i++) {
+            reward += (currentLevel + i);
+        }
+        return reward;
     }
 
     public static int getUnlockedTierCap(World world) {
@@ -2087,8 +2146,8 @@ public final class SheepMergeManager {
         lastPrestigeReminderTimestampByPlayer.put(playerId, now);
     }
 
-    public static void recordSheepMerge(Player player, SheepTier mergedFromTier) {
-        if (player == null || mergedFromTier == null) {
+    public static void recordSheepMerge(Player player, SheepTier mergedFromTier, SheepTier mergedTierWithWool) {
+        if (player == null || mergedFromTier == null || mergedTierWithWool == null) {
             return;
         }
         UUID playerId = player.getUniqueId();
@@ -2105,15 +2164,15 @@ public final class SheepMergeManager {
         comboScoreByPlayer.put(playerId, updatedScore);
         comboLastUpdateTimestampByPlayer.put(playerId, now);
 
-        int mergePoints = calculateMergePointsFromCombo(player, mergedFromTier, updatedScore);
+        int mergePoints = calculateMergePointsFromCombo(player, mergedTierWithWool, updatedScore);
         addPoints(player, mergePoints);
         showOverlay(player, accent("Merge combo x" + formatComboMultiplier(getComboMultiplier(player, updatedScore))
                 + color(" &7(+" + mergePoints + " points)")));
         updateComboBossBar(player, updatedScore);
     }
 
-    private static int calculateMergePointsFromCombo(Player player, SheepTier mergedFromTier, double comboScore) {
-        int basePoints = mergedFromTier.getLevel() + 1;
+    private static int calculateMergePointsFromCombo(Player player, SheepTier mergedTierWithWool, double comboScore) {
+        int basePoints = calculateShearPoints(player, mergedTierWithWool);
         double comboMultiplier = getComboMultiplier(player, comboScore);
         return Math.max(1, (int) Math.round(basePoints * comboMultiplier));
     }
@@ -3256,16 +3315,27 @@ public final class SheepMergeManager {
             return;
         }
         markTutorialPrestigeOpened(player);
+        int affordablePrestiges = getAffordablePrestigeLevels(player);
+        int totalCostForAffordable = getTotalPrestigeCostForNextLevels(getPrestigeLevel(player), affordablePrestiges);
+        int rewardForAffordable = getPrestigePointsRewardForNextLevels(getPrestigeLevel(player), affordablePrestiges);
         Inventory inventory = Bukkit.createInventory(null, 27, PRESTIGE_MENU_TITLE);
         inventory.setItem(PRESTIGE_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.NETHER_STAR,
                 "Prestige Reset",
                 List.of(
                         "Current prestige: " + getPrestigeLevel(player),
-                        "Gain prestige points: +" + (getPrestigeLevel(player) + 1),
+                        affordablePrestiges > 0
+                                ? "Buy now: +" + affordablePrestiges + " prestige level(s)"
+                                : "Buy now: +0 prestige level(s)",
+                        affordablePrestiges > 0
+                                ? "Gain prestige points: +" + rewardForAffordable
+                                : "Gain prestige points: +0",
                         "Cost: " + getPrestigeCost(player) + " normal points",
+                        affordablePrestiges > 0
+                                ? "Total cost now: " + totalCostForAffordable + " normal points"
+                                : "Need more points for next prestige",
                         "Resets normal-point upgrades",
-                        "Click to prestige")));
+                        "Click to prestige multiple")));
 
         inventory.setItem(PRESTIGE_DOUBLE_POINTS_SLOT, MenuItemFactory.create(
                 Material.EMERALD,
@@ -3343,9 +3413,10 @@ public final class SheepMergeManager {
         }
         switch (slot) {
             case PRESTIGE_UPGRADE_SLOT -> {
-                if (prestige(player)) {
+                int gained = prestige(player);
+                if (gained > 0) {
                     playPrestigeSound(player);
-                    player.sendMessage(action("Prestige +1"));
+                    player.sendMessage(action("Prestige +" + gained));
                 } else {
                     player.sendMessage(warning("Not enough points."));
                 }

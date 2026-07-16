@@ -214,6 +214,7 @@ public class SheepFarmGameListener implements Listener {
 
         Sheep mergedSheep = world.spawn(spawnLocation, Sheep.class);
         SheepMergeManager.setSheepTier(mergedSheep, mergedTier);
+        SheepMergeManager.initializeMergedSheepAsSheared(mergedSheep, mergedTier);
         Vector velocity = player.getLocation().getDirection().multiply(0.4).setY(0.2);
         mergedSheep.setVelocity(velocity);
         world.spawnParticle(Particle.VILLAGER_HAPPY, spawnLocation.add(0, 0.5, 0), 15, 0.3, 0.3, 0.3, 0.05);
@@ -222,7 +223,7 @@ public class SheepFarmGameListener implements Listener {
             SheepMergeManager.announceTierUnlock(player, mergedTier);
             SheepMergeManager.markTierUnlockAnnounced(player, mergedTier);
         }
-        SheepMergeManager.recordSheepMerge(player, carriedTier);
+        SheepMergeManager.recordSheepMerge(player, carriedTier, mergedTier);
         SheepMergeManager.recordQuestMerge(player);
         SheepMergeManager.recordTutorialMerge(player);
         SheepMergeManager.showOverlay(player, SheepMergeManager.action(
