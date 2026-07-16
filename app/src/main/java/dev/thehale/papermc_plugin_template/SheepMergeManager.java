@@ -541,6 +541,78 @@ public final class SheepMergeManager {
                 "Wool Rush ended");
         tickAbilityVisual(player, playerId, now, activeJackpotShearsUntilByPlayer, org.bukkit.Particle.CRIT,
                 "Jackpot Shears ended");
+        tickAbilityVisual(player, playerId, now, activeAutoMergeUntilByPlayer, org.bukkit.Particle.ENCHANTMENT_TABLE,
+                "Auto Merge ended");
+        tickAutoMergeAbility(player, playerId, now);
+        updatePointsScoreboard(player);
+    }
+
+    private static void tickAutoMergeAbility(Player player, UUID playerId, long now) {
+        long until = activeAutoMergeUntilByPlayer.getOrDefault(playerId, 0L);
+        if (until <= now) {
+            nextAutoMergeAtByPlayer.remove(playerId);
+            return;
+        }
+
+        long nextAutoMergeAt = nextAutoMergeAtByPlayer.getOrDefault(playerId, 0L);
+        if (now < nextAutoMergeAt) {
+            return;
+        }
+
+        nextAutoMergeAtByPlayer.put(playerId, now + QUEST_AUTO_MERGE_INTERVAL_MS);
+        tryAutoMergeOnce(player);
+    }
+
+    private static boolean tryAutoMergeOnce(Player player) {
+        if (player == null || player.getWorld() == null || !isSheepFarmWorld(player.getWorld())) {
+            return false;
+        }
+
+        World world = player.getWorld();
+        Map<Integer, Sheep> firstByTier = new HashMap<>();
+        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+            if (sheep == null || !sheep.isValid() || sheep.isDead()) {
+                continue;
+            }
+            if (sheep.isInsideVehicle()) {
+                continue;
+            }
+
+            SheepTier tier = getSheepTier(sheep);
+            if (tier == null || !tier.hasNext()) {
+                continue;
+            }
+
+            Sheep first = firstByTier.putIfAbsent(tier.getLevel(), sheep);
+            if (first == null || !first.isValid() || first.getUniqueId().equals(sheep.getUniqueId())) {
+                continue;
+            }
+
+            SheepTier mergedTier = tier.next();
+            Location spawnLocation = sheep.getLocation().clone();
+            first.remove();
+            sheep.remove();
+
+            Sheep mergedSheep = world.spawn(spawnLocation, Sheep.class);
+            setSheepTier(mergedSheep, mergedTier);
+            mergedSheep.setVelocity(new Vector(0.0D, 0.18D, 0.0D));
+            world.spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
+                    spawnLocation.clone().add(0.0D, 0.5D, 0.0D),
+                    10,
+                    0.25D,
+                    0.25D,
+                    0.25D,
+                    0.02D);
+
+            if (shouldAnnounceTierUnlock(player, mergedTier)) {
+                announceTierUnlock(player, mergedTier);
+                markTierUnlockAnnounced(player, mergedTier);
+            }
+            recordSheepMerge(player);
+            recordQuestMerge(player);
+            return true;
+        }
+        return false;
     }
 
     private static void tickAbilityVisual(Player player, UUID playerId, long now, Map<UUID, Long> activeUntil,
@@ -745,6 +817,8 @@ public final class SheepMergeManager {
         activeLuckyBurstUntilByPlayer.remove(id);
         activeWoolRushUntilByPlayer.remove(id);
         activeJackpotShearsUntilByPlayer.remove(id);
+        activeAutoMergeUntilByPlayer.remove(id);
+        nextAutoMergeAtByPlayer.remove(id);
         nextEggTimestampByPlayer.remove(id);
         lastSpawnLimitWarningTimestampByPlayer.remove(id);
         saveData();
@@ -812,7 +886,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        applySheepRescueMotionIfNeeded(sheep);
+        boolean rescueActive = applySheepRescueMotionIfNeeded(sheep);
         applyRainbowColorAnimation(sheep, getSheepTier(sheep));
 
         if (!sheep.isSheared()) {
@@ -828,14 +902,14 @@ public final class SheepMergeManager {
             setNextEatTimestamp(sheep, 0L);
         } else {
             sheep.setSheared(true);
-            sheep.setAI(false);
+            sheep.setAI(rescueActive);
         }
         updateSheepName(sheep);
     }
 
-    private static void applySheepRescueMotionIfNeeded(Sheep sheep) {
+    private static boolean applySheepRescueMotionIfNeeded(Sheep sheep) {
         if (sheep == null || !sheep.isValid()) {
-            return;
+            return false;
         }
 
         org.bukkit.Location location = sheep.getLocation();
@@ -844,11 +918,12 @@ public final class SheepMergeManager {
             sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
             sheepRescueStartByEntity.remove(sheep.getUniqueId());
             sheep.setCollidable(true);
-            return;
+            return false;
         }
 
         // Let rescued sheep phase through collisions while returning to center.
         sheep.setCollidable(false);
+        sheep.setAI(true);
 
         long now = System.currentTimeMillis();
         long started = sheepRescueStartByEntity.getOrDefault(sheep.getUniqueId(), now);
@@ -858,12 +933,12 @@ public final class SheepMergeManager {
             sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
             sheepRescueStartByEntity.remove(sheep.getUniqueId());
             sheep.setCollidable(true);
-            return;
+            return false;
         }
 
         long lastRescue = sheepRescueCooldownByEntity.getOrDefault(sheep.getUniqueId(), 0L);
         if (now - lastRescue < SHEEP_RESCUE_COOLDOWN_MS) {
-            return;
+            return true;
         }
 
         Vector toCenter = new Vector(0.5D - location.getX(), 0.0D, 0.5D - location.getZ());
@@ -874,6 +949,7 @@ public final class SheepMergeManager {
         sheep.setVelocity(new Vector(toCenter.getX(), SHEEP_RESCUE_UPWARD_VELOCITY, toCenter.getZ()));
         sheep.setFallDistance(0.0F);
         sheepRescueCooldownByEntity.put(sheep.getUniqueId(), now);
+        return true;
     }
 
     private static void applyRainbowColorAnimation(Sheep sheep, SheepTier tier) {
@@ -1620,6 +1696,11 @@ public final class SheepMergeManager {
         return Math.max(6, QUEST_JACKPOT_SHEARS_BASE_COST - reduction);
     }
 
+    private static int getQuestAutoMergeCost(Player player) {
+        int reduction = getQuestUpgradePowerLevel(player);
+        return Math.max(8, QUEST_AUTO_MERGE_BASE_COST - reduction);
+    }
+
     private static boolean isAbilityActive(Map<UUID, Long> activeUntil, UUID playerId) {
         if (playerId == null) {
             return false;
@@ -1729,6 +1810,23 @@ public final class SheepMergeManager {
         long minutes = totalSeconds / 60L;
         long seconds = totalSeconds % 60L;
         return minutes + "m " + seconds + "s";
+    }
+
+    private static long getAbilityRemainingMs(Map<UUID, Long> activeUntil, UUID playerId) {
+        if (activeUntil == null || playerId == null) {
+            return 0L;
+        }
+        return Math.max(0L, activeUntil.getOrDefault(playerId, 0L) - System.currentTimeMillis());
+    }
+
+    private static String getAbilityMenuStatus(Map<UUID, Long> activeUntil, UUID playerId) {
+        long remaining = getAbilityRemainingMs(activeUntil, playerId);
+        return remaining > 0L ? "Time left: " + formatDuration(remaining) : "Time left: ready";
+    }
+
+    private static String getAbilityScoreLine(String label, Map<UUID, Long> activeUntil, UUID playerId) {
+        long remaining = getAbilityRemainingMs(activeUntil, playerId);
+        return label + ": " + (remaining > 0L ? formatDuration(remaining) : "ready");
     }
 
     private static long getQuestResetRemainingMs(Player player) {
@@ -2204,6 +2302,7 @@ public final class SheepMergeManager {
                         "Cost: " + getQuestLuckyBurstCost(player) + " quest points",
                         "Effect: +" + (25 + getQuestUpgradePowerLevel(player) * 5) + "% spawn chance",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_LUCKY_BURST_BASE_DURATION_MS)),
+                        getAbilityMenuStatus(activeLuckyBurstUntilByPlayer, playerId),
                         "Click to activate")));
 
         inventory.setItem(QUEST_ABILITY_WOOL_RUSH_SLOT, MenuItemFactory.create(
@@ -2213,6 +2312,7 @@ public final class SheepMergeManager {
                         "Cost: " + getQuestWoolRushCost(player) + " quest points",
                         "Effect: Major wool regen speed boost",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
+                        getAbilityMenuStatus(activeWoolRushUntilByPlayer, playerId),
                         "Click to activate")));
 
         inventory.setItem(QUEST_ABILITY_JACKPOT_SHEARS_SLOT, MenuItemFactory.create(
@@ -2223,6 +2323,17 @@ public final class SheepMergeManager {
                         "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
                         "Duration: "
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
+                        getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, playerId),
+                        "Click to activate")));
+
+        inventory.setItem(QUEST_ABILITY_AUTO_MERGE_SLOT, MenuItemFactory.create(
+                Material.ANVIL,
+                "Auto Merge",
+                List.of(
+                        "Cost: " + getQuestAutoMergeCost(player) + " quest points",
+                        "Effect: Auto-merges sheep once per second",
+                        "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_AUTO_MERGE_BASE_DURATION_MS)),
+                        getAbilityMenuStatus(activeAutoMergeUntilByPlayer, playerId),
                         "Click to activate")));
 
         inventory.setItem(QUEST_OPEN_UPGRADES_SLOT, MenuItemFactory.create(
@@ -2283,6 +2394,20 @@ public final class SheepMergeManager {
                         Sound.ENTITY_PLAYER_LEVELUP,
                         org.bukkit.Particle.CRIT)) {
                     player.sendMessage(action("Jackpot Shears active."));
+                } else {
+                    player.sendMessage(warning("Not enough quest points."));
+                }
+            }
+            case QUEST_ABILITY_AUTO_MERGE_SLOT -> {
+                if (activateQuestAbility(
+                        player,
+                        activeAutoMergeUntilByPlayer,
+                        getQuestAutoMergeCost(player),
+                        getAbilityDurationMs(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
+                        Sound.BLOCK_PISTON_EXTEND,
+                        org.bukkit.Particle.ENCHANTMENT_TABLE)) {
+                    nextAutoMergeAtByPlayer.put(player.getUniqueId(), 0L);
+                    player.sendMessage(action("Auto Merge active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
                 }
@@ -2603,9 +2728,7 @@ public final class SheepMergeManager {
         Scoreboard scoreboard = player.getServer().getScoreboardManager().getNewScoreboard();
         Objective objective = scoreboard.registerNewObjective("sheepmerge_points", "dummy", "Sheep Merge Points");
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-        objective.getScore("Prestige Lv").setScore(getPrestigeLevel(player));
-        objective.getScore("Prestige Pts").setScore(getPrestigePoints(player));
-        objective.getScore("Points").setScore(getPlayerPoints(player));
+        renderPointsScoreboard(player, scoreboard, objective);
         player.setScoreboard(scoreboard);
     }
 
@@ -2619,9 +2742,28 @@ public final class SheepMergeManager {
             showPointsScoreboard(player);
             return;
         }
-        objective.getScore("Prestige Lv").setScore(getPrestigeLevel(player));
-        objective.getScore("Prestige Pts").setScore(getPrestigePoints(player));
-        objective.getScore("Points").setScore(getPlayerPoints(player));
+        renderPointsScoreboard(player, scoreboard, objective);
+    }
+
+    private static void renderPointsScoreboard(Player player, Scoreboard scoreboard, Objective objective) {
+        if (player == null || scoreboard == null || objective == null) {
+            return;
+        }
+
+        for (String entry : new HashSet<>(scoreboard.getEntries())) {
+            scoreboard.resetScores(entry);
+        }
+
+        UUID playerId = player.getUniqueId();
+        objective.getScore("Points: " + getPlayerPoints(player)).setScore(11);
+        objective.getScore("Prestige Lv: " + getPrestigeLevel(player)).setScore(10);
+        objective.getScore("Prestige Pts: " + getPrestigePoints(player)).setScore(9);
+        objective.getScore(" ").setScore(8);
+        objective.getScore("Abilities").setScore(7);
+        objective.getScore(getAbilityScoreLine("Lucky", activeLuckyBurstUntilByPlayer, playerId)).setScore(6);
+        objective.getScore(getAbilityScoreLine("Wool", activeWoolRushUntilByPlayer, playerId)).setScore(5);
+        objective.getScore(getAbilityScoreLine("Jackpot", activeJackpotShearsUntilByPlayer, playerId)).setScore(4);
+        objective.getScore(getAbilityScoreLine("Auto", activeAutoMergeUntilByPlayer, playerId)).setScore(3);
     }
 
     public static void restorePlayerScoreboard(Player player) {
