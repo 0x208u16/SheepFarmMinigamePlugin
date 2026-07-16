@@ -18,6 +18,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "upgrade",
+            "prestige",
             "shop",
             "visit",
             "kick",
@@ -49,6 +50,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1 && args[0].equalsIgnoreCase("shop")) {
             SheepMergeManager.openShopMenu(player);
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("prestige")) {
+            SheepMergeManager.openPrestigeMenu(player);
             return true;
         }
 
