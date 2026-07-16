@@ -79,7 +79,6 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> sheepRescueCooldownByEntity = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
@@ -133,7 +132,6 @@ public final class SheepMergeManager {
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
-    private static final long SHEEP_RESCUE_COOLDOWN_MS = 500L;
     private static final long SHEEP_RESCUE_TIMEOUT_MS = 10_000L;
     private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.95D;
     private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.45D;
@@ -914,11 +912,14 @@ public final class SheepMergeManager {
             return false;
         }
 
+        UUID sheepId = sheep.getUniqueId();
         org.bukkit.Location location = sheep.getLocation();
-        boolean shouldRescue = isOffPlatform(location) || isFallingOffPlatform(sheep, location);
+        boolean rescueInProgress = sheepRescueStartByEntity.containsKey(sheepId);
+        boolean shouldRescue = rescueInProgress
+                ? !isSafelyOnPlatform(sheep, location)
+                : (isOffPlatform(location) || isFallingOffPlatform(sheep, location));
         if (!shouldRescue) {
-            sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
-            sheepRescueStartByEntity.remove(sheep.getUniqueId());
+            sheepRescueStartByEntity.remove(sheepId);
             sheep.setCollidable(true);
             return false;
         }
@@ -926,32 +927,47 @@ public final class SheepMergeManager {
         // Let rescued sheep phase through collisions while returning to center.
         sheep.setCollidable(false);
         sheep.setAI(true);
+        sheep.setGravity(true);
 
         long now = System.currentTimeMillis();
-        long started = sheepRescueStartByEntity.getOrDefault(sheep.getUniqueId(), now);
-        sheepRescueStartByEntity.putIfAbsent(sheep.getUniqueId(), now);
+        long started = sheepRescueStartByEntity.getOrDefault(sheepId, now);
+        sheepRescueStartByEntity.putIfAbsent(sheepId, now);
         if (now - started >= SHEEP_RESCUE_TIMEOUT_MS) {
             teleportSheepToFarmCenter(sheep);
-            sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
-            sheepRescueStartByEntity.remove(sheep.getUniqueId());
+            sheepRescueStartByEntity.remove(sheepId);
             sheep.setCollidable(true);
             return false;
         }
 
-        long lastRescue = sheepRescueCooldownByEntity.getOrDefault(sheep.getUniqueId(), 0L);
-        if (now - lastRescue < SHEEP_RESCUE_COOLDOWN_MS) {
-            return true;
-        }
-
         Vector toCenter = new Vector(0.5D - location.getX(), 0.0D, 0.5D - location.getZ());
-        if (toCenter.lengthSquared() > 0.0001D) {
-            toCenter.normalize().multiply(SHEEP_RESCUE_HORIZONTAL_VELOCITY);
+        double horizontalDistance = Math.sqrt(toCenter.getX() * toCenter.getX() + toCenter.getZ() * toCenter.getZ());
+        if (horizontalDistance > 0.0001D) {
+            double horizontalSpeed = Math.min(SHEEP_RESCUE_HORIZONTAL_VELOCITY, 0.18D + horizontalDistance * 0.07D);
+            toCenter.normalize().multiply(horizontalSpeed);
         }
 
-        sheep.setVelocity(new Vector(toCenter.getX(), SHEEP_RESCUE_UPWARD_VELOCITY, toCenter.getZ()));
+        double belowTarget = Math.max(0.0D, (FARM_BASE_Y + 1.0D) - location.getY());
+        double upwardVelocity = 0.20D + Math.min(0.55D, horizontalDistance * 0.08D + belowTarget * 0.22D);
+        upwardVelocity = Math.min(SHEEP_RESCUE_UPWARD_VELOCITY, upwardVelocity);
+
+        // Apply rescue steering every tick for smooth arching flight toward center.
+        sheep.setVelocity(new Vector(toCenter.getX(), upwardVelocity, toCenter.getZ()));
         sheep.setFallDistance(0.0F);
-        sheepRescueCooldownByEntity.put(sheep.getUniqueId(), now);
         return true;
+    }
+
+    private static boolean isSafelyOnPlatform(Sheep sheep, org.bukkit.Location location) {
+        if (sheep == null || location == null) {
+            return false;
+        }
+        if (!sheep.isOnGround()) {
+            return false;
+        }
+        if (location.getY() < FARM_BASE_Y - 0.05D) {
+            return false;
+        }
+        return Math.abs(location.getX()) <= FARM_RADIUS - 0.20D
+                && Math.abs(location.getZ()) <= FARM_RADIUS - 0.20D;
     }
 
     private static void applyRainbowColorAnimation(Sheep sheep, SheepTier tier) {
