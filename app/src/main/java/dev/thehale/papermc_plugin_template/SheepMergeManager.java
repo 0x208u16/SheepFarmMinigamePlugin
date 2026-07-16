@@ -50,6 +50,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> prestigeHigherMaxLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeStartEggsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeEggCapByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> prestigeBaseSpawnTierByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> highestAnnouncedTierByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearShopLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialCompletedByPlayer = new HashMap<>();
@@ -82,6 +83,7 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
+    private static final int PRESTIGE_BASE_SPAWN_TIER_BASE_COST = 10;
     private static final int BASE_EGG_CAP = 10;
     private static final int PRESTIGE_EGG_CAP_STEP = 10;
     private static final int PRESTIGE_MAX_LEVEL = 50;
@@ -110,6 +112,7 @@ public final class SheepMergeManager {
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
     public static final int PRESTIGE_START_EGGS_SLOT = 16;
     public static final int PRESTIGE_EGG_CAP_SLOT = 18;
+    public static final int PRESTIGE_BASE_SPAWN_TIER_SLOT = 20;
     public static final int PRESTIGE_BACK_TO_UPGRADES_SLOT = 26;
     public static final int SHOP_SHEAR_SLOT = 13;
     public static final int SHOP_BACK_TO_UPGRADES_SLOT = 26;
@@ -476,6 +479,7 @@ public final class SheepMergeManager {
         prestigeHigherMaxLevelByPlayer.remove(id);
         prestigeStartEggsByPlayer.remove(id);
         prestigeEggCapByPlayer.remove(id);
+        prestigeBaseSpawnTierByPlayer.remove(id);
         highestAnnouncedTierByPlayer.remove(id);
         lastPrestigeReminderTimestampByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
@@ -1076,8 +1080,9 @@ public final class SheepMergeManager {
 
     public static SheepTier rollSpawnTier(World world) {
         int cap = getUnlockedTierCap(world);
+        int baseTierLevel = getBaseSpawnTierLevel(world);
+        int chosen = Math.min(baseTierLevel, cap);
         int chance = getHigherTierChancePercent(world);
-        int chosen = 0;
         while (chosen < cap && RANDOM.nextInt(100) < chance) {
             chosen++;
             chance = Math.max(5, chance / 2);
@@ -1157,6 +1162,27 @@ public final class SheepMergeManager {
         return player == null ? 0 : prestigeEggCapByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
 
+    public static int getBaseSpawnTierLevel(Player player) {
+        return player == null ? 0
+                : Math.min(
+                        SheepTier.RAINBOW.getLevel(),
+                        prestigeBaseSpawnTierByPlayer.getOrDefault(player.getUniqueId(), 0));
+    }
+
+    public static int getBaseSpawnTierLevel(World world) {
+        UUID ownerId = getOwnerId(world);
+        if (ownerId == null) {
+            return 0;
+        }
+        return Math.min(
+                SheepTier.RAINBOW.getLevel(),
+                prestigeBaseSpawnTierByPlayer.getOrDefault(ownerId, 0));
+    }
+
+    public static SheepTier getBaseSpawnTier(Player player) {
+        return SheepTier.byLevel(getBaseSpawnTierLevel(player));
+    }
+
     public static int getPrestigeDoublePointsCost(Player player) {
         return getDoubledUpgradeCost(PRESTIGE_DOUBLE_POINTS_BASE_COST, getPrestigeDoublePointsChanceLevel(player));
     }
@@ -1171,6 +1197,10 @@ public final class SheepMergeManager {
 
     public static int getPrestigeEggCapCost(Player player) {
         return getDoubledUpgradeCost(PRESTIGE_EGG_CAP_BASE_COST, getPrestigeEggCapLevel(player));
+    }
+
+    public static int getPrestigeBaseSpawnTierCost(Player player) {
+        return getDoubledUpgradeCost(PRESTIGE_BASE_SPAWN_TIER_BASE_COST, getBaseSpawnTierLevel(player));
     }
 
     private static boolean trySpendPrestigePoints(Player player, int points) {
@@ -1222,6 +1252,23 @@ public final class SheepMergeManager {
             return false;
         }
         prestigeEggCapByPlayer.put(player.getUniqueId(), getPrestigeEggCapLevel(player) + 1);
+        saveData();
+        return true;
+    }
+
+    private static boolean upgradePrestigeBaseSpawnTier(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int currentLevel = getBaseSpawnTierLevel(player);
+        if (currentLevel >= SheepTier.RAINBOW.getLevel()) {
+            return false;
+        }
+        int cost = getPrestigeBaseSpawnTierCost(player);
+        if (!trySpendPrestigePoints(player, cost)) {
+            return false;
+        }
+        prestigeBaseSpawnTierByPlayer.put(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -1439,6 +1486,19 @@ public final class SheepMergeManager {
                         "Cost: " + getPrestigeEggCapCost(player) + " prestige points",
                         "Click to purchase")));
 
+        int baseSpawnTierLevel = getBaseSpawnTierLevel(player);
+        SheepTier baseSpawnTier = SheepTier.byLevel(baseSpawnTierLevel);
+        inventory.setItem(PRESTIGE_BASE_SPAWN_TIER_SLOT, MenuItemFactory.create(
+                Material.SHEEP_SPAWN_EGG,
+                "Higher Base Spawn Tier",
+                List.of(
+                        "Level: " + baseSpawnTierLevel + " / " + SheepTier.RAINBOW.getLevel(),
+                        "Current base tier: " + baseSpawnTier.getDisplayName(),
+                        baseSpawnTierLevel >= SheepTier.RAINBOW.getLevel()
+                                ? "MAXED"
+                                : "Cost: " + getPrestigeBaseSpawnTierCost(player) + " prestige points",
+                        "Click to purchase")));
+
         inventory.setItem(PRESTIGE_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
@@ -1487,6 +1547,18 @@ public final class SheepMergeManager {
                 if (upgradePrestigeEggCap(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Egg cap: " + getEggCap(player)));
+                } else {
+                    player.sendMessage(warning("Not enough prestige points."));
+                }
+            }
+            case PRESTIGE_BASE_SPAWN_TIER_SLOT -> {
+                if (getBaseSpawnTierLevel(player) >= SheepTier.RAINBOW.getLevel()) {
+                    player.sendMessage(warning("Base spawn tier maxed."));
+                    break;
+                }
+                if (upgradePrestigeBaseSpawnTier(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Base spawn tier: " + getBaseSpawnTier(player).getDisplayName()));
                 } else {
                     player.sendMessage(warning("Not enough prestige points."));
                 }
@@ -1813,6 +1885,7 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeHigherMax", null);
             dataConfig.set("prestigeStartEggs", null);
             dataConfig.set("prestigeEggCap", null);
+            dataConfig.set("prestigeBaseSpawnTier", null);
             dataConfig.set("highestAnnouncedTier", null);
             dataConfig.set("prestigeExpandFarm", null);
             dataConfig.set("shearShop", null);
@@ -1853,6 +1926,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : prestigeEggCapByPlayer.entrySet()) {
                 dataConfig.set("prestigeEggCap." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : prestigeBaseSpawnTierByPlayer.entrySet()) {
+                dataConfig.set("prestigeBaseSpawnTier." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Integer> entry : highestAnnouncedTierByPlayer.entrySet()) {
                 dataConfig.set("highestAnnouncedTier." + entry.getKey().toString(), entry.getValue());
@@ -2001,6 +2077,19 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     prestigeEggCapByPlayer.put(uuid, dataConfig.getInt("prestigeEggCap." + key, 0));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("prestigeBaseSpawnTier")) {
+            dataConfig.getConfigurationSection("prestigeBaseSpawnTier").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    prestigeBaseSpawnTierByPlayer.put(
+                            uuid,
+                            Math.min(SheepTier.RAINBOW.getLevel(),
+                                    dataConfig.getInt("prestigeBaseSpawnTier." + key, 0)));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
