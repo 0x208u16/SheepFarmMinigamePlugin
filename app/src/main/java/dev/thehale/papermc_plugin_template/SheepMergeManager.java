@@ -2,7 +2,6 @@ package dev.thehale.papermc_plugin_template;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,9 +26,7 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.TextDisplay;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -64,7 +61,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
-    private static final Map<UUID, InventorySnapshot> savedInventories = new HashMap<>();
+    private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Pattern OWNER_ID_PATTERN = Pattern.compile("^sheepfarm_([0-9a-fA-F]{32})$");
@@ -1252,7 +1249,7 @@ public final class SheepMergeManager {
         Inventory inventory = Bukkit.createInventory(null, 27, UPGRADE_MENU_TITLE);
         int limitLevel = getLimitUpgradeLevel(player);
         int limitCost = getUpgradeCost(player);
-        inventory.setItem(LIMIT_UPGRADE_SLOT, createMenuItem(
+        inventory.setItem(LIMIT_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
                 "Sheep Limit",
                 List.of(
@@ -1264,7 +1261,7 @@ public final class SheepMergeManager {
 
         int eggLevel = getEggSpeedLevel(player);
         int eggCost = getEggSpeedUpgradeCost(player);
-        inventory.setItem(EGG_SPEED_UPGRADE_SLOT, createMenuItem(
+        inventory.setItem(EGG_SPEED_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Faster Egg Spawn",
                 List.of(
@@ -1275,7 +1272,7 @@ public final class SheepMergeManager {
 
         int woolLevel = woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
         int woolCost = getWoolRegenUpgradeCost(player);
-        inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, createEnchantedMenuItem(
+        inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.createEnchanted(
                 Material.WHITE_WOOL,
                 "Faster Wool Regen",
                 List.of(
@@ -1286,7 +1283,7 @@ public final class SheepMergeManager {
 
         int chanceLevel = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
         int chanceCost = getHigherTierChanceUpgradeCost(player);
-        inventory.setItem(HIGHER_TIER_CHANCE_UPGRADE_SLOT, createMenuItem(
+        inventory.setItem(HIGHER_TIER_CHANCE_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.GOLDEN_APPLE,
                 "Higher Tier Spawn Chance",
                 List.of(
@@ -1296,7 +1293,7 @@ public final class SheepMergeManager {
                                 : "Cost: " + chanceCost + " points",
                         "Click to purchase")));
 
-        inventory.setItem(PRESTIGE_MENU_OPEN_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.NETHER_STAR,
                 "Prestige Upgrades",
                 List.of(
@@ -1304,7 +1301,7 @@ public final class SheepMergeManager {
                         "Prestige points: " + getPrestigePoints(player),
                         "Click to open")));
 
-        inventory.setItem(SHOP_MENU_OPEN_SLOT, createMenuItem(
+        inventory.setItem(SHOP_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
                 "Shear Shop",
                 List.of(
@@ -1395,7 +1392,7 @@ public final class SheepMergeManager {
             return;
         }
         Inventory inventory = Bukkit.createInventory(null, 27, PRESTIGE_MENU_TITLE);
-        inventory.setItem(PRESTIGE_UPGRADE_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.NETHER_STAR,
                 "Prestige Reset",
                 List.of(
@@ -1405,7 +1402,7 @@ public final class SheepMergeManager {
                         "Resets normal-point upgrades",
                         "Click to prestige")));
 
-        inventory.setItem(PRESTIGE_DOUBLE_POINTS_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_DOUBLE_POINTS_SLOT, MenuItemFactory.create(
                 Material.EMERALD,
                 "Double Points Chance",
                 List.of(
@@ -1414,7 +1411,7 @@ public final class SheepMergeManager {
                         "Cost: " + getPrestigeDoublePointsCost(player) + " prestige points",
                         "Click to purchase")));
 
-        inventory.setItem(PRESTIGE_HIGHER_MAX_LEVEL_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_HIGHER_MAX_LEVEL_SLOT, MenuItemFactory.create(
                 Material.ENCHANTED_BOOK,
                 "Higher Maximum Levels",
                 List.of(
@@ -1423,7 +1420,7 @@ public final class SheepMergeManager {
                         "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
                         "Click to purchase")));
 
-        inventory.setItem(PRESTIGE_START_EGGS_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_START_EGGS_SLOT, MenuItemFactory.create(
                 Material.SHEEP_SPAWN_EGG,
                 "Start With Extra Eggs",
                 List.of(
@@ -1432,7 +1429,7 @@ public final class SheepMergeManager {
                         "Cost: " + getPrestigeStartEggsCost(player) + " prestige points",
                         "Click to purchase")));
 
-        inventory.setItem(PRESTIGE_EGG_CAP_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_EGG_CAP_SLOT, MenuItemFactory.create(
                 Material.EGG,
                 "Egg Capacity",
                 List.of(
@@ -1442,7 +1439,7 @@ public final class SheepMergeManager {
                         "Cost: " + getPrestigeEggCapCost(player) + " prestige points",
                         "Click to purchase")));
 
-        inventory.setItem(PRESTIGE_BACK_TO_UPGRADES_SLOT, createMenuItem(
+        inventory.setItem(PRESTIGE_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
                 List.of("Click to go back")));
@@ -1511,7 +1508,7 @@ public final class SheepMergeManager {
             return;
         }
         Inventory inventory = Bukkit.createInventory(null, 27, SHOP_MENU_TITLE);
-        inventory.setItem(SHOP_SHEAR_SLOT, createMenuItem(
+        inventory.setItem(SHOP_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
                 "Shear Upgrade",
                 List.of(
@@ -1520,7 +1517,7 @@ public final class SheepMergeManager {
                         "Points: base x" + getShearPointMultiplier(player) + " +" + getShearFlatBonus(player),
                         "Wool per shear: 1 + level",
                         "Click to purchase")));
-        inventory.setItem(SHOP_BACK_TO_UPGRADES_SLOT, createMenuItem(
+        inventory.setItem(SHOP_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
                 List.of("Click to go back")));
@@ -1549,28 +1546,6 @@ public final class SheepMergeManager {
         }
         updatePointsScoreboard(player);
         openShopMenu(player);
-    }
-
-    private static ItemStack createMenuItem(Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material, 1);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-
-    private static ItemStack createEnchantedMenuItem(Material material, String name, List<String> lore) {
-        ItemStack item = createMenuItem(material, name, lore);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.addEnchant(Enchantment.DURABILITY, 1, true);
-            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            item.setItemMeta(meta);
-        }
-        return item;
     }
 
     private static int getEggSpeedUpgradeCost(Player player) {
@@ -1708,11 +1683,11 @@ public final class SheepMergeManager {
         if (player == null || savedInventories.containsKey(player.getUniqueId())) {
             return;
         }
-        ItemStack[] contents = cloneItemStackArray(player.getInventory().getContents());
-        ItemStack[] armor = cloneItemStackArray(player.getInventory().getArmorContents());
+        ItemStack[] contents = InventoryDataUtils.cloneItemStackArray(player.getInventory().getContents());
+        ItemStack[] armor = InventoryDataUtils.cloneItemStackArray(player.getInventory().getArmorContents());
         ItemStack offhand = player.getInventory().getItemInOffHand() == null ? null
                 : player.getInventory().getItemInOffHand().clone();
-        savedInventories.put(player.getUniqueId(), new InventorySnapshot(contents, armor, offhand));
+        savedInventories.put(player.getUniqueId(), new InventoryDataUtils.Snapshot(contents, armor, offhand));
         saveData();
     }
 
@@ -1720,14 +1695,14 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        InventorySnapshot snapshot = savedInventories.remove(player.getUniqueId());
+        InventoryDataUtils.Snapshot snapshot = savedInventories.remove(player.getUniqueId());
         if (snapshot == null) {
             return;
         }
         player.getInventory().clear();
-        player.getInventory().setContents(cloneItemStackArray(snapshot.contents));
-        player.getInventory().setArmorContents(cloneItemStackArray(snapshot.armor));
-        player.getInventory().setItemInOffHand(snapshot.offhand == null ? null : snapshot.offhand.clone());
+        player.getInventory().setContents(InventoryDataUtils.cloneItemStackArray(snapshot.contents()));
+        player.getInventory().setArmorContents(InventoryDataUtils.cloneItemStackArray(snapshot.armor()));
+        player.getInventory().setItemInOffHand(snapshot.offhand() == null ? null : snapshot.offhand().clone());
         saveData();
     }
 
@@ -1897,12 +1872,12 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : tutorialMergesByPlayer.entrySet()) {
                 dataConfig.set("tutorialMerges." + entry.getKey().toString(), entry.getValue());
             }
-            for (Map.Entry<UUID, InventorySnapshot> entry : savedInventories.entrySet()) {
+            for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : savedInventories.entrySet()) {
                 String basePath = "pendingInventory." + entry.getKey();
-                InventorySnapshot snapshot = entry.getValue();
-                dataConfig.set(basePath + ".contents", serializeInventoryList(snapshot.contents));
-                dataConfig.set(basePath + ".armor", serializeInventoryList(snapshot.armor));
-                dataConfig.set(basePath + ".offhand", snapshot.offhand == null ? null : snapshot.offhand.clone());
+                InventoryDataUtils.Snapshot snapshot = entry.getValue();
+                dataConfig.set(basePath + ".contents", InventoryDataUtils.serializeInventoryList(snapshot.contents()));
+                dataConfig.set(basePath + ".armor", InventoryDataUtils.serializeInventoryList(snapshot.armor()));
+                dataConfig.set(basePath + ".offhand", snapshot.offhand() == null ? null : snapshot.offhand().clone());
             }
             dataConfig.save(dataFile);
         } catch (IOException exception) {
@@ -2098,61 +2073,17 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     String basePath = "pendingInventory." + key;
-                    ItemStack[] contents = deserializeInventoryList(dataConfig.getList(basePath + ".contents"));
-                    ItemStack[] armor = deserializeInventoryList(dataConfig.getList(basePath + ".armor"));
+                    ItemStack[] contents = InventoryDataUtils
+                            .deserializeInventoryList(dataConfig.getList(basePath + ".contents"));
+                    ItemStack[] armor = InventoryDataUtils
+                            .deserializeInventoryList(dataConfig.getList(basePath + ".armor"));
                     ItemStack offhand = dataConfig.getItemStack(basePath + ".offhand");
                     savedInventories.put(uuid,
-                            new InventorySnapshot(contents, armor, offhand == null ? null : offhand.clone()));
+                            new InventoryDataUtils.Snapshot(contents, armor, offhand == null ? null : offhand.clone()));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
             });
-        }
-    }
-
-    private static List<ItemStack> serializeInventoryList(ItemStack[] source) {
-        if (source == null) {
-            return null;
-        }
-        List<ItemStack> serialized = new ArrayList<>(source.length);
-        for (ItemStack itemStack : source) {
-            serialized.add(itemStack == null ? null : itemStack.clone());
-        }
-        return serialized;
-    }
-
-    private static ItemStack[] deserializeInventoryList(List<?> source) {
-        if (source == null) {
-            return null;
-        }
-        ItemStack[] deserialized = new ItemStack[source.size()];
-        for (int i = 0; i < source.size(); i++) {
-            Object value = source.get(i);
-            deserialized[i] = value instanceof ItemStack itemStack ? itemStack.clone() : null;
-        }
-        return deserialized;
-    }
-
-    private static ItemStack[] cloneItemStackArray(ItemStack[] source) {
-        if (source == null) {
-            return null;
-        }
-        ItemStack[] clone = new ItemStack[source.length];
-        for (int i = 0; i < source.length; i++) {
-            clone[i] = source[i] == null ? null : source[i].clone();
-        }
-        return clone;
-    }
-
-    private static final class InventorySnapshot {
-        private final ItemStack[] contents;
-        private final ItemStack[] armor;
-        private final ItemStack offhand;
-
-        private InventorySnapshot(ItemStack[] contents, ItemStack[] armor, ItemStack offhand) {
-            this.contents = contents;
-            this.armor = armor;
-            this.offhand = offhand;
         }
     }
 
