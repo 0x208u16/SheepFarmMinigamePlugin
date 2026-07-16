@@ -1,0 +1,70 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.shipkit",
+    "module": "shipkit-auto-version",
+    "version": "1.1.19",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.1.1",
+      "buildId": "3oyirph65vcjtjzx27itdfhyje"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "shipkit-auto-version-1.1.19.jar",
+          "url": "shipkit-auto-version-1.1.19.jar",
+          "size": 16655,
+          "sha512": "7d17638ff76a6e5109bbd4132a4206ca54895582d5b49bf78095b6c550e419fe2b5e9f95b6f529e4970394a47cc4d338c2795bb06a805a1bab17a0a4dd209c54",
+          "sha256": "855747eece6c176a94736444ac172246b1c9abf900bfb54d6b8281210062ca99",
+          "sha1": "2d1c29727bb45eb67a950664743f70db3ae960e0",
+          "md5": "ec9e983ca4c97aa66cc9d2086e53ba4a"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.github.zafarkhaja",
+          "module": "java-semver",
+          "version": {
+            "requires": "0.9.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "shipkit-auto-version-1.1.19.jar",
+          "url": "shipkit-auto-version-1.1.19.jar",
+          "size": 16655,
+          "sha512": "7d17638ff76a6e5109bbd4132a4206ca54895582d5b49bf78095b6c550e419fe2b5e9f95b6f529e4970394a47cc4d338c2795bb06a805a1bab17a0a4dd209c54",
+          "sha256": "855747eece6c176a94736444ac172246b1c9abf900bfb54d6b8281210062ca99",
+          "sha1": "2d1c29727bb45eb67a950664743f70db3ae960e0",
+          "md5": "ec9e983ca4c97aa66cc9d2086e53ba4a"
+        }
+      ]
+    }
+  ]
+}

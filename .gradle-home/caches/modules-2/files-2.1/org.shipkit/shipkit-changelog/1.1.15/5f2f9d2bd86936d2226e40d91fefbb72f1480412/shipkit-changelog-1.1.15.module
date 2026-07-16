@@ -1,0 +1,70 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.shipkit",
+    "module": "shipkit-changelog",
+    "version": "1.1.15",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.7",
+      "buildId": "tdirvllrjbfsjfsvcndovagg7m"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "shipkit-changelog-1.1.15.jar",
+          "url": "shipkit-changelog-1.1.15.jar",
+          "size": 28894,
+          "sha512": "75c94251bfa15c94c2a42cec1e4bf475e0d10c79c67288665474c45a1460650d33de53371c1a06ea76ac176710c7351cde141af0815cd5fb499c78f93162b633",
+          "sha256": "08616160cc52c5efb1203d883e67944538807930b3c42cbf42af3c96043e33c1",
+          "sha1": "c030a67e41a99490872ae97005b559c616c353ae",
+          "md5": "19a4033f76fd7f64698f8cedd4582636"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.eclipsesource.minimal-json",
+          "module": "minimal-json",
+          "version": {
+            "requires": "0.9.5"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "shipkit-changelog-1.1.15.jar",
+          "url": "shipkit-changelog-1.1.15.jar",
+          "size": 28894,
+          "sha512": "75c94251bfa15c94c2a42cec1e4bf475e0d10c79c67288665474c45a1460650d33de53371c1a06ea76ac176710c7351cde141af0815cd5fb499c78f93162b633",
+          "sha256": "08616160cc52c5efb1203d883e67944538807930b3c42cbf42af3c96043e33c1",
+          "sha1": "c030a67e41a99490872ae97005b559c616c353ae",
+          "md5": "19a4033f76fd7f64698f8cedd4582636"
+        }
+      ]
+    }
+  ]
+}

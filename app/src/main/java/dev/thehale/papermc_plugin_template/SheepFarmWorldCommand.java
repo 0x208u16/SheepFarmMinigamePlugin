@@ -1,6 +1,7 @@
 package dev.thehale.papermc_plugin_template;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Difficulty;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -28,9 +29,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "storm",
             "topdisplay",
             "resetdata",
+            "stats",
+            "checkpoints",
+            "checkquestpoints",
+            "checkprestige",
             "givepoints",
             "setpoints",
             "givequestpoints",
+            "setquestpoints",
             "setprestige",
             "mapsave",
             "mapload",
@@ -41,8 +47,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "givepoints",
             "setpoints",
             "givequestpoints",
+            "setquestpoints",
             "setprestige");
     private static final List<String> ADMIN_PLAYER_TARGET_SUBCOMMANDS = List.of("resetdata");
+    private static final List<String> ADMIN_STAT_CHECK_SUBCOMMANDS = List.of(
+            "stats",
+            "checkpoints",
+            "checkquestpoints",
+            "checkprestige");
 
     public static String getWorldName(java.util.UUID playerId) {
         return "sheepfarm_" + playerId.toString().replace("-", "");
@@ -76,20 +88,75 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
-            player.sendMessage("Points: " + SheepMergeManager.getPlayerPoints(player)
-                    + ", Sheep limit: " + SheepMergeManager.getPlayerLimit(player)
-                    + " (Lv." + SheepMergeManager.getLimitUpgradeLevel(player) + ")"
-                    + ", Spawn eggs every " + SheepMergeManager.getEggIntervalSeconds(player) + " seconds"
-                    + " (Lv." + SheepMergeManager.getEggSpeedLevel(player) + ")"
-                    + ", Wool regen level: " + SheepMergeManager.getWoolRegenLevel(player)
-                    + ", Higher-tier spawn chance: " + SheepMergeManager.getHigherTierChancePercent(player) + "%"
-                    + " (Lv." + SheepMergeManager.getHigherTierChanceLevel(player) + ")"
-                    + ", Egg cap: " + SheepMergeManager.getEggCap(player)
-                    + " (Lv." + SheepMergeManager.getPrestigeEggCapLevel(player) + ")"
-                    + ", Prestige: " + SheepMergeManager.getPrestigeLevel(player)
-                    + ", Prestige points: " + SheepMergeManager.getPrestigePoints(player)
-                    + ", Farm visit access: "
-                    + (SheepMergeManager.isFarmVisitable(player.getUniqueId()) ? "open" : "closed"));
+            sendDetailedStats(player, player, "Status");
+            return true;
+        }
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("stats")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 1);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            sendDetailedStats(player, target, "Admin Stats");
+            return true;
+        }
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("checkpoints")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 1);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Stat Check")
+                    + " " + label("Player") + ": " + value(target.getName())
+                    + ChatColor.DARK_GRAY + " | "
+                    + label("Points") + ": " + value(String.valueOf(SheepMergeManager.getPlayerPoints(target))));
+            return true;
+        }
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("checkquestpoints")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 1);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Stat Check")
+                    + " " + label("Player") + ": " + value(target.getName())
+                    + ChatColor.DARK_GRAY + " | "
+                    + label("Quest Points") + ": " + value(String.valueOf(SheepMergeManager.getQuestPoints(target))));
+            return true;
+        }
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("checkprestige")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 1);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Stat Check")
+                    + " " + label("Player") + ": " + value(target.getName())
+                    + ChatColor.DARK_GRAY + " | "
+                    + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
+                    + ChatColor.DARK_GRAY + " | "
+                    + label("Prestige Points") + ": "
+                    + value(String.valueOf(SheepMergeManager.getPrestigePoints(target))));
             return true;
         }
 
@@ -251,104 +318,153 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (args.length >= 2 && args[0].equalsIgnoreCase("givepoints")) {
             if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
+                player.sendMessage(error("Only server operators can use this command."));
                 return true;
             }
             int amount;
             try {
                 amount = Integer.parseInt(args[1]);
             } catch (NumberFormatException exception) {
-                player.sendMessage("Invalid amount. Usage: /sheepmerge givepoints <amount> [player]");
+                player.sendMessage(error("Invalid amount. Usage: /sheepmerge givepoints <amount> [player]"));
                 return true;
             }
-            Player target = player;
-            if (args.length >= 3) {
-                Player byName = Bukkit.getPlayerExact(args[2]);
-                if (byName != null) {
-                    target = byName;
-                }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
             }
+            int previous = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.adminGivePoints(target, amount);
+            int updated = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.updatePointsScoreboard(target);
-            player.sendMessage("Updated points for " + target.getName() + ".");
+            player.sendMessage(statUpdateMessage(
+                    "Points Updated",
+                    target,
+                    "Points",
+                    previous,
+                    updated));
             return true;
         }
 
         if (args.length >= 2 && args[0].equalsIgnoreCase("setpoints")) {
             if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
+                player.sendMessage(error("Only server operators can use this command."));
                 return true;
             }
             int amount;
             try {
                 amount = Integer.parseInt(args[1]);
             } catch (NumberFormatException exception) {
-                player.sendMessage("Invalid amount. Usage: /sheepmerge setpoints <amount> [player]");
+                player.sendMessage(error("Invalid amount. Usage: /sheepmerge setpoints <amount> [player]"));
                 return true;
             }
-            Player target = player;
-            if (args.length >= 3) {
-                Player byName = Bukkit.getPlayerExact(args[2]);
-                if (byName != null) {
-                    target = byName;
-                }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
             }
+            int previous = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.adminSetPoints(target, amount);
+            int updated = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.updatePointsScoreboard(target);
-            player.sendMessage("Set points for " + target.getName() + ".");
+            player.sendMessage(statUpdateMessage(
+                    "Points Updated",
+                    target,
+                    "Points",
+                    previous,
+                    updated));
             return true;
         }
 
         if (args.length >= 2 && args[0].equalsIgnoreCase("givequestpoints")) {
             if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
+                player.sendMessage(error("Only server operators can use this command."));
                 return true;
             }
             int amount;
             try {
                 amount = Integer.parseInt(args[1]);
             } catch (NumberFormatException exception) {
-                player.sendMessage("Invalid amount. Usage: /sheepmerge givequestpoints <amount> [player]");
+                player.sendMessage(error("Invalid amount. Usage: /sheepmerge givequestpoints <amount> [player]"));
                 return true;
             }
-            Player target = player;
-            if (args.length >= 3) {
-                Player byName = Bukkit.getPlayerExact(args[2]);
-                if (byName != null) {
-                    target = byName;
-                }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
             }
+            int previous = SheepMergeManager.getQuestPoints(target);
             SheepMergeManager.adminGiveQuestPoints(target, amount);
-            player.sendMessage("Updated quest points for " + target.getName() + ".");
+            int updated = SheepMergeManager.getQuestPoints(target);
+            player.sendMessage(statUpdateMessage(
+                    "Quest Points Updated",
+                    target,
+                    "Quest Points",
+                    previous,
+                    updated));
+            return true;
+        }
+
+        if (args.length >= 2 && args[0].equalsIgnoreCase("setquestpoints")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            int amount;
+            try {
+                amount = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage(error("Invalid amount. Usage: /sheepmerge setquestpoints <amount> [player]"));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            int previous = SheepMergeManager.getQuestPoints(target);
+            SheepMergeManager.adminSetQuestPoints(target, amount);
+            int updated = SheepMergeManager.getQuestPoints(target);
+            player.sendMessage(statUpdateMessage(
+                    "Quest Points Updated",
+                    target,
+                    "Quest Points",
+                    previous,
+                    updated));
             return true;
         }
 
         if (args.length >= 2 && args[0].equalsIgnoreCase("setprestige")) {
             if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
+                player.sendMessage(error("Only server operators can use this command."));
                 return true;
             }
             int level;
             try {
                 level = Integer.parseInt(args[1]);
             } catch (NumberFormatException exception) {
-                player.sendMessage("Invalid level. Usage: /sheepmerge setprestige <level> [player]");
+                player.sendMessage(error("Invalid level. Usage: /sheepmerge setprestige <level> [player]"));
                 return true;
             }
-            Player target = player;
-            if (args.length >= 3) {
-                Player byName = Bukkit.getPlayerExact(args[2]);
-                if (byName != null) {
-                    target = byName;
-                }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
             }
+            int previous = SheepMergeManager.getPrestigeLevel(target);
             if (!SheepMergeManager.adminSetPrestigeLevel(target, level)) {
-                player.sendMessage("Invalid prestige level. Use a value between 0 and "
-                        + SheepMergeManager.getPrestigeMaxLevel() + ".");
+                player.sendMessage(error("Invalid prestige level. Use a value between 0 and "
+                        + SheepMergeManager.getPrestigeMaxLevel() + "."));
                 return true;
             }
+            int updated = SheepMergeManager.getPrestigeLevel(target);
             SheepMergeManager.updatePointsScoreboard(target);
-            player.sendMessage("Set prestige for " + target.getName() + " to " + level + ".");
+            player.sendMessage(statUpdateMessage(
+                    "Prestige Updated",
+                    target,
+                    "Prestige",
+                    previous,
+                    updated));
             return true;
         }
 
@@ -414,6 +530,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return onlinePlayerNameSuggestions(args[1]);
         }
 
+        if (args.length == 2 && matchesSubcommand(ADMIN_STAT_CHECK_SUBCOMMANDS, args[0])) {
+            return onlinePlayerNameSuggestions(args[1]);
+        }
+
         if (args.length == 2 && matchesSubcommand(ADMIN_AMOUNT_PLAYER_SUBCOMMANDS, args[0])) {
             return List.of();
         }
@@ -456,6 +576,82 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
         }
         return matches;
+    }
+
+    private Player resolveTargetPlayer(Player sender, String[] args, int playerArgIndex) {
+        if (args.length <= playerArgIndex) {
+            return sender;
+        }
+        return Bukkit.getPlayerExact(args[playerArgIndex]);
+    }
+
+    private void sendDetailedStats(Player sender, Player target, String title) {
+        sender.sendMessage(adminHeader(title)
+                + " " + label("Player") + ": " + value(target.getName()));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Points") + ": "
+                + value(String.valueOf(SheepMergeManager.getPlayerPoints(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Quest Points") + ": " + value(String.valueOf(SheepMergeManager.getQuestPoints(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Prestige Points") + ": " + value(String.valueOf(SheepMergeManager.getPrestigePoints(target))));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Sheep Limit") + ": "
+                + value(String.valueOf(SheepMergeManager.getPlayerLimit(target)))
+                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getLimitUpgradeLevel(target)))
+                + ChatColor.GRAY + ")"
+                + ChatColor.DARK_GRAY + " | "
+                + label("Egg Interval") + ": " + value(String.valueOf(SheepMergeManager.getEggIntervalSeconds(target)))
+                + ChatColor.GRAY + "s"
+                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getEggSpeedLevel(target)))
+                + ChatColor.GRAY + ")");
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Wool Regen Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getWoolRegenLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Higher-Tier Chance") + ": "
+                + value(String.valueOf(SheepMergeManager.getHigherTierChancePercent(target))) + ChatColor.GRAY + "%"
+                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getHigherTierChanceLevel(target)))
+                + ChatColor.GRAY + ")"
+                + ChatColor.DARK_GRAY + " | "
+                + label("Egg Cap") + ": " + value(String.valueOf(SheepMergeManager.getEggCap(target)))
+                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getPrestigeEggCapLevel(target)))
+                + ChatColor.GRAY + ")");
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Farm Visit Access") + ": "
+                + (SheepMergeManager.isFarmVisitable(target.getUniqueId())
+                        ? ChatColor.GREEN + "open"
+                        : ChatColor.RED + "closed"));
+    }
+
+    private String statUpdateMessage(String importance, Player target, String statLabel, int fromValue, int toValue) {
+        int delta = toValue - fromValue;
+        ChatColor deltaColor = delta >= 0 ? ChatColor.GREEN : ChatColor.RED;
+        String signedDelta = (delta >= 0 ? "+" : "") + delta;
+        return adminHeader(importance)
+                + " " + label("Player") + ": " + value(target.getName())
+                + ChatColor.DARK_GRAY + " | "
+                + label("Stat") + ": " + value(statLabel)
+                + ChatColor.DARK_GRAY + " | "
+                + label("From") + ": " + value(String.valueOf(fromValue))
+                + ChatColor.DARK_GRAY + " -> "
+                + label("To") + ": " + value(String.valueOf(toValue))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Change") + ": " + deltaColor + signedDelta;
+    }
+
+    private String adminHeader(String text) {
+        return ChatColor.DARK_AQUA + "[SheepMerge] " + ChatColor.GOLD + text;
+    }
+
+    private String label(String text) {
+        return ChatColor.YELLOW + text;
+    }
+
+    private String value(String text) {
+        return ChatColor.AQUA + text;
+    }
+
+    private String error(String text) {
+        return ChatColor.RED + text;
     }
 
     public static World ensureFarmWorld(String worldName) {

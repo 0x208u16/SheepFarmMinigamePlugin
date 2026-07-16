@@ -1320,6 +1320,14 @@ public final class SheepMergeManager {
         saveData();
     }
 
+    public static void adminSetQuestPoints(Player player, int amount) {
+        if (player == null) {
+            return;
+        }
+        questPointsByPlayer.put(player.getUniqueId(), Math.max(0, amount));
+        saveData();
+    }
+
     public static boolean adminSetPrestigeLevel(Player player, int targetLevel) {
         if (player == null || targetLevel < 0 || targetLevel > PRESTIGE_MAX_LEVEL) {
             return false;
