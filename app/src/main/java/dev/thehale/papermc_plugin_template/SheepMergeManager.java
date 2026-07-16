@@ -230,6 +230,32 @@ public final class SheepMergeManager {
     private static long sheepRainEventEndsAtMs = 0L;
     private static long nextSheepRainSpawnAtMs = 0L;
     private static BossBar sheepRainBossBar;
+    private static int lastGameplayTipIndex = -1;
+    private static final List<String> GAMEPLAY_TIPS = List.of(
+            "&7Use &e/sheepmerge &7to jump straight to your personal farm.",
+            "&7Run &e/sheepmerge status &7to quickly check your core progression stats.",
+            "&7Open &e/sheepmerge upgrade &7to improve limit, egg speed, wool regen, and spawn chance.",
+            "&7Bigger &eSheep Limit &7means more sheep alive at once and more merge opportunities.",
+            "&7Faster &eEgg Speed &7means spawn eggs are generated more often.",
+            "&7Higher &eWool Regen &7levels regrow wool faster for more shearing.",
+            "&7Upgrade &eHigher-Tier Chance &7to roll better sheep from eggs more often.",
+            "&7Sneak-right-click a sheep to carry it, then right-click the same tier to merge.",
+            "&7Top-tier sheep cannot merge further, so focus on spawning and supporting them.",
+            "&7Shearing and merging are your main point engines, so keep both loops active.",
+            "&7Run &e/sheepmerge shop &7to upgrade your shears and improve shear value.",
+            "&7Run &e/sheepmerge prestige &7when ready to reset progress for permanent bonuses.",
+            "&7Prestige points buy long-term boosts like double points chance and bigger egg cap.",
+            "&7Use prestige upgrades to raise max levels, start with eggs, and improve base spawn tier.",
+            "&7Prestige refund lets you respec spent prestige points when the cooldown is over.",
+            "&7Quest board objectives reset over time. Completing quests awards quest points.",
+            "&7Spend quest points on abilities: &eLucky Burst, Wool Rush, Jackpot Shears, Auto Merge&7.",
+            "&7Quest upgrades boost ability &eDuration &7and &ePower&7 for stronger activations.",
+            "&7Use &e/sheepmerge tutorial &7anytime if you want a guided refresher.",
+            "&7Your farm can be opened or closed with &e/sheepmerge visit toggle&7.",
+            "&7Visit another open farm with &e/sheepmerge visit <player>&7.",
+            "&7If needed, remove visitors from your own farm using &e/sheepmerge kick <player>&7.",
+            "&7Random &eSheep Storm &7events can happen and flood farms with sheep from above.",
+            "&7Rainbow sheep are legendary. Keep merging to push your tier progression.");
 
     private SheepMergeManager() {
         throw new UnsupportedOperationException("Utility class");
@@ -697,6 +723,34 @@ public final class SheepMergeManager {
         nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
         startSheepRainEvent(now);
         return true;
+    }
+
+    public static void broadcastRandomGameplayTip() {
+        if (plugin == null || plugin.getServer() == null || plugin.getServer().getOnlinePlayers().isEmpty()) {
+            return;
+        }
+
+        String tip = getNextGameplayTip();
+        String message = color("&8[&6SheepMerge Tip&8] &f" + tip);
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            player.sendMessage(message);
+        }
+    }
+
+    private static String getNextGameplayTip() {
+        if (GAMEPLAY_TIPS.isEmpty()) {
+            return "&7Keep merging sheep and upgrading your farm.";
+        }
+        if (GAMEPLAY_TIPS.size() == 1) {
+            return GAMEPLAY_TIPS.get(0);
+        }
+
+        int nextIndex = RANDOM.nextInt(GAMEPLAY_TIPS.size());
+        while (nextIndex == lastGameplayTipIndex) {
+            nextIndex = RANDOM.nextInt(GAMEPLAY_TIPS.size());
+        }
+        lastGameplayTipIndex = nextIndex;
+        return GAMEPLAY_TIPS.get(nextIndex);
     }
 
     private static void startSheepRainEvent(long now) {

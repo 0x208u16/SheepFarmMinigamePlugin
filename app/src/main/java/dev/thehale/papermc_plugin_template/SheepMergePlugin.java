@@ -60,6 +60,7 @@ public class SheepMergePlugin extends JavaPlugin {
         scheduleFarmLoadoutAndReminderUpdates();
         scheduleFarmSaturationUpdates();
         scheduleRandomFarmEvents();
+        scheduleGameplayTips();
         getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
     }
@@ -131,6 +132,14 @@ public class SheepMergePlugin extends JavaPlugin {
                 SheepMergeManager::tickRandomFarmEvents,
                 20L,
                 20L);
+    }
+
+    private void scheduleGameplayTips() {
+        long fiveMinutesTicks = 5L * 60L * 20L;
+        getServer().getScheduler().runTaskTimer(this,
+                SheepMergeManager::broadcastRandomGameplayTip,
+                fiveMinutesTicks,
+                fiveMinutesTicks);
     }
 
     @Override
