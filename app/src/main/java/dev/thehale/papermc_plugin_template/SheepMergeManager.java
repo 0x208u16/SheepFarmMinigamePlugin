@@ -2093,6 +2093,25 @@ public final class SheepMergeManager {
         return SheepTier.byLevel(chosen);
     }
 
+    public static void upgradeSheepBelowMinimumSpawnTier(World world) {
+        if (world == null || !isSheepFarmWorld(world)) {
+            return;
+        }
+
+        int minimumTierLevel = getBaseSpawnTierLevel(world);
+        SheepTier minimumTier = SheepTier.byLevel(minimumTierLevel);
+        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+            if (sheep == null || !sheep.isValid() || sheep.isDead()) {
+                continue;
+            }
+            SheepTier currentTier = getSheepTier(sheep);
+            if (currentTier.getLevel() >= minimumTierLevel) {
+                continue;
+            }
+            setSheepTier(sheep, minimumTier);
+        }
+    }
+
     public static void tickEggDistribution(Player player) {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
             return;
@@ -2491,6 +2510,7 @@ public final class SheepMergeManager {
             return false;
         }
         prestigeBaseSpawnTierByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        upgradeSheepBelowMinimumSpawnTier(player.getWorld());
         saveData();
         return true;
     }

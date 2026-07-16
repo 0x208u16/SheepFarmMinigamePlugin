@@ -30,6 +30,7 @@ public class SheepMergeWorldListener implements Listener {
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             return;
         }
+        SheepMergeManager.upgradeSheepBelowMinimumSpawnTier(player.getWorld());
         SheepMergeManager.enforceFarmLoadout(player);
         SheepMergeManager.applyFarmSaturation(player);
         SheepMergeManager.showPointsScoreboard(player);
@@ -45,6 +46,7 @@ public class SheepMergeWorldListener implements Listener {
                 && SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.savePlayerInventory(player);
             player.getInventory().clear();
+            SheepMergeManager.upgradeSheepBelowMinimumSpawnTier(player.getWorld());
             SheepMergeManager.enforceFarmLoadout(player);
             SheepMergeManager.applyFarmSaturation(player);
             int extraEggs = SheepMergeManager.getStartEggsBonus(player);
