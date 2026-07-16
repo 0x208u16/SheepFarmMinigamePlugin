@@ -19,6 +19,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "upgrade",
             "shop",
+            "visit",
+            "kick",
             "status",
             "topdisplay",
             "resetdata",
@@ -62,7 +64,86 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + ", Egg cap: " + SheepMergeManager.getEggCap(player)
                     + " (Lv." + SheepMergeManager.getPrestigeEggCapLevel(player) + ")"
                     + ", Prestige: " + SheepMergeManager.getPrestigeLevel(player)
-                    + ", Prestige points: " + SheepMergeManager.getPrestigePoints(player));
+                    + ", Prestige points: " + SheepMergeManager.getPrestigePoints(player)
+                    + ", Farm visit access: "
+                    + (SheepMergeManager.isFarmVisitable(player.getUniqueId()) ? "open" : "closed"));
+            return true;
+        }
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("visit")) {
+            if (args.length == 2 && args[1].equalsIgnoreCase("toggle")) {
+                boolean nowOpen = SheepMergeManager.toggleFarmVisitable(player);
+                player.sendMessage("Your farm is now " + (nowOpen ? "open" : "closed") + " to visitors.");
+                return true;
+            }
+
+            if (args.length < 2) {
+                player.sendMessage("Usage: /sheepmerge visit <player> or /sheepmerge visit toggle");
+                return true;
+            }
+
+            Player owner = Bukkit.getPlayerExact(args[1]);
+            if (owner == null) {
+                player.sendMessage("That player is not online.");
+                return true;
+            }
+
+            java.util.UUID ownerId = owner.getUniqueId();
+            if (!player.isOp()
+                    && !ownerId.equals(player.getUniqueId())
+                    && !SheepMergeManager.isFarmVisitable(ownerId)) {
+                player.sendMessage("That farm is closed to visitors.");
+                return true;
+            }
+
+            String ownerWorldName = getWorldName(ownerId);
+            World ownerWorld = ensureFarmWorld(ownerWorldName);
+            if (ownerWorld == null) {
+                player.sendMessage("Unable to open that farm world right now.");
+                return true;
+            }
+
+            ownerWorld.setSpawnLocation(0, 101, 0);
+            player.teleport(new Location(ownerWorld, 0.5, 101, 0.5));
+            player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
+            return true;
+        }
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("kick")) {
+            if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())
+                    || !SheepMergeManager.isFarmOwner(player, player.getWorld())) {
+                player.sendMessage("You can only use this in your own sheep farm world.");
+                return true;
+            }
+            if (args.length < 2) {
+                player.sendMessage("Usage: /sheepmerge kick <player>");
+                return true;
+            }
+
+            Player target = Bukkit.getPlayerExact(args[1]);
+            if (target == null || !target.getWorld().equals(player.getWorld())) {
+                player.sendMessage("That player is not in your farm right now.");
+                return true;
+            }
+            if (target.equals(player)) {
+                player.sendMessage("You cannot kick yourself.");
+                return true;
+            }
+            if (target.isOp()) {
+                player.sendMessage("You cannot kick operators from your farm.");
+                return true;
+            }
+
+            World fallbackWorld = Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
+            if (fallbackWorld == null) {
+                player.sendMessage("No safe world is available to move that player.");
+                return true;
+            }
+
+            Location spawn = fallbackWorld.getSpawnLocation().clone().add(0.5, 0, 0.5);
+            target.teleport(spawn);
+            target.sendMessage("You were removed from " + player.getName() + "'s sheep farm.");
+            player.sendMessage("You removed " + target.getName() + " from your farm.");
             return true;
         }
 
@@ -179,6 +260,30 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && args[0].equalsIgnoreCase("world")) {
             return filterSuggestions(WORLD_SUBCOMMANDS, args[1]);
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("visit")) {
+            List<String> visitOptions = new ArrayList<>();
+            visitOptions.add("toggle");
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                if (online.getName() != null) {
+                    visitOptions.add(online.getName());
+                }
+            }
+            return filterSuggestions(visitOptions, args[1]);
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("kick") && sender instanceof Player player) {
+            List<String> kickTargets = new ArrayList<>();
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                if (online.equals(player) || online.isOp()) {
+                    continue;
+                }
+                if (online.getWorld().equals(player.getWorld()) && online.getName() != null) {
+                    kickTargets.add(online.getName());
+                }
+            }
+            return filterSuggestions(kickTargets, args[1]);
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("givepoints") && sender.isOp()) {

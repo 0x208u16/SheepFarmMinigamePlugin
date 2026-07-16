@@ -58,8 +58,24 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> tutorialShearsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> tutorialSpawnsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> tutorialMergesByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> questSpawnsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> questMergesByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> questShearsCompleteByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> questSpawnsCompleteByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> questMergesCompleteByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> questUpgradeDurationByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> questUpgradePowerByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> activeLuckyBurstUntilByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> activeWoolRushUntilByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> activeJackpotShearsUntilByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> activeAutoMergeUntilByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> nextAutoMergeAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextEggTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> nextPrestigeRefundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
@@ -68,6 +84,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
+    private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
     private static final Pattern OWNER_ID_PATTERN = Pattern.compile("^sheepfarm_([0-9a-fA-F]{32})$");
     private static final Pattern TUTORIAL_OWNER_ID_PATTERN = Pattern.compile("^sheeptutorial_([0-9a-fA-F]{32})$");
     private static final Random RANDOM = new Random();
@@ -87,9 +105,30 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
     private static final int PRESTIGE_BASE_SPAWN_TIER_BASE_COST = 10;
+    private static final int QUEST_SHEARS_TARGET = 20;
+    private static final int QUEST_SPAWNS_TARGET = 12;
+    private static final int QUEST_MERGES_TARGET = 8;
+    private static final int QUEST_SHEARS_REWARD = 4;
+    private static final int QUEST_SPAWNS_REWARD = 5;
+    private static final int QUEST_MERGES_REWARD = 7;
+    private static final long BASE_QUEST_RESET_MS = 15L * 60L * 1000L;
+    private static final long MIN_QUEST_RESET_MS = 5L * 60L * 1000L;
+    private static final long QUEST_RESET_REDUCTION_PER_PRESTIGE_MS = 60L * 1000L;
+    private static final int QUEST_LUCKY_BURST_BASE_COST = 8;
+    private static final int QUEST_WOOL_RUSH_BASE_COST = 10;
+    private static final int QUEST_JACKPOT_SHEARS_BASE_COST = 15;
+    private static final int QUEST_AUTO_MERGE_BASE_COST = 18;
+    private static final long QUEST_LUCKY_BURST_BASE_DURATION_MS = 3L * 60L * 1000L;
+    private static final long QUEST_WOOL_RUSH_BASE_DURATION_MS = 4L * 60L * 1000L;
+    private static final long QUEST_JACKPOT_SHEARS_BASE_DURATION_MS = 2L * 60L * 1000L;
+    private static final long QUEST_AUTO_MERGE_BASE_DURATION_MS = 90L * 1000L;
+    private static final long QUEST_AUTO_MERGE_INTERVAL_MS = 1000L;
+    private static final int QUEST_UPGRADE_DURATION_BASE_COST = 12;
+    private static final int QUEST_UPGRADE_POWER_BASE_COST = 15;
     private static final int BASE_EGG_CAP = 10;
     private static final int PRESTIGE_EGG_CAP_STEP = 10;
     private static final int PRESTIGE_MAX_LEVEL = 50;
+    private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
     private static final int FARM_RADIUS = 5;
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
@@ -101,8 +140,21 @@ public final class SheepMergeManager {
     private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
     private static final double SHEEP_FALL_TRIGGER_EDGE_MARGIN = 0.25D;
     private static final double SHEEP_FALL_TRIGGER_Y = FARM_BASE_Y + 1.05D;
+    private static final long RAINBOW_ANIMATION_STEP_MS = 220L;
+    private static final org.bukkit.DyeColor[] RAINBOW_ANIMATION_COLORS = {
+            org.bukkit.DyeColor.RED,
+            org.bukkit.DyeColor.ORANGE,
+            org.bukkit.DyeColor.YELLOW,
+            org.bukkit.DyeColor.LIME,
+            org.bukkit.DyeColor.LIGHT_BLUE,
+            org.bukkit.DyeColor.BLUE,
+            org.bukkit.DyeColor.PURPLE,
+            org.bukkit.DyeColor.MAGENTA,
+            org.bukkit.DyeColor.PINK
+    };
     private static final int FARM_UPGRADE_COMMAND_SLOT = 8;
     private static final int SHEAR_SHOP_BASE_COST = 40;
+    private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
     private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
     private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
@@ -110,12 +162,15 @@ public final class SheepMergeManager {
     private static final int TUTORIAL_MERGE_TARGET = 1;
     public static final String UPGRADE_MENU_TITLE = "Sheep Merge Upgrades";
     public static final String PRESTIGE_MENU_TITLE = "Prestige Upgrades";
+    public static final String QUEST_MENU_TITLE = "Quest Abilities";
+    public static final String QUEST_UPGRADES_MENU_TITLE = "Quest Upgrades";
     public static final String SHOP_MENU_TITLE = "Shear Shop";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
     public static final int WOOL_REGEN_UPGRADE_SLOT = 14;
     public static final int HIGHER_TIER_CHANCE_UPGRADE_SLOT = 16;
     public static final int PRESTIGE_MENU_OPEN_SLOT = 22;
+    public static final int QUEST_MENU_OPEN_SLOT = 20;
     public static final int SHOP_MENU_OPEN_SLOT = 24;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
@@ -123,7 +178,18 @@ public final class SheepMergeManager {
     public static final int PRESTIGE_START_EGGS_SLOT = 16;
     public static final int PRESTIGE_EGG_CAP_SLOT = 18;
     public static final int PRESTIGE_BASE_SPAWN_TIER_SLOT = 20;
+    public static final int PRESTIGE_REFUND_SLOT = 24;
     public static final int PRESTIGE_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int QUEST_ABILITY_LUCKY_BURST_SLOT = 10;
+    public static final int QUEST_ABILITY_WOOL_RUSH_SLOT = 13;
+    public static final int QUEST_ABILITY_JACKPOT_SHEARS_SLOT = 16;
+    public static final int QUEST_ABILITY_AUTO_MERGE_SLOT = 19;
+    public static final int QUEST_OPEN_UPGRADES_SLOT = 22;
+    public static final int QUEST_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int QUEST_BOARD_SLOT = 4;
+    public static final int QUEST_UPGRADE_DURATION_SLOT = 11;
+    public static final int QUEST_UPGRADE_POWER_SLOT = 15;
+    public static final int QUEST_UPGRADE_BACK_SLOT = 26;
     public static final int SHOP_SHEAR_SLOT = 13;
     public static final int SHOP_BACK_TO_UPGRADES_SLOT = 26;
 
@@ -304,6 +370,50 @@ public final class SheepMergeManager {
         return world != null && world.getName().startsWith("sheepfarm_");
     }
 
+    public static UUID getFarmOwnerId(World world) {
+        return getOwnerId(world);
+    }
+
+    public static boolean isFarmOwner(Player player, World world) {
+        if (player == null || world == null) {
+            return false;
+        }
+        UUID ownerId = getOwnerId(world);
+        return ownerId != null && ownerId.equals(player.getUniqueId());
+    }
+
+    public static boolean isFarmVisitable(UUID ownerId) {
+        if (ownerId == null) {
+            return false;
+        }
+        return farmVisitEnabledByPlayer.getOrDefault(ownerId, true);
+    }
+
+    public static boolean toggleFarmVisitable(Player owner) {
+        if (owner == null) {
+            return false;
+        }
+        UUID ownerId = owner.getUniqueId();
+        boolean next = !farmVisitEnabledByPlayer.getOrDefault(ownerId, true);
+        farmVisitEnabledByPlayer.put(ownerId, next);
+        saveData();
+        return next;
+    }
+
+    public static boolean shouldNotifySpawnLimit(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long last = lastSpawnLimitWarningTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - last < SPAWN_LIMIT_WARNING_COOLDOWN_MS) {
+            return false;
+        }
+        lastSpawnLimitWarningTimestampByPlayer.put(playerId, now);
+        return true;
+    }
+
     public static boolean isTutorialWorld(World world) {
         return world != null && world.getName().startsWith("sheeptutorial_");
     }
@@ -322,6 +432,129 @@ public final class SheepMergeManager {
 
     public static int getPrestigePoints(Player player) {
         return player == null ? 0 : prestigePointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static int getQuestPoints(Player player) {
+        return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    private static void addQuestPoints(Player player, int amount) {
+        if (player == null || amount <= 0) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        questPointsByPlayer.put(playerId, getQuestPoints(player) + amount);
+        saveData();
+    }
+
+    private static boolean trySpendQuestPoints(Player player, int amount) {
+        if (player == null || amount <= 0) {
+            return false;
+        }
+        int current = getQuestPoints(player);
+        if (current < amount) {
+            return false;
+        }
+        questPointsByPlayer.put(player.getUniqueId(), current - amount);
+        saveData();
+        return true;
+    }
+
+    private static long getQuestResetIntervalMs(Player player) {
+        int prestige = getPrestigeLevel(player);
+        long interval = BASE_QUEST_RESET_MS - (prestige * QUEST_RESET_REDUCTION_PER_PRESTIGE_MS);
+        return Math.max(MIN_QUEST_RESET_MS, interval);
+    }
+
+    public static void tickQuestSystem(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long nextReset = nextQuestResetTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (nextReset <= 0L) {
+            nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
+            return;
+        }
+        if (now < nextReset) {
+            return;
+        }
+
+        questShearsByPlayer.put(playerId, 0);
+        questSpawnsByPlayer.put(playerId, 0);
+        questMergesByPlayer.put(playerId, 0);
+        questShearsCompleteByPlayer.put(playerId, false);
+        questSpawnsCompleteByPlayer.put(playerId, false);
+        questMergesCompleteByPlayer.put(playerId, false);
+        nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
+        player.sendTitle(color("&eNew quests"), color("&7Quest board refreshed"), 10, 40, 10);
+    }
+
+    public static void recordQuestShear(Player player) {
+        updateQuestProgress(player, questShearsByPlayer, questShearsCompleteByPlayer, QUEST_SHEARS_TARGET,
+                QUEST_SHEARS_REWARD, "Shearing quest complete", Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
+    }
+
+    public static void recordQuestSpawn(Player player) {
+        updateQuestProgress(player, questSpawnsByPlayer, questSpawnsCompleteByPlayer, QUEST_SPAWNS_TARGET,
+                QUEST_SPAWNS_REWARD, "Spawning quest complete", Sound.BLOCK_NOTE_BLOCK_BELL);
+    }
+
+    public static void recordQuestMerge(Player player) {
+        updateQuestProgress(player, questMergesByPlayer, questMergesCompleteByPlayer, QUEST_MERGES_TARGET,
+                QUEST_MERGES_REWARD, "Merging quest complete", Sound.UI_TOAST_CHALLENGE_COMPLETE);
+    }
+
+    private static void updateQuestProgress(Player player, Map<UUID, Integer> progress,
+            Map<UUID, Boolean> completed, int target, int reward, String completionText, Sound rewardSound) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (completed.getOrDefault(playerId, false)) {
+            return;
+        }
+        int value = progress.getOrDefault(playerId, 0) + 1;
+        progress.put(playerId, value);
+        if (value < target) {
+            return;
+        }
+        completed.put(playerId, true);
+        addQuestPoints(player, reward);
+        player.sendMessage(action(completionText + ": +" + reward + " quest points"));
+        playSound(player, rewardSound, 1.0f, 1.1f);
+        player.getWorld().spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
+                player.getLocation().add(0, 1.0, 0), 14, 0.35, 0.4, 0.35, 0.02);
+    }
+
+    public static void tickActiveAbilities(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+
+        tickAbilityVisual(player, playerId, now, activeLuckyBurstUntilByPlayer, org.bukkit.Particle.END_ROD,
+                "Lucky Burst ended");
+        tickAbilityVisual(player, playerId, now, activeWoolRushUntilByPlayer, org.bukkit.Particle.CLOUD,
+                "Wool Rush ended");
+        tickAbilityVisual(player, playerId, now, activeJackpotShearsUntilByPlayer, org.bukkit.Particle.CRIT,
+                "Jackpot Shears ended");
+    }
+
+    private static void tickAbilityVisual(Player player, UUID playerId, long now, Map<UUID, Long> activeUntil,
+            org.bukkit.Particle particle, String endedText) {
+        long until = activeUntil.getOrDefault(playerId, 0L);
+        if (until <= 0L) {
+            return;
+        }
+        if (now >= until) {
+            activeUntil.remove(playerId);
+            player.sendMessage(hint(endedText));
+            return;
+        }
+        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 5, 0.25, 0.35, 0.25, 0.01);
     }
 
     public static int getShearShopLevel(Player player) {
@@ -490,6 +723,7 @@ public final class SheepMergeManager {
         prestigeStartEggsByPlayer.remove(id);
         prestigeEggCapByPlayer.remove(id);
         prestigeBaseSpawnTierByPlayer.remove(id);
+        nextPrestigeRefundTimestampByPlayer.remove(id);
         highestAnnouncedTierByPlayer.remove(id);
         lastPrestigeReminderTimestampByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
@@ -497,7 +731,22 @@ public final class SheepMergeManager {
         tutorialShearsByPlayer.remove(id);
         tutorialSpawnsByPlayer.remove(id);
         tutorialMergesByPlayer.remove(id);
+        farmVisitEnabledByPlayer.remove(id);
+        questPointsByPlayer.remove(id);
+        nextQuestResetTimestampByPlayer.remove(id);
+        questShearsByPlayer.remove(id);
+        questSpawnsByPlayer.remove(id);
+        questMergesByPlayer.remove(id);
+        questShearsCompleteByPlayer.remove(id);
+        questSpawnsCompleteByPlayer.remove(id);
+        questMergesCompleteByPlayer.remove(id);
+        questUpgradeDurationByPlayer.remove(id);
+        questUpgradePowerByPlayer.remove(id);
+        activeLuckyBurstUntilByPlayer.remove(id);
+        activeWoolRushUntilByPlayer.remove(id);
+        activeJackpotShearsUntilByPlayer.remove(id);
         nextEggTimestampByPlayer.remove(id);
+        lastSpawnLimitWarningTimestampByPlayer.remove(id);
         saveData();
         return true;
     }
@@ -531,6 +780,7 @@ public final class SheepMergeManager {
         } else {
             setNextEatTimestamp(sheep, 0L);
         }
+        applyRainbowColorAnimation(sheep, tier);
         updateSheepName(sheep);
     }
 
@@ -548,6 +798,11 @@ public final class SheepMergeManager {
         }
         int regenLevel = getWoolRegenLevel(sheep.getWorld());
         double multiplier = Math.pow(0.85, regenLevel);
+        UUID ownerId = getOwnerId(sheep.getWorld());
+        if (isAbilityActive(activeWoolRushUntilByPlayer, ownerId)) {
+            int power = ownerId == null ? 0 : questUpgradePowerByPlayer.getOrDefault(ownerId, 0);
+            multiplier *= Math.max(0.2, 0.55 - power * 0.05);
+        }
         return Math.max(1, (int) Math.ceil(baseSeconds * multiplier));
     }
 
@@ -558,6 +813,7 @@ public final class SheepMergeManager {
         }
 
         applySheepRescueMotionIfNeeded(sheep);
+        applyRainbowColorAnimation(sheep, getSheepTier(sheep));
 
         if (!sheep.isSheared()) {
             updateSheepName(sheep);
@@ -618,6 +874,16 @@ public final class SheepMergeManager {
         sheep.setVelocity(new Vector(toCenter.getX(), SHEEP_RESCUE_UPWARD_VELOCITY, toCenter.getZ()));
         sheep.setFallDistance(0.0F);
         sheepRescueCooldownByEntity.put(sheep.getUniqueId(), now);
+    }
+
+    private static void applyRainbowColorAnimation(Sheep sheep, SheepTier tier) {
+        if (sheep == null || tier != SheepTier.RAINBOW || RAINBOW_ANIMATION_COLORS.length == 0) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        int index = (int) ((now / RAINBOW_ANIMATION_STEP_MS) % RAINBOW_ANIMATION_COLORS.length);
+        sheep.setColor(RAINBOW_ANIMATION_COLORS[index]);
     }
 
     private static void teleportSheepToFarmCenter(Sheep sheep) {
@@ -699,6 +965,9 @@ public final class SheepMergeManager {
     public static int calculateShearPoints(Player player, SheepTier tier) {
         int base = tier == null ? 1 : tier.getPointsOnShear();
         int points = base * getShearPointMultiplier(player) + getShearFlatBonus(player);
+        if (isAbilityActive(activeJackpotShearsUntilByPlayer, player == null ? null : player.getUniqueId())) {
+            points *= (2 + getQuestUpgradePowerLevel(player));
+        }
         if (RANDOM.nextInt(100) < getDoublePointsChancePercent(player)) {
             points *= 2;
         }
@@ -1165,7 +1434,11 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return Math.min(100, higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0) * 5);
+        int base = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0) * 5;
+        if (isAbilityActive(activeLuckyBurstUntilByPlayer, player.getUniqueId())) {
+            base += 25 + getQuestUpgradePowerLevel(player) * 5;
+        }
+        return Math.min(100, base);
     }
 
     public static int getHigherTierChancePercent(World world) {
@@ -1173,7 +1446,12 @@ public final class SheepMergeManager {
         if (ownerId == null) {
             return 0;
         }
-        return Math.min(100, higherTierChanceLevelByPlayer.getOrDefault(ownerId, 0) * 5);
+        int base = higherTierChanceLevelByPlayer.getOrDefault(ownerId, 0) * 5;
+        if (isAbilityActive(activeLuckyBurstUntilByPlayer, ownerId)) {
+            int power = questUpgradePowerByPlayer.getOrDefault(ownerId, 0);
+            base += 25 + power * 5;
+        }
+        return Math.min(100, base);
     }
 
     public static SheepTier rollSpawnTier(World world) {
@@ -1305,6 +1583,164 @@ public final class SheepMergeManager {
 
     public static int getPrestigeBaseSpawnTierCost(Player player) {
         return getDoubledUpgradeCost(PRESTIGE_BASE_SPAWN_TIER_BASE_COST, getBaseSpawnTierLevel(player));
+    }
+
+    public static int getQuestUpgradeDurationLevel(Player player) {
+        return player == null ? 0 : questUpgradeDurationByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static int getQuestUpgradePowerLevel(Player player) {
+        return player == null ? 0 : questUpgradePowerByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static int getQuestUpgradeDurationCost(Player player) {
+        return getDoubledUpgradeCost(QUEST_UPGRADE_DURATION_BASE_COST, getQuestUpgradeDurationLevel(player));
+    }
+
+    public static int getQuestUpgradePowerCost(Player player) {
+        return getDoubledUpgradeCost(QUEST_UPGRADE_POWER_BASE_COST, getQuestUpgradePowerLevel(player));
+    }
+
+    private static long getAbilityDurationMs(Player player, long baseDurationMs) {
+        return baseDurationMs + (getQuestUpgradeDurationLevel(player) * 30_000L);
+    }
+
+    private static int getQuestLuckyBurstCost(Player player) {
+        int reduction = getQuestUpgradePowerLevel(player);
+        return Math.max(3, QUEST_LUCKY_BURST_BASE_COST - reduction);
+    }
+
+    private static int getQuestWoolRushCost(Player player) {
+        int reduction = getQuestUpgradePowerLevel(player);
+        return Math.max(4, QUEST_WOOL_RUSH_BASE_COST - reduction);
+    }
+
+    private static int getQuestJackpotCost(Player player) {
+        int reduction = getQuestUpgradePowerLevel(player);
+        return Math.max(6, QUEST_JACKPOT_SHEARS_BASE_COST - reduction);
+    }
+
+    private static boolean isAbilityActive(Map<UUID, Long> activeUntil, UUID playerId) {
+        if (playerId == null) {
+            return false;
+        }
+        return activeUntil.getOrDefault(playerId, 0L) > System.currentTimeMillis();
+    }
+
+    private static boolean activateQuestAbility(Player player, Map<UUID, Long> activeUntil, int questPointCost,
+            long durationMs, Sound sound, org.bukkit.Particle particle) {
+        if (player == null) {
+            return false;
+        }
+        if (!trySpendQuestPoints(player, questPointCost)) {
+            return false;
+        }
+        long until = System.currentTimeMillis() + durationMs;
+        activeUntil.put(player.getUniqueId(), until);
+        playSound(player, sound, 1.0f, 1.2f);
+        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        return true;
+    }
+
+    private static boolean upgradeQuestDuration(Player player) {
+        int cost = getQuestUpgradeDurationCost(player);
+        if (!trySpendQuestPoints(player, cost)) {
+            return false;
+        }
+        questUpgradeDurationByPlayer.put(player.getUniqueId(), getQuestUpgradeDurationLevel(player) + 1);
+        saveData();
+        return true;
+    }
+
+    private static boolean upgradeQuestPower(Player player) {
+        int cost = getQuestUpgradePowerCost(player);
+        if (!trySpendQuestPoints(player, cost)) {
+            return false;
+        }
+        questUpgradePowerByPlayer.put(player.getUniqueId(), getQuestUpgradePowerLevel(player) + 1);
+        saveData();
+        return true;
+    }
+
+    public static long getPrestigeRefundRemainingMs(Player player) {
+        if (player == null) {
+            return 0L;
+        }
+        long nextRefund = nextPrestigeRefundTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        return Math.max(0L, nextRefund - System.currentTimeMillis());
+    }
+
+    private static int getSpentCostForLevel(int baseCost, int currentLevel) {
+        if (baseCost <= 0 || currentLevel <= 0) {
+            return 0;
+        }
+        long total = 0L;
+        for (int level = 0; level < currentLevel; level++) {
+            total += getDoubledUpgradeCost(baseCost, level);
+            if (total >= Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
+            }
+        }
+        return (int) total;
+    }
+
+    private static int getPrestigeRefundAmount(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int total = 0;
+        total += getSpentCostForLevel(PRESTIGE_DOUBLE_POINTS_BASE_COST, getPrestigeDoublePointsChanceLevel(player));
+        total += getSpentCostForLevel(PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST, getPrestigeHigherMaxLevel(player));
+        total += getSpentCostForLevel(PRESTIGE_START_EGGS_BASE_COST, getPrestigeStartEggsLevel(player));
+        total += getSpentCostForLevel(PRESTIGE_EGG_CAP_BASE_COST, getPrestigeEggCapLevel(player));
+        total += getSpentCostForLevel(PRESTIGE_BASE_SPAWN_TIER_BASE_COST, getBaseSpawnTierLevel(player));
+        return Math.max(0, total);
+    }
+
+    private static boolean tryRefundPrestigePoints(Player player) {
+        if (player == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        long nextRefund = nextPrestigeRefundTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        if (now < nextRefund) {
+            return false;
+        }
+
+        int refund = getPrestigeRefundAmount(player);
+        if (refund <= 0) {
+            return false;
+        }
+
+        UUID playerId = player.getUniqueId();
+        prestigePointsByPlayer.put(playerId, getPrestigePoints(player) + refund);
+        prestigeDoublePointsChanceByPlayer.remove(playerId);
+        prestigeHigherMaxLevelByPlayer.remove(playerId);
+        prestigeStartEggsByPlayer.remove(playerId);
+        prestigeEggCapByPlayer.remove(playerId);
+        prestigeBaseSpawnTierByPlayer.remove(playerId);
+        nextPrestigeRefundTimestampByPlayer.put(playerId, now + PRESTIGE_REFUND_COOLDOWN_MS);
+        saveData();
+        return true;
+    }
+
+    private static String formatDuration(long durationMs) {
+        long totalSeconds = Math.max(0L, durationMs / 1000L);
+        long minutes = totalSeconds / 60L;
+        long seconds = totalSeconds % 60L;
+        return minutes + "m " + seconds + "s";
+    }
+
+    private static long getQuestResetRemainingMs(Player player) {
+        if (player == null) {
+            return 0L;
+        }
+        long now = System.currentTimeMillis();
+        long nextReset = nextQuestResetTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        if (nextReset <= 0L) {
+            return getQuestResetIntervalMs(player);
+        }
+        return Math.max(0L, nextReset - now);
     }
 
     private static boolean trySpendPrestigePoints(Player player, int points) {
@@ -1452,6 +1888,20 @@ public final class SheepMergeManager {
                         "Prestige points: " + getPrestigePoints(player),
                         "Click to open")));
 
+        inventory.setItem(QUEST_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quests",
+                List.of(
+                        "Quest points: " + getQuestPoints(player),
+                        "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
+                        "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                                + QUEST_SHEARS_TARGET,
+                        "Spawn " + questSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                                + QUEST_SPAWNS_TARGET,
+                        "Merge " + questMergesByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                                + QUEST_MERGES_TARGET,
+                        "Click to open")));
+
         inventory.setItem(SHOP_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
                 "Shear Shop",
@@ -1469,6 +1919,14 @@ public final class SheepMergeManager {
 
     public static boolean isPrestigeMenuTitle(String title) {
         return PRESTIGE_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isQuestMenuTitle(String title) {
+        return QUEST_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isQuestUpgradesMenuTitle(String title) {
+        return QUEST_UPGRADES_MENU_TITLE.equals(title);
     }
 
     public static boolean isShopMenuTitle(String title) {
@@ -1524,6 +1982,10 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_MENU_OPEN_SLOT -> {
                 openPrestigeMenu(player);
+                return;
+            }
+            case QUEST_MENU_OPEN_SLOT -> {
+                openQuestMenu(player);
                 return;
             }
             case SHOP_MENU_OPEN_SLOT -> {
@@ -1603,6 +2065,17 @@ public final class SheepMergeManager {
                                 : "Cost: " + getPrestigeBaseSpawnTierCost(player) + " prestige points",
                         "Click to purchase")));
 
+        long refundRemaining = getPrestigeRefundRemainingMs(player);
+        int refundAmount = getPrestigeRefundAmount(player);
+        inventory.setItem(PRESTIGE_REFUND_SLOT, MenuItemFactory.create(
+                Material.BARRIER,
+                "Refund Prestige Upgrades",
+                List.of(
+                        "Refund amount: " + refundAmount + " prestige points",
+                        refundRemaining > 0L ? "Cooldown: " + formatDuration(refundRemaining) : "Cooldown: ready",
+                        "Resets prestige shop upgrades",
+                        "Click to refund")));
+
         inventory.setItem(PRESTIGE_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
@@ -1667,6 +2140,24 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Not enough prestige points."));
                 }
             }
+            case PRESTIGE_REFUND_SLOT -> {
+                long refundRemaining = getPrestigeRefundRemainingMs(player);
+                if (refundRemaining > 0L) {
+                    player.sendMessage(warning("Refund cooldown: " + formatDuration(refundRemaining)));
+                    break;
+                }
+                int refundAmount = getPrestigeRefundAmount(player);
+                if (refundAmount <= 0) {
+                    player.sendMessage(warning("No prestige upgrades to refund."));
+                    break;
+                }
+                if (tryRefundPrestigePoints(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Refunded " + refundAmount + " prestige points."));
+                } else {
+                    player.sendMessage(warning("Refund is not available right now."));
+                }
+            }
             case PRESTIGE_BACK_TO_UPGRADES_SLOT -> {
                 openUpgradeMenu(player);
                 return;
@@ -1677,6 +2168,198 @@ public final class SheepMergeManager {
         }
         updatePointsScoreboard(player);
         openPrestigeMenu(player);
+    }
+
+    public static void openQuestMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, QUEST_MENU_TITLE);
+        UUID playerId = player.getUniqueId();
+        long remaining = getQuestResetRemainingMs(player);
+        boolean shearsComplete = questShearsCompleteByPlayer.getOrDefault(playerId, false);
+        boolean spawnsComplete = questSpawnsCompleteByPlayer.getOrDefault(playerId, false);
+        boolean mergesComplete = questMergesCompleteByPlayer.getOrDefault(playerId, false);
+
+        inventory.setItem(QUEST_BOARD_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quest Board",
+                List.of(
+                        "Quest points: " + getQuestPoints(player),
+                        remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
+                        (shearsComplete ? "DONE " : "TODO ")
+                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SHEARS_TARGET
+                                + " (" + QUEST_SHEARS_REWARD + " pts)",
+                        (spawnsComplete ? "DONE " : "TODO ")
+                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SPAWNS_TARGET
+                                + " (" + QUEST_SPAWNS_REWARD + " pts)",
+                        (mergesComplete ? "DONE " : "TODO ")
+                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_MERGES_TARGET
+                                + " (" + QUEST_MERGES_REWARD + " pts)")));
+
+        inventory.setItem(QUEST_ABILITY_LUCKY_BURST_SLOT, MenuItemFactory.create(
+                Material.ENDER_EYE,
+                "Lucky Burst",
+                List.of(
+                        "Cost: " + getQuestLuckyBurstCost(player) + " quest points",
+                        "Effect: +" + (25 + getQuestUpgradePowerLevel(player) * 5) + "% spawn chance",
+                        "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_LUCKY_BURST_BASE_DURATION_MS)),
+                        "Click to activate")));
+
+        inventory.setItem(QUEST_ABILITY_WOOL_RUSH_SLOT, MenuItemFactory.create(
+                Material.WHITE_WOOL,
+                "Wool Rush",
+                List.of(
+                        "Cost: " + getQuestWoolRushCost(player) + " quest points",
+                        "Effect: Major wool regen speed boost",
+                        "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
+                        "Click to activate")));
+
+        inventory.setItem(QUEST_ABILITY_JACKPOT_SHEARS_SLOT, MenuItemFactory.create(
+                Material.GOLD_INGOT,
+                "Jackpot Shears",
+                List.of(
+                        "Cost: " + getQuestJackpotCost(player) + " quest points",
+                        "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
+                        "Duration: "
+                                + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
+                        "Click to activate")));
+
+        inventory.setItem(QUEST_OPEN_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ENCHANTED_BOOK,
+                "Quest Upgrades",
+                List.of(
+                        "Duration Lv: " + getQuestUpgradeDurationLevel(player),
+                        "Power Lv: " + getQuestUpgradePowerLevel(player),
+                        "Click to open")));
+
+        inventory.setItem(QUEST_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back To Upgrades",
+                List.of(
+                        "Quest points: " + getQuestPoints(player),
+                        remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
+                        "Click to go back")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleQuestMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        switch (slot) {
+            case QUEST_ABILITY_LUCKY_BURST_SLOT -> {
+                if (activateQuestAbility(
+                        player,
+                        activeLuckyBurstUntilByPlayer,
+                        getQuestLuckyBurstCost(player),
+                        getAbilityDurationMs(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
+                        Sound.BLOCK_BEACON_POWER_SELECT,
+                        org.bukkit.Particle.END_ROD)) {
+                    player.sendMessage(action("Lucky Burst active."));
+                } else {
+                    player.sendMessage(warning("Not enough quest points."));
+                }
+            }
+            case QUEST_ABILITY_WOOL_RUSH_SLOT -> {
+                if (activateQuestAbility(
+                        player,
+                        activeWoolRushUntilByPlayer,
+                        getQuestWoolRushCost(player),
+                        getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
+                        Sound.ENTITY_ENDER_DRAGON_FLAP,
+                        org.bukkit.Particle.CLOUD)) {
+                    player.sendMessage(action("Wool Rush active."));
+                } else {
+                    player.sendMessage(warning("Not enough quest points."));
+                }
+            }
+            case QUEST_ABILITY_JACKPOT_SHEARS_SLOT -> {
+                if (activateQuestAbility(
+                        player,
+                        activeJackpotShearsUntilByPlayer,
+                        getQuestJackpotCost(player),
+                        getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
+                        Sound.ENTITY_PLAYER_LEVELUP,
+                        org.bukkit.Particle.CRIT)) {
+                    player.sendMessage(action("Jackpot Shears active."));
+                } else {
+                    player.sendMessage(warning("Not enough quest points."));
+                }
+            }
+            case QUEST_OPEN_UPGRADES_SLOT -> {
+                openQuestUpgradesMenu(player);
+                return;
+            }
+            case QUEST_BACK_TO_UPGRADES_SLOT -> {
+                openUpgradeMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+        openQuestMenu(player);
+    }
+
+    public static void openQuestUpgradesMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, QUEST_UPGRADES_MENU_TITLE);
+        inventory.setItem(QUEST_UPGRADE_DURATION_SLOT, MenuItemFactory.create(
+                Material.CLOCK,
+                "Extended Buff Duration",
+                List.of(
+                        "Level: " + getQuestUpgradeDurationLevel(player),
+                        "Bonus: +30s ability duration per level",
+                        "Cost: " + getQuestUpgradeDurationCost(player) + " quest points",
+                        "Click to upgrade")));
+        inventory.setItem(QUEST_UPGRADE_POWER_SLOT, MenuItemFactory.create(
+                Material.BLAZE_POWDER,
+                "Amplified Buff Power",
+                List.of(
+                        "Level: " + getQuestUpgradePowerLevel(player),
+                        "Bonus: stronger temporary abilities",
+                        "Cost: " + getQuestUpgradePowerCost(player) + " quest points",
+                        "Click to upgrade")));
+        inventory.setItem(QUEST_UPGRADE_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back To Quest Abilities",
+                List.of("Click to go back")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleQuestUpgradeMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        switch (slot) {
+            case QUEST_UPGRADE_DURATION_SLOT -> {
+                if (upgradeQuestDuration(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Quest duration upgrade purchased."));
+                } else {
+                    player.sendMessage(warning("Not enough quest points."));
+                }
+            }
+            case QUEST_UPGRADE_POWER_SLOT -> {
+                if (upgradeQuestPower(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Quest power upgrade purchased."));
+                } else {
+                    player.sendMessage(warning("Not enough quest points."));
+                }
+            }
+            case QUEST_UPGRADE_BACK_SLOT -> {
+                openQuestMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+        openQuestUpgradesMenu(player);
     }
 
     public static void openShopMenu(Player player) {
@@ -2003,6 +2686,7 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeStartEggs", null);
             dataConfig.set("prestigeEggCap", null);
             dataConfig.set("prestigeBaseSpawnTier", null);
+            dataConfig.set("prestigeRefundCooldown", null);
             dataConfig.set("highestAnnouncedTier", null);
             dataConfig.set("prestigeExpandFarm", null);
             dataConfig.set("shearShop", null);
@@ -2010,6 +2694,11 @@ public final class SheepMergeManager {
             dataConfig.set("tutorialShears", null);
             dataConfig.set("tutorialSpawns", null);
             dataConfig.set("tutorialMerges", null);
+            dataConfig.set("farmVisitEnabled", null);
+            dataConfig.set("questPoints", null);
+            dataConfig.set("questReset", null);
+            dataConfig.set("questUpgradeDuration", null);
+            dataConfig.set("questUpgradePower", null);
             dataConfig.set("pendingInventory", null);
             for (Map.Entry<UUID, Integer> entry : pointsByPlayer.entrySet()) {
                 dataConfig.set("points." + entry.getKey().toString(), entry.getValue());
@@ -2047,6 +2736,9 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : prestigeBaseSpawnTierByPlayer.entrySet()) {
                 dataConfig.set("prestigeBaseSpawnTier." + entry.getKey().toString(), entry.getValue());
             }
+            for (Map.Entry<UUID, Long> entry : nextPrestigeRefundTimestampByPlayer.entrySet()) {
+                dataConfig.set("prestigeRefundCooldown." + entry.getKey().toString(), entry.getValue());
+            }
             for (Map.Entry<UUID, Integer> entry : highestAnnouncedTierByPlayer.entrySet()) {
                 dataConfig.set("highestAnnouncedTier." + entry.getKey().toString(), entry.getValue());
             }
@@ -2064,6 +2756,21 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : tutorialMergesByPlayer.entrySet()) {
                 dataConfig.set("tutorialMerges." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : farmVisitEnabledByPlayer.entrySet()) {
+                dataConfig.set("farmVisitEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : questPointsByPlayer.entrySet()) {
+                dataConfig.set("questPoints." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Long> entry : nextQuestResetTimestampByPlayer.entrySet()) {
+                dataConfig.set("questReset." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : questUpgradeDurationByPlayer.entrySet()) {
+                dataConfig.set("questUpgradeDuration." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : questUpgradePowerByPlayer.entrySet()) {
+                dataConfig.set("questUpgradePower." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : savedInventories.entrySet()) {
                 String basePath = "pendingInventory." + entry.getKey();
@@ -2212,6 +2919,18 @@ public final class SheepMergeManager {
                 }
             });
         }
+        if (dataConfig.isConfigurationSection("prestigeRefundCooldown")) {
+            dataConfig.getConfigurationSection("prestigeRefundCooldown").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    nextPrestigeRefundTimestampByPlayer.put(
+                            uuid,
+                            Math.max(0L, dataConfig.getLong("prestigeRefundCooldown." + key, 0L)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
         if (dataConfig.isConfigurationSection("highestAnnouncedTier")) {
             dataConfig.getConfigurationSection("highestAnnouncedTier").getKeys(false).forEach(key -> {
                 try {
@@ -2269,6 +2988,57 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     tutorialMergesByPlayer.put(uuid, dataConfig.getInt("tutorialMerges." + key, 0));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("farmVisitEnabled")) {
+            dataConfig.getConfigurationSection("farmVisitEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    farmVisitEnabledByPlayer.put(uuid, dataConfig.getBoolean("farmVisitEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("questPoints")) {
+            dataConfig.getConfigurationSection("questPoints").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    questPointsByPlayer.put(uuid, dataConfig.getInt("questPoints." + key, 0));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("questReset")) {
+            dataConfig.getConfigurationSection("questReset").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    nextQuestResetTimestampByPlayer.put(uuid,
+                            Math.max(0L, dataConfig.getLong("questReset." + key, 0L)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("questUpgradeDuration")) {
+            dataConfig.getConfigurationSection("questUpgradeDuration").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    questUpgradeDurationByPlayer.put(uuid, dataConfig.getInt("questUpgradeDuration." + key, 0));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("questUpgradePower")) {
+            dataConfig.getConfigurationSection("questUpgradePower").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    questUpgradePowerByPlayer.put(uuid, dataConfig.getInt("questUpgradePower." + key, 0));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
