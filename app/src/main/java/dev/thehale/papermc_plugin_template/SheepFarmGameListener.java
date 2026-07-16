@@ -168,6 +168,12 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
+        if (!SheepMergeManager.isFarmOwner(player, targetSheep.getWorld())) {
+            event.setCancelled(true);
+            player.sendMessage(SheepMergeManager.warning("Visitors cannot merge sheep here."));
+            return;
+        }
+
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item != null && item.getType() == Material.SHEEP_SPAWN_EGG) {
             event.setCancelled(true);

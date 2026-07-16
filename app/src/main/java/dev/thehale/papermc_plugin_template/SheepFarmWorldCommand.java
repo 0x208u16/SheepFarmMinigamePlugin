@@ -27,6 +27,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "kick",
             "status",
             "storm",
+            "combofrenzy",
             "topdisplay",
             "resetdata",
             "stats",
@@ -260,6 +261,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Sheep storm triggered.");
             } else {
                 player.sendMessage("A sheep storm is already active or could not be started.");
+            }
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("combofrenzy")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            if (SheepMergeManager.triggerComboFrenzyEvent()) {
+                player.sendMessage("Combo frenzy triggered.");
+            } else {
+                player.sendMessage("A random event is already active or combo frenzy could not be started.");
             }
             return true;
         }

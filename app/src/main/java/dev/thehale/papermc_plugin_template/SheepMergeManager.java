@@ -770,6 +770,19 @@ public final class SheepMergeManager {
         return true;
     }
 
+    public static boolean triggerComboFrenzyEvent() {
+        if (plugin == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (sheepRainEventEndsAtMs > now || comboFrenzyEventEndsAtMs > now) {
+            return false;
+        }
+        nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
+        startComboFrenzyEvent(now);
+        return true;
+    }
+
     private static void startComboFrenzyEvent(long now) {
         comboFrenzyEventEndsAtMs = now + COMBO_FRENZY_EVENT_DURATION_MS;
         for (Player online : plugin.getServer().getOnlinePlayers()) {
