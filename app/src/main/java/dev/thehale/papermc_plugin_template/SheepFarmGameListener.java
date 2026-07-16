@@ -213,7 +213,6 @@ public class SheepFarmGameListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        SheepMergeManager.saveData();
         if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);
@@ -226,7 +225,6 @@ public class SheepFarmGameListener implements Listener {
     @EventHandler
     public void onPlayerKick(PlayerKickEvent event) {
         Player player = event.getPlayer();
-        SheepMergeManager.saveData();
         if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);

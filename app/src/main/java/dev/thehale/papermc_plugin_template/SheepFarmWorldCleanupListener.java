@@ -19,6 +19,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public class SheepFarmWorldCleanupListener implements Listener {
 
+    private static final long WORLD_CLEANUP_DELAY_TICKS = 200L;
+
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
@@ -26,6 +28,10 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
     @EventHandler
     public void onPlayerKick(PlayerKickEvent event) {
+        String reason = event.getReason();
+        if (reason != null && reason.toLowerCase().contains("another location")) {
+            return;
+        }
         scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
     }
 
@@ -41,17 +47,22 @@ public class SheepFarmWorldCleanupListener implements Listener {
             }
 
             String worldName = SheepFarmWorldCommand.getWorldName(playerId);
-            deleteWorld(worldName);
-        }, 40L);
+            unloadWorld(worldName);
+
+            File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
+            Bukkit.getScheduler().runTaskAsynchronously(SheepMergePlugin.instance,
+                    () -> deleteWorldFolder(worldName, worldFolder));
+        }, WORLD_CLEANUP_DELAY_TICKS);
     }
 
-    private void deleteWorld(String worldName) {
+    private void unloadWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             Bukkit.unloadWorld(world, false);
         }
+    }
 
-        File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
+    private void deleteWorldFolder(String worldName, File worldFolder) {
         if (worldFolder.exists()) {
             try {
                 deleteDirectory(worldFolder);
