@@ -64,6 +64,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueCooldownByEntity = new HashMap<>();
+    private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
@@ -94,6 +95,7 @@ public final class SheepMergeManager {
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
     private static final long SHEEP_RESCUE_COOLDOWN_MS = 500L;
+    private static final long SHEEP_RESCUE_TIMEOUT_MS = 10_000L;
     private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.95D;
     private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.45D;
     private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
@@ -584,6 +586,7 @@ public final class SheepMergeManager {
         boolean shouldRescue = isOffPlatform(location) || isFallingOffPlatform(sheep, location);
         if (!shouldRescue) {
             sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
+            sheepRescueStartByEntity.remove(sheep.getUniqueId());
             sheep.setCollidable(true);
             return;
         }
@@ -592,6 +595,16 @@ public final class SheepMergeManager {
         sheep.setCollidable(false);
 
         long now = System.currentTimeMillis();
+        long started = sheepRescueStartByEntity.getOrDefault(sheep.getUniqueId(), now);
+        sheepRescueStartByEntity.putIfAbsent(sheep.getUniqueId(), now);
+        if (now - started >= SHEEP_RESCUE_TIMEOUT_MS) {
+            teleportSheepToFarmCenter(sheep);
+            sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
+            sheepRescueStartByEntity.remove(sheep.getUniqueId());
+            sheep.setCollidable(true);
+            return;
+        }
+
         long lastRescue = sheepRescueCooldownByEntity.getOrDefault(sheep.getUniqueId(), 0L);
         if (now - lastRescue < SHEEP_RESCUE_COOLDOWN_MS) {
             return;
@@ -605,6 +618,22 @@ public final class SheepMergeManager {
         sheep.setVelocity(new Vector(toCenter.getX(), SHEEP_RESCUE_UPWARD_VELOCITY, toCenter.getZ()));
         sheep.setFallDistance(0.0F);
         sheepRescueCooldownByEntity.put(sheep.getUniqueId(), now);
+    }
+
+    private static void teleportSheepToFarmCenter(Sheep sheep) {
+        if (sheep == null || !sheep.isValid() || sheep.getWorld() == null) {
+            return;
+        }
+        org.bukkit.Location target = new org.bukkit.Location(
+                sheep.getWorld(),
+                0.5D,
+                FARM_BASE_Y + 1.0D,
+                0.5D,
+                sheep.getLocation().getYaw(),
+                sheep.getLocation().getPitch());
+        sheep.teleport(target);
+        sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
+        sheep.setFallDistance(0.0F);
     }
 
     private static boolean isFallingOffPlatform(Sheep sheep, org.bukkit.Location location) {
@@ -1865,6 +1894,19 @@ public final class SheepMergeManager {
             return;
         }
         restorePlayerInventory(player);
+    }
+
+    public static void restoreSavedStateOutsideFarm(Player player) {
+        if (player == null || isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        if (savedInventories.containsKey(player.getUniqueId())) {
+            restorePlayerInventory(player);
+        }
+        if (savedScoreboards.containsKey(player.getUniqueId())) {
+            restorePlayerScoreboard(player);
+        }
+        clearEggTimer(player);
     }
 
     public static void showPointsScoreboard(Player player) {

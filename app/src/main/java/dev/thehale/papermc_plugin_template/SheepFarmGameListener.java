@@ -213,10 +213,7 @@ public class SheepFarmGameListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
-            SheepMergeManager.restorePlayerInventory(player);
-            SheepMergeManager.restorePlayerScoreboard(player);
-        }
+        SheepMergeManager.clearEggTimer(player);
         SheepMergeManager.clearPickedUpSheep(player);
         SheepMergeManager.clearMergeReminder(player);
         SheepMergeManager.clearPrestigeReminder(player);
@@ -227,13 +224,12 @@ public class SheepFarmGameListener implements Listener {
         Player player = event.getPlayer();
         String reason = event.getReason();
         boolean duplicateLoginKick = reason != null && reason.toLowerCase().contains("another location");
+        SheepMergeManager.clearEggTimer(player);
         if (duplicateLoginKick) {
             SheepMergeManager.clearPickedUpSheep(player);
+            SheepMergeManager.clearMergeReminder(player);
+            SheepMergeManager.clearPrestigeReminder(player);
             return;
-        }
-        if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
-            SheepMergeManager.restorePlayerInventory(player);
-            SheepMergeManager.restorePlayerScoreboard(player);
         }
         SheepMergeManager.clearPickedUpSheep(player);
         SheepMergeManager.clearMergeReminder(player);
