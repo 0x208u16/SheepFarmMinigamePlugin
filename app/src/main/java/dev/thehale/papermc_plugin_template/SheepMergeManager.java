@@ -502,6 +502,10 @@ public final class SheepMergeManager {
         return player == null ? 0 : prestigePointsByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
 
+    public static int getPrestigeMaxLevel() {
+        return PRESTIGE_MAX_LEVEL;
+    }
+
     public static int getQuestPoints(Player player) {
         return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 10);
     }
@@ -1297,6 +1301,46 @@ public final class SheepMergeManager {
         UUID id = player.getUniqueId();
         pointsByPlayer.put(id, Math.max(0, pointsByPlayer.getOrDefault(id, 0) + amount));
         saveData();
+    }
+
+    public static void adminSetPoints(Player player, int amount) {
+        if (player == null) {
+            return;
+        }
+        pointsByPlayer.put(player.getUniqueId(), Math.max(0, amount));
+        saveData();
+    }
+
+    public static void adminGiveQuestPoints(Player player, int amount) {
+        if (player == null || amount == 0) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        questPointsByPlayer.put(id, Math.max(0, questPointsByPlayer.getOrDefault(id, 0) + amount));
+        saveData();
+    }
+
+    public static boolean adminSetPrestigeLevel(Player player, int targetLevel) {
+        if (player == null || targetLevel < 0 || targetLevel > PRESTIGE_MAX_LEVEL) {
+            return false;
+        }
+
+        UUID playerId = player.getUniqueId();
+        int totalEarnedPoints = getTotalPrestigePointsForLevel(targetLevel);
+        int spentPoints = getPrestigeRefundAmount(player);
+        int availablePoints = totalEarnedPoints - spentPoints;
+
+        prestigeLevelByPlayer.put(playerId, targetLevel);
+        clearPrestigeReminder(player);
+
+        if (availablePoints < 0) {
+            resetPrestigeUpgrades(playerId, true);
+            availablePoints = totalEarnedPoints;
+        }
+
+        prestigePointsByPlayer.put(playerId, Math.max(0, availablePoints));
+        saveData();
+        return true;
     }
 
     public static SheepTier getSheepTier(Sheep sheep) {
@@ -2281,6 +2325,28 @@ public final class SheepMergeManager {
         return (int) total;
     }
 
+    private static int getTotalPrestigePointsForLevel(int prestigeLevel) {
+        if (prestigeLevel <= 0) {
+            return 0;
+        }
+        long total = (long) prestigeLevel * (prestigeLevel + 1L) / 2L;
+        return total >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) total;
+    }
+
+    private static void resetPrestigeUpgrades(UUID playerId, boolean clearRefundCooldown) {
+        if (playerId == null) {
+            return;
+        }
+        prestigeDoublePointsChanceByPlayer.remove(playerId);
+        prestigeHigherMaxLevelByPlayer.remove(playerId);
+        prestigeStartEggsByPlayer.remove(playerId);
+        prestigeEggCapByPlayer.remove(playerId);
+        prestigeBaseSpawnTierByPlayer.remove(playerId);
+        if (clearRefundCooldown) {
+            nextPrestigeRefundTimestampByPlayer.remove(playerId);
+        }
+    }
+
     private static int getPrestigeRefundAmount(Player player) {
         if (player == null) {
             return 0;
@@ -2311,11 +2377,7 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         prestigePointsByPlayer.put(playerId, getPrestigePoints(player) + refund);
-        prestigeDoublePointsChanceByPlayer.remove(playerId);
-        prestigeHigherMaxLevelByPlayer.remove(playerId);
-        prestigeStartEggsByPlayer.remove(playerId);
-        prestigeEggCapByPlayer.remove(playerId);
-        prestigeBaseSpawnTierByPlayer.remove(playerId);
+        resetPrestigeUpgrades(playerId, false);
         nextPrestigeRefundTimestampByPlayer.put(playerId, now + PRESTIGE_REFUND_COOLDOWN_MS);
         saveData();
         return true;

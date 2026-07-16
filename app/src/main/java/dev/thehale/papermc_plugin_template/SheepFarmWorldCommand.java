@@ -29,6 +29,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "topdisplay",
             "resetdata",
             "givepoints",
+            "setpoints",
+            "givequestpoints",
+            "setprestige",
             "mapsave",
             "mapload",
             "world");
@@ -265,6 +268,84 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length >= 2 && args[0].equalsIgnoreCase("setpoints")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            int amount;
+            try {
+                amount = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage("Invalid amount. Usage: /sheepmerge setpoints <amount> [player]");
+                return true;
+            }
+            Player target = player;
+            if (args.length >= 3) {
+                Player byName = Bukkit.getPlayerExact(args[2]);
+                if (byName != null) {
+                    target = byName;
+                }
+            }
+            SheepMergeManager.adminSetPoints(target, amount);
+            SheepMergeManager.updatePointsScoreboard(target);
+            player.sendMessage("Set points for " + target.getName() + ".");
+            return true;
+        }
+
+        if (args.length >= 2 && args[0].equalsIgnoreCase("givequestpoints")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            int amount;
+            try {
+                amount = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage("Invalid amount. Usage: /sheepmerge givequestpoints <amount> [player]");
+                return true;
+            }
+            Player target = player;
+            if (args.length >= 3) {
+                Player byName = Bukkit.getPlayerExact(args[2]);
+                if (byName != null) {
+                    target = byName;
+                }
+            }
+            SheepMergeManager.adminGiveQuestPoints(target, amount);
+            player.sendMessage("Updated quest points for " + target.getName() + ".");
+            return true;
+        }
+
+        if (args.length >= 2 && args[0].equalsIgnoreCase("setprestige")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            int level;
+            try {
+                level = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage("Invalid level. Usage: /sheepmerge setprestige <level> [player]");
+                return true;
+            }
+            Player target = player;
+            if (args.length >= 3) {
+                Player byName = Bukkit.getPlayerExact(args[2]);
+                if (byName != null) {
+                    target = byName;
+                }
+            }
+            if (!SheepMergeManager.adminSetPrestigeLevel(target, level)) {
+                player.sendMessage("Invalid prestige level. Use a value between 0 and "
+                        + SheepMergeManager.getPrestigeMaxLevel() + ".");
+                return true;
+            }
+            SheepMergeManager.updatePointsScoreboard(target);
+            player.sendMessage("Set prestige for " + target.getName() + " to " + level + ".");
+            return true;
+        }
+
         if (!SheepMergeManager.hasUnlockedFarm(player)) {
             SheepMergeManager.startTutorial(player, false);
             return true;
@@ -319,7 +400,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(kickTargets, args[1]);
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("givepoints") && sender.isOp()) {
+        if (args.length == 3 && sender.isOp() && (args[0].equalsIgnoreCase("givepoints")
+                || args[0].equalsIgnoreCase("setpoints")
+                || args[0].equalsIgnoreCase("givequestpoints")
+                || args[0].equalsIgnoreCase("setprestige"))) {
             return Bukkit.getOnlinePlayers().stream()
                     .map(player -> player.getName())
                     .filter(name -> name != null && name.toLowerCase().startsWith(args[2].toLowerCase()))
@@ -327,7 +411,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 2 && (args[0].equalsIgnoreCase("resetdata")
-                || args[0].equalsIgnoreCase("givepoints"))) {
+                || args[0].equalsIgnoreCase("givepoints")
+                || args[0].equalsIgnoreCase("setpoints")
+                || args[0].equalsIgnoreCase("givequestpoints")
+                || args[0].equalsIgnoreCase("setprestige"))) {
             return Bukkit.getOnlinePlayers().stream()
                     .map(player -> player.getName())
                     .filter(name -> name != null && name.toLowerCase().startsWith(args[1].toLowerCase()))
