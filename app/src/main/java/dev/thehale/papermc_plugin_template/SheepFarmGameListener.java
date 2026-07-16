@@ -96,11 +96,9 @@ public class SheepFarmGameListener implements Listener {
             long now = System.currentTimeMillis();
             long nextEat = SheepMergeManager.getNextEatTimestamp(sheep);
             if (now >= nextEat && nextEat > 0L) {
-                sheep.setSheared(false);
                 SheepMergeManager.setNextEatTimestamp(sheep, 0L);
-            } else {
-                sheep.setSheared(true);
             }
+            sheep.setSheared(true);
             SheepMergeManager.updateSheepName(sheep);
         }
 

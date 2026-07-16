@@ -1738,14 +1738,11 @@ public final class SheepMergeManager {
         long now = System.currentTimeMillis();
         long nextEat = getNextEatTimestamp(sheep);
         if (now >= nextEat && nextEat > 0L) {
-            sheep.setSheared(false);
-            sheep.setAI(true);
             setNextEatTimestamp(sheep, 0L);
-        } else {
-            sheep.setSheared(true);
-            sheep.setGravity(true);
-            sheep.setAI(true);
         }
+        sheep.setSheared(true);
+        sheep.setGravity(true);
+        sheep.setAI(true);
         updateSheepName(sheep);
     }
 
