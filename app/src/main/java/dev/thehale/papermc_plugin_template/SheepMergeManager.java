@@ -2347,7 +2347,14 @@ public final class SheepMergeManager {
         }
 
         saveExperienceStateIfNeeded(player);
-        player.setLevel(getEggCount(player));
+        int eggCount = getEggCount(player);
+        int eggCap = getEggCap(player);
+        player.setLevel(eggCount);
+
+        if (eggCount >= eggCap) {
+            player.setExp(1.0f);
+            return;
+        }
 
         long now = System.currentTimeMillis();
         long intervalMs = Math.max(1000L, getEggIntervalSeconds(player) * 1000L);
