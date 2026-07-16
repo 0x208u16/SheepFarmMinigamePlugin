@@ -56,6 +56,12 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
+        if (event.getPlayer().isSneaking()) {
+            // Sneak-right-click is used for pickup, so do not shear in that case.
+            event.setCancelled(true);
+            return;
+        }
+
         event.setCancelled(true);
         sheep.setSheared(true);
         sheep.setAI(true);
@@ -205,6 +211,13 @@ public class SheepFarmGameListener implements Listener {
         }
 
         SheepTier mergedTier = carriedTier.next();
+        int woolReadyCount = 0;
+        if (!pickedSheep.isSheared()) {
+            woolReadyCount++;
+        }
+        if (!targetSheep.isSheared()) {
+            woolReadyCount++;
+        }
         World world = targetSheep.getWorld();
         org.bukkit.Location spawnLocation = targetSheep.getLocation();
 
@@ -223,7 +236,7 @@ public class SheepFarmGameListener implements Listener {
             SheepMergeManager.announceTierUnlock(player, mergedTier);
             SheepMergeManager.markTierUnlockAnnounced(player, mergedTier);
         }
-        SheepMergeManager.recordSheepMerge(player, carriedTier, mergedTier);
+        SheepMergeManager.recordSheepMerge(player, carriedTier, woolReadyCount);
         SheepMergeManager.recordQuestMerge(player);
         SheepMergeManager.recordTutorialMerge(player);
         SheepMergeManager.showOverlay(player, SheepMergeManager.action(

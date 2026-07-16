@@ -972,6 +972,13 @@ public final class SheepMergeManager {
             }
 
             SheepTier mergedTier = tier.next();
+            int woolReadyCount = 0;
+            if (!first.isSheared()) {
+                woolReadyCount++;
+            }
+            if (!sheep.isSheared()) {
+                woolReadyCount++;
+            }
             Location spawnLocation = sheep.getLocation().clone();
             first.remove();
             sheep.remove();
@@ -992,7 +999,7 @@ public final class SheepMergeManager {
                 announceTierUnlock(player, mergedTier);
                 markTierUnlockAnnounced(player, mergedTier);
             }
-            recordSheepMerge(player, tier, mergedTier);
+            recordSheepMerge(player, tier, woolReadyCount);
             recordQuestMerge(player);
             return true;
         }
@@ -2146,8 +2153,8 @@ public final class SheepMergeManager {
         lastPrestigeReminderTimestampByPlayer.put(playerId, now);
     }
 
-    public static void recordSheepMerge(Player player, SheepTier mergedFromTier, SheepTier mergedTierWithWool) {
-        if (player == null || mergedFromTier == null || mergedTierWithWool == null) {
+    public static void recordSheepMerge(Player player, SheepTier mergedFromTier, int woolReadySourceSheep) {
+        if (player == null || mergedFromTier == null) {
             return;
         }
         UUID playerId = player.getUniqueId();
@@ -2164,17 +2171,24 @@ public final class SheepMergeManager {
         comboScoreByPlayer.put(playerId, updatedScore);
         comboLastUpdateTimestampByPlayer.put(playerId, now);
 
-        int mergePoints = calculateMergePointsFromCombo(player, mergedTierWithWool, updatedScore);
-        addPoints(player, mergePoints);
+        int mergePoints = calculateMergePointsFromCombo(player, mergedFromTier, updatedScore, woolReadySourceSheep);
+        if (mergePoints > 0) {
+            addPoints(player, mergePoints);
+        }
         showOverlay(player, accent("Merge combo x" + formatComboMultiplier(getComboMultiplier(player, updatedScore))
                 + color(" &7(+" + mergePoints + " points)")));
         updateComboBossBar(player, updatedScore);
     }
 
-    private static int calculateMergePointsFromCombo(Player player, SheepTier mergedTierWithWool, double comboScore) {
-        int basePoints = calculateShearPoints(player, mergedTierWithWool);
+    private static int calculateMergePointsFromCombo(Player player, SheepTier mergedFromTier, double comboScore,
+            int woolReadySourceSheep) {
+        int woolCount = Math.max(0, woolReadySourceSheep);
+        if (woolCount <= 0) {
+            return 0;
+        }
+        int basePoints = calculateShearPoints(player, mergedFromTier) * woolCount;
         double comboMultiplier = getComboMultiplier(player, comboScore);
-        return Math.max(1, (int) Math.round(basePoints * comboMultiplier));
+        return Math.max(0, (int) Math.round(basePoints * comboMultiplier));
     }
 
     private static double getComboMultiplier(Player player, double comboScore) {
