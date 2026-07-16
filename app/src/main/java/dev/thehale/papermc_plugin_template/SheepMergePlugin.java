@@ -98,7 +98,7 @@ public class SheepMergePlugin extends JavaPlugin {
             for (Player player : getServer().getOnlinePlayers()) {
                 SheepMergeManager.tickEggDistribution(player);
             }
-        }, 20L, 20L);
+        }, 2L, 2L);
     }
 
     private void scheduleFarmLoadoutAndReminderUpdates() {
