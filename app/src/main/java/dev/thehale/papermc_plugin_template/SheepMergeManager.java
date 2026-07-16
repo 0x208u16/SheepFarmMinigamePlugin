@@ -902,7 +902,9 @@ public final class SheepMergeManager {
             setNextEatTimestamp(sheep, 0L);
         } else {
             sheep.setSheared(true);
-            sheep.setAI(rescueActive);
+            sheep.setGravity(true);
+            boolean shouldKeepAiEnabled = rescueActive || !sheep.isOnGround();
+            sheep.setAI(shouldKeepAiEnabled);
         }
         updateSheepName(sheep);
     }
