@@ -25,6 +25,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "visit",
             "kick",
             "status",
+            "storm",
             "topdisplay",
             "resetdata",
             "givepoints",
@@ -170,6 +171,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Top points display created or moved to your position.");
             } else {
                 player.sendMessage("Unable to create top points display right now.");
+            }
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("storm")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            if (SheepMergeManager.triggerSheepStormEvent()) {
+                player.sendMessage("Sheep storm triggered.");
+            } else {
+                player.sendMessage("A sheep storm is already active or could not be started.");
             }
             return true;
         }

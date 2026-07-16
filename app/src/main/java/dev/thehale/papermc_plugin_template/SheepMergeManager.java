@@ -600,6 +600,19 @@ public final class SheepMergeManager {
         startSheepRainEvent(now);
     }
 
+    public static boolean triggerSheepStormEvent() {
+        if (plugin == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (sheepRainEventEndsAtMs > now) {
+            return false;
+        }
+        nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
+        startSheepRainEvent(now);
+        return true;
+    }
+
     private static void startSheepRainEvent(long now) {
         sheepRainEventEndsAtMs = now + SHEEP_RAIN_EVENT_DURATION_MS;
         nextSheepRainSpawnAtMs = now;
