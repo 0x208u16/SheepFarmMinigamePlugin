@@ -225,6 +225,12 @@ public class SheepFarmGameListener implements Listener {
     @EventHandler
     public void onPlayerKick(PlayerKickEvent event) {
         Player player = event.getPlayer();
+        String reason = event.getReason();
+        boolean duplicateLoginKick = reason != null && reason.toLowerCase().contains("another location");
+        if (duplicateLoginKick) {
+            SheepMergeManager.clearPickedUpSheep(player);
+            return;
+        }
         if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);

@@ -97,6 +97,8 @@ public final class SheepMergeManager {
     private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.95D;
     private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.45D;
     private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
+    private static final double SHEEP_FALL_TRIGGER_EDGE_MARGIN = 0.25D;
+    private static final double SHEEP_FALL_TRIGGER_Y = FARM_BASE_Y + 1.05D;
     private static final int FARM_UPGRADE_COMMAND_SLOT = 8;
     private static final int SHEAR_SHOP_BASE_COST = 40;
     private static final long MERGE_REMINDER_DELAY_MS = 60_000L;
@@ -579,10 +581,15 @@ public final class SheepMergeManager {
         }
 
         org.bukkit.Location location = sheep.getLocation();
-        if (!isOffPlatform(location)) {
+        boolean shouldRescue = isOffPlatform(location) || isFallingOffPlatform(sheep, location);
+        if (!shouldRescue) {
             sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
+            sheep.setCollidable(true);
             return;
         }
+
+        // Let rescued sheep phase through collisions while returning to center.
+        sheep.setCollidable(false);
 
         long now = System.currentTimeMillis();
         long lastRescue = sheepRescueCooldownByEntity.getOrDefault(sheep.getUniqueId(), 0L);
@@ -598,6 +605,21 @@ public final class SheepMergeManager {
         sheep.setVelocity(new Vector(toCenter.getX(), SHEEP_RESCUE_UPWARD_VELOCITY, toCenter.getZ()));
         sheep.setFallDistance(0.0F);
         sheepRescueCooldownByEntity.put(sheep.getUniqueId(), now);
+    }
+
+    private static boolean isFallingOffPlatform(Sheep sheep, org.bukkit.Location location) {
+        if (sheep == null || location == null) {
+            return false;
+        }
+        if (location.getY() > SHEEP_FALL_TRIGGER_Y) {
+            return false;
+        }
+        boolean nearEdge = Math.abs(location.getX()) > FARM_RADIUS - SHEEP_FALL_TRIGGER_EDGE_MARGIN
+                || Math.abs(location.getZ()) > FARM_RADIUS - SHEEP_FALL_TRIGGER_EDGE_MARGIN;
+        if (!nearEdge) {
+            return false;
+        }
+        return sheep.getVelocity().getY() < -0.02D;
     }
 
     private static boolean isOffPlatform(org.bukkit.Location location) {
@@ -1144,7 +1166,13 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long next = nextEggTimestampByPlayer.getOrDefault(playerId, now + getEggIntervalSeconds(player) * 1000L);
+        Long nextTimestamp = nextEggTimestampByPlayer.get(playerId);
+        if (nextTimestamp == null) {
+            nextEggTimestampByPlayer.put(playerId, now + getEggIntervalSeconds(player) * 1000L);
+            return;
+        }
+
+        long next = nextTimestamp;
         if (now < next) {
             return;
         }

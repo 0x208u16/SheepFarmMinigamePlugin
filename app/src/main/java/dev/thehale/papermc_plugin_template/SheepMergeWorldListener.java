@@ -17,7 +17,17 @@ public class SheepMergeWorldListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        SheepMergeManager.restoreSavedInventoryOutsideFarm(event.getPlayer());
+        Player player = event.getPlayer();
+        SheepMergeManager.restoreSavedInventoryOutsideFarm(player);
+        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        SheepMergeManager.enforceFarmLoadout(player);
+        SheepMergeManager.applyFarmSaturation(player);
+        SheepMergeManager.showPointsScoreboard(player);
+        SheepMergeManager.updatePointsScoreboard(player);
+        SheepMergeManager.resetEggTimer(player);
+        SheepMergeManager.resetMergeReminder(player);
     }
 
     @EventHandler
