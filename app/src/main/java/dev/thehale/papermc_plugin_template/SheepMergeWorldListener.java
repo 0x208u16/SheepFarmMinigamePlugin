@@ -67,6 +67,7 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.clearPickedUpSheep(player);
             SheepMergeManager.clearMergeReminder(player);
             SheepMergeManager.clearPrestigeReminder(player);
+            SheepMergeManager.clearComboRuntime(player);
         }
     }
 
@@ -92,7 +93,8 @@ public class SheepMergeWorldListener implements Listener {
                 && !SheepMergeManager.isPrestigeMenuTitle(title)
                 && !SheepMergeManager.isQuestMenuTitle(title)
                 && !SheepMergeManager.isQuestUpgradesMenuTitle(title)
-                && !SheepMergeManager.isShopMenuTitle(title)) {
+                && !SheepMergeManager.isShopMenuTitle(title)
+                && !SheepMergeManager.isComboShopMenuTitle(title)) {
             return;
         }
 
@@ -113,7 +115,11 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.handleQuestUpgradeMenuClick(player, event.getRawSlot());
             return;
         }
-        SheepMergeManager.handleShopMenuClick(player, event.getRawSlot());
+        if (SheepMergeManager.isShopMenuTitle(title)) {
+            SheepMergeManager.handleShopMenuClick(player, event.getRawSlot());
+            return;
+        }
+        SheepMergeManager.handleComboShopMenuClick(player, event.getRawSlot());
     }
 
     @EventHandler

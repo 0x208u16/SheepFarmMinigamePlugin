@@ -58,7 +58,7 @@ public class SheepFarmGameListener implements Listener {
 
         event.setCancelled(true);
         sheep.setSheared(true);
-        sheep.setAI(false);
+        sheep.setAI(true);
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
         SheepMergeManager.setNextEatTimestamp(sheep,
                 System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(sheep, tier) * 1000L);
@@ -222,7 +222,7 @@ public class SheepFarmGameListener implements Listener {
             SheepMergeManager.announceTierUnlock(player, mergedTier);
             SheepMergeManager.markTierUnlockAnnounced(player, mergedTier);
         }
-        SheepMergeManager.recordSheepMerge(player);
+        SheepMergeManager.recordSheepMerge(player, carriedTier);
         SheepMergeManager.recordQuestMerge(player);
         SheepMergeManager.recordTutorialMerge(player);
         SheepMergeManager.showOverlay(player, SheepMergeManager.action(
@@ -238,6 +238,7 @@ public class SheepFarmGameListener implements Listener {
         SheepMergeManager.clearPickedUpSheep(player);
         SheepMergeManager.clearMergeReminder(player);
         SheepMergeManager.clearPrestigeReminder(player);
+        SheepMergeManager.clearComboRuntime(player);
     }
 
     @EventHandler
@@ -250,11 +251,13 @@ public class SheepFarmGameListener implements Listener {
             SheepMergeManager.clearPickedUpSheep(player);
             SheepMergeManager.clearMergeReminder(player);
             SheepMergeManager.clearPrestigeReminder(player);
+            SheepMergeManager.clearComboRuntime(player);
             return;
         }
         SheepMergeManager.clearPickedUpSheep(player);
         SheepMergeManager.clearMergeReminder(player);
         SheepMergeManager.clearPrestigeReminder(player);
+        SheepMergeManager.clearComboRuntime(player);
     }
 
     @EventHandler

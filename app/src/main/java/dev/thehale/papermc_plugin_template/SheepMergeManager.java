@@ -90,6 +90,14 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> nextPrestigeRefundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Double> comboScoreByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> comboLastUpdateTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> comboDecayUpgradeByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> comboMaxUpgradeByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> comboGainUpgradeByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> pointsOverlayExpiresAtByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> stackedPointsOverlayByPlayer = new HashMap<>();
+    private static final Map<UUID, BossBar> comboBossBarByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
     private static final Map<UUID, org.bukkit.Location> sheepRescueOriginByEntity = new HashMap<>();
@@ -191,6 +199,21 @@ public final class SheepMergeManager {
     private static final long SHEEP_RAIN_MAX_INTERVAL_MS = 5_000L;
     private static final int SHEEP_RAIN_SPAWN_HEIGHT = 12;
     private static final double SHEEP_RAIN_HORIZONTAL_PADDING = 1.5D;
+    private static final long COMBO_FRENZY_EVENT_DURATION_MS = 60_000L;
+    private static final double COMBO_FRENZY_MULTIPLIER = 10.0D;
+    private static final long POINTS_OVERLAY_STACK_DURATION_MS = 1_400L;
+    private static final double BASE_COMBO_DECAY_PER_SECOND = 1.3D;
+    private static final double COMBO_DECAY_HIGH_LEVEL_SCALING = 2.2D;
+    private static final double COMBO_BASE_MAX_SCORE = 100.0D;
+    private static final double COMBO_MAX_SCORE_PER_LEVEL = 50.0D;
+    private static final int COMBO_DECAY_MAX_LEVEL = 20;
+    private static final int COMBO_MAX_MAX_LEVEL = 20;
+    private static final int COMBO_GAIN_MAX_LEVEL = 20;
+    private static final int COMBO_DECAY_BASE_COST = 150;
+    private static final int COMBO_GAIN_BASE_COST = 180;
+    private static final int COMBO_MAX_BASE_PRESTIGE_COST = 3;
+    private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
+    private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
     private static final int TUTORIAL_SPAWN_TARGET = 1;
     private static final int TUTORIAL_MERGE_TARGET = 1;
@@ -200,6 +223,7 @@ public final class SheepMergeManager {
     public static final String QUEST_MENU_TITLE = "Quest Abilities";
     public static final String QUEST_UPGRADES_MENU_TITLE = "Quest Upgrades";
     public static final String SHOP_MENU_TITLE = "Shear Shop";
+    public static final String COMBO_SHOP_MENU_TITLE = "Combo Upgrades";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
     public static final int WOOL_REGEN_UPGRADE_SLOT = 14;
@@ -207,6 +231,7 @@ public final class SheepMergeManager {
     public static final int PRESTIGE_MENU_OPEN_SLOT = 22;
     public static final int QUEST_MENU_OPEN_SLOT = 20;
     public static final int SHOP_MENU_OPEN_SLOT = 24;
+    public static final int COMBO_MENU_OPEN_SLOT = 18;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
@@ -227,6 +252,10 @@ public final class SheepMergeManager {
     public static final int QUEST_UPGRADE_BACK_SLOT = 26;
     public static final int SHOP_SHEAR_SLOT = 13;
     public static final int SHOP_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int COMBO_DECAY_SLOT = 10;
+    public static final int COMBO_MAX_SLOT = 13;
+    public static final int COMBO_GAIN_SLOT = 16;
+    public static final int COMBO_BACK_TO_UPGRADES_SLOT = 26;
 
     private static SheepMergePlugin plugin;
     private static FileConfiguration dataConfig;
@@ -236,6 +265,7 @@ public final class SheepMergeManager {
     private static long nextRandomEventRollAtMs = 0L;
     private static long sheepRainEventEndsAtMs = 0L;
     private static long nextSheepRainSpawnAtMs = 0L;
+    private static long comboFrenzyEventEndsAtMs = 0L;
     private static BossBar sheepRainBossBar;
     private static int lastGameplayTipIndex = -1;
     private static final List<String> GAMEPLAY_TIPS = List.of(
@@ -636,17 +666,17 @@ public final class SheepMergeManager {
 
     public static void recordQuestShear(Player player) {
         updateQuestProgress(player, questShearsByPlayer, questShearsCompleteByPlayer, QUEST_SHEARS_TARGET,
-                QUEST_SHEARS_REWARD, "Shearing quest complete", Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
+                QUEST_SHEARS_REWARD, "Shearing quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     public static void recordQuestSpawn(Player player) {
         updateQuestProgress(player, questSpawnsByPlayer, questSpawnsCompleteByPlayer, QUEST_SPAWNS_TARGET,
-                QUEST_SPAWNS_REWARD, "Spawning quest complete", Sound.BLOCK_NOTE_BLOCK_BELL);
+                QUEST_SPAWNS_REWARD, "Spawning quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     public static void recordQuestMerge(Player player) {
         updateQuestProgress(player, questMergesByPlayer, questMergesCompleteByPlayer, QUEST_MERGES_TARGET,
-                QUEST_MERGES_REWARD, "Merging quest complete", Sound.UI_TOAST_CHALLENGE_COMPLETE);
+                QUEST_MERGES_REWARD, "Merging quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     private static void updateQuestProgress(Player player, Map<UUID, Integer> progress,
@@ -703,11 +733,15 @@ public final class SheepMergeManager {
             endSheepRainEvent();
         }
 
+        if (comboFrenzyEventEndsAtMs <= now && comboFrenzyEventEndsAtMs > 0L) {
+            endComboFrenzyEvent();
+        }
+
         if (nextRandomEventRollAtMs <= 0L) {
             nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
             return;
         }
-        if (now < nextRandomEventRollAtMs || sheepRainEventEndsAtMs > now) {
+        if (now < nextRandomEventRollAtMs || sheepRainEventEndsAtMs > now || comboFrenzyEventEndsAtMs > now) {
             return;
         }
 
@@ -716,7 +750,11 @@ public final class SheepMergeManager {
             return;
         }
 
-        startSheepRainEvent(now);
+        if (RANDOM.nextBoolean()) {
+            startSheepRainEvent(now);
+        } else {
+            startComboFrenzyEvent(now);
+        }
     }
 
     public static boolean triggerSheepStormEvent() {
@@ -724,12 +762,37 @@ public final class SheepMergeManager {
             return false;
         }
         long now = System.currentTimeMillis();
-        if (sheepRainEventEndsAtMs > now) {
+        if (sheepRainEventEndsAtMs > now || comboFrenzyEventEndsAtMs > now) {
             return false;
         }
         nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
         startSheepRainEvent(now);
         return true;
+    }
+
+    private static void startComboFrenzyEvent(long now) {
+        comboFrenzyEventEndsAtMs = now + COMBO_FRENZY_EVENT_DURATION_MS;
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            if (!isSheepFarmWorld(online.getWorld())) {
+                continue;
+            }
+            online.sendMessage(action("Random Event: Combo Frenzy started (10x combo gain)."));
+            playSound(online, Sound.ENTITY_PLAYER_LEVELUP, 0.9f, 1.6f);
+        }
+    }
+
+    private static void endComboFrenzyEvent() {
+        comboFrenzyEventEndsAtMs = 0L;
+        if (plugin == null) {
+            return;
+        }
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            if (!isSheepFarmWorld(online.getWorld())) {
+                continue;
+            }
+            online.sendMessage(hint("Random Event: Combo Frenzy ended."));
+            playSound(online, Sound.BLOCK_BEACON_DEACTIVATE, 0.7f, 1.25f);
+        }
     }
 
     public static void broadcastRandomGameplayTip() {
@@ -928,7 +991,7 @@ public final class SheepMergeManager {
                 announceTierUnlock(player, mergedTier);
                 markTierUnlockAnnounced(player, mergedTier);
             }
-            recordSheepMerge(player);
+            recordSheepMerge(player, tier);
             recordQuestMerge(player);
             return true;
         }
@@ -1021,6 +1084,83 @@ public final class SheepMergeManager {
         return getDoubledUpgradeCost(SHEAR_SHOP_BASE_COST, getShearShopLevel(player));
     }
 
+    public static int getComboDecayUpgradeLevel(Player player) {
+        return player == null ? 0 : comboDecayUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static int getComboMaxUpgradeLevel(Player player) {
+        return player == null ? 0 : comboMaxUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static int getComboGainUpgradeLevel(Player player) {
+        return player == null ? 0 : comboGainUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    private static int getComboDecayUpgradeCost(Player player) {
+        return getDoubledUpgradeCost(COMBO_DECAY_BASE_COST, getComboDecayUpgradeLevel(player));
+    }
+
+    private static int getComboGainUpgradeCost(Player player) {
+        return getDoubledUpgradeCost(COMBO_GAIN_BASE_COST, getComboGainUpgradeLevel(player));
+    }
+
+    private static int getComboMaxUpgradePrestigeCost(Player player) {
+        return getDoubledUpgradeCost(COMBO_MAX_BASE_PRESTIGE_COST, getComboMaxUpgradeLevel(player));
+    }
+
+    private static boolean upgradeComboDecay(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int currentLevel = getComboDecayUpgradeLevel(player);
+        if (currentLevel >= COMBO_DECAY_MAX_LEVEL) {
+            return false;
+        }
+        int cost = getComboDecayUpgradeCost(player);
+        if (!trySpendPoints(player, cost)) {
+            return false;
+        }
+        comboDecayUpgradeByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        saveData();
+        return true;
+    }
+
+    private static boolean upgradeComboMax(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int currentLevel = getComboMaxUpgradeLevel(player);
+        if (currentLevel >= COMBO_MAX_MAX_LEVEL) {
+            return false;
+        }
+        int cost = getComboMaxUpgradePrestigeCost(player);
+        if (!trySpendPrestigePoints(player, cost)) {
+            return false;
+        }
+        comboMaxUpgradeByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        double score = Math.min(getComboMaxScore(player), getComboScore(player));
+        comboScoreByPlayer.put(player.getUniqueId(), score);
+        saveData();
+        return true;
+    }
+
+    private static boolean upgradeComboGain(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int currentLevel = getComboGainUpgradeLevel(player);
+        if (currentLevel >= COMBO_GAIN_MAX_LEVEL) {
+            return false;
+        }
+        int cost = getComboGainUpgradeCost(player);
+        if (!trySpendPoints(player, cost)) {
+            return false;
+        }
+        comboGainUpgradeByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        saveData();
+        return true;
+    }
+
     public static boolean upgradeShearShop(Player player) {
         if (player == null) {
             return false;
@@ -1063,6 +1203,7 @@ public final class SheepMergeManager {
         shearShopLevelByPlayer.remove(player.getUniqueId());
         clearMergeReminder(player);
         nextEggTimestampByPlayer.remove(player.getUniqueId());
+        clearComboRuntime(player);
 
         World world = player.getWorld();
         if (isSheepFarmWorld(world)) {
@@ -1351,6 +1492,14 @@ public final class SheepMergeManager {
         nextAutoMergeAtByPlayer.remove(id);
         nextEggTimestampByPlayer.remove(id);
         lastSpawnLimitWarningTimestampByPlayer.remove(id);
+        comboScoreByPlayer.remove(id);
+        comboLastUpdateTimestampByPlayer.remove(id);
+        comboDecayUpgradeByPlayer.remove(id);
+        comboMaxUpgradeByPlayer.remove(id);
+        comboGainUpgradeByPlayer.remove(id);
+        stackedPointsOverlayByPlayer.remove(id);
+        pointsOverlayExpiresAtByPlayer.remove(id);
+        removeComboBossBar(id);
         carriedSheepByPlayer.remove(id);
         resetFarmWorldForPlayer(id);
         saveData();
@@ -1515,8 +1664,7 @@ public final class SheepMergeManager {
         } else {
             sheep.setSheared(true);
             sheep.setGravity(true);
-            boolean shouldKeepAiEnabled = rescueActive || !sheep.isOnGround();
-            sheep.setAI(shouldKeepAiEnabled);
+            sheep.setAI(true);
         }
         updateSheepName(sheep);
     }
@@ -1805,8 +1953,39 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         pointsByPlayer.put(playerId, pointsByPlayer.getOrDefault(playerId, 0) + points);
+        queuePointsGainOverlay(player, points);
         saveData();
         tickPrestigeReminder(player);
+    }
+
+    private static void queuePointsGainOverlay(Player player, int points) {
+        if (player == null || points <= 0) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        stackedPointsOverlayByPlayer.put(playerId, stackedPointsOverlayByPlayer.getOrDefault(playerId, 0) + points);
+        pointsOverlayExpiresAtByPlayer.put(playerId, System.currentTimeMillis() + POINTS_OVERLAY_STACK_DURATION_MS);
+    }
+
+    public static void tickPointsGainOverlay(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        Integer stacked = stackedPointsOverlayByPlayer.get(playerId);
+        if (stacked == null || stacked <= 0) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long expiresAt = pointsOverlayExpiresAtByPlayer.getOrDefault(playerId, 0L);
+        if (expiresAt <= now) {
+            stackedPointsOverlayByPlayer.remove(playerId);
+            pointsOverlayExpiresAtByPlayer.remove(playerId);
+            return;
+        }
+
+        showOverlay(player, action("+" + stacked + " points" + color(" &7(stack total)")));
     }
 
     public static void showOverlay(Player player, String message) {
@@ -1858,6 +2037,18 @@ public final class SheepMergeManager {
         lastMergeReminderTimestampByPlayer.remove(playerId);
     }
 
+    public static void clearComboRuntime(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        comboScoreByPlayer.remove(playerId);
+        comboLastUpdateTimestampByPlayer.remove(playerId);
+        stackedPointsOverlayByPlayer.remove(playerId);
+        pointsOverlayExpiresAtByPlayer.remove(playerId);
+        removeComboBossBar(playerId);
+    }
+
     public static void clearPrestigeReminder(Player player) {
         if (player == null) {
             return;
@@ -1896,13 +2087,145 @@ public final class SheepMergeManager {
         lastPrestigeReminderTimestampByPlayer.put(playerId, now);
     }
 
-    public static void recordSheepMerge(Player player) {
-        if (player == null) {
+    public static void recordSheepMerge(Player player, SheepTier mergedFromTier) {
+        if (player == null || mergedFromTier == null) {
             return;
         }
         UUID playerId = player.getUniqueId();
-        lastMergeTimestampByPlayer.put(playerId, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        lastMergeTimestampByPlayer.put(playerId, now);
         lastMergeReminderTimestampByPlayer.remove(playerId);
+
+        tickComboDecay(player, now);
+        double comboGain = (mergedFromTier.getLevel() + 1);
+        if (comboFrenzyEventEndsAtMs > now) {
+            comboGain *= COMBO_FRENZY_MULTIPLIER;
+        }
+        double updatedScore = Math.min(getComboMaxScore(player), getComboScore(player) + comboGain);
+        comboScoreByPlayer.put(playerId, updatedScore);
+        comboLastUpdateTimestampByPlayer.put(playerId, now);
+
+        int mergePoints = calculateMergePointsFromCombo(player, mergedFromTier, updatedScore);
+        addPoints(player, mergePoints);
+        showOverlay(player, accent("Merge combo x" + formatComboMultiplier(getComboMultiplier(player, updatedScore))
+                + color(" &7(+" + mergePoints + " points)")));
+        updateComboBossBar(player, updatedScore);
+    }
+
+    private static int calculateMergePointsFromCombo(Player player, SheepTier mergedFromTier, double comboScore) {
+        int basePoints = mergedFromTier.getLevel() + 1;
+        double comboMultiplier = getComboMultiplier(player, comboScore);
+        return Math.max(1, (int) Math.round(basePoints * comboMultiplier));
+    }
+
+    private static double getComboMultiplier(Player player, double comboScore) {
+        double gainMultiplier = 1.0D + (getComboGainUpgradeLevel(player) * (COMBO_GAIN_PERCENT_PER_LEVEL / 100.0D));
+        return Math.max(1.0D, (1.0D + comboScore * COMBO_POINT_MULTIPLIER_PER_SCORE) * gainMultiplier);
+    }
+
+    private static String formatComboMultiplier(double multiplier) {
+        return String.format(java.util.Locale.ROOT, "%.2f", multiplier);
+    }
+
+    private static double getComboScore(Player player) {
+        if (player == null) {
+            return 0.0D;
+        }
+        return Math.max(0.0D, comboScoreByPlayer.getOrDefault(player.getUniqueId(), 0.0D));
+    }
+
+    private static double getComboMaxScore(Player player) {
+        return COMBO_BASE_MAX_SCORE + getComboMaxUpgradeLevel(player) * COMBO_MAX_SCORE_PER_LEVEL;
+    }
+
+    private static double getComboDecayMultiplier(Player player) {
+        int level = getComboDecayUpgradeLevel(player);
+        return Math.max(0.15D, 1.0D - level * 0.08D);
+    }
+
+    public static void tickCombo(Player player) {
+        if (player == null) {
+            return;
+        }
+        if (!isSheepFarmWorld(player.getWorld())) {
+            removeComboBossBar(player.getUniqueId());
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        tickComboDecay(player, now);
+        updateComboBossBar(player, getComboScore(player));
+    }
+
+    private static void tickComboDecay(Player player, long now) {
+        if (player == null) {
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        double currentScore = getComboScore(player);
+        long lastTick = comboLastUpdateTimestampByPlayer.getOrDefault(playerId, now);
+        comboLastUpdateTimestampByPlayer.put(playerId, now);
+
+        if (currentScore <= 0.0D || now <= lastTick) {
+            if (currentScore <= 0.0D) {
+                comboScoreByPlayer.remove(playerId);
+            }
+            return;
+        }
+
+        double elapsedSeconds = (now - lastTick) / 1000.0D;
+        double maxScore = getComboMaxScore(player);
+        double levelScaling = 1.0D + (currentScore / Math.max(1.0D, maxScore)) * COMBO_DECAY_HIGH_LEVEL_SCALING;
+        double decayPerSecond = BASE_COMBO_DECAY_PER_SECOND * levelScaling * getComboDecayMultiplier(player);
+        double updatedScore = Math.max(0.0D, currentScore - decayPerSecond * elapsedSeconds);
+
+        if (updatedScore <= 0.01D) {
+            comboScoreByPlayer.remove(playerId);
+            return;
+        }
+        comboScoreByPlayer.put(playerId, Math.min(maxScore, updatedScore));
+    }
+
+    private static void updateComboBossBar(Player player, double comboScore) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        if (comboScore <= 0.0D) {
+            removeComboBossBar(playerId);
+            return;
+        }
+
+        BossBar bar = comboBossBarByPlayer.get(playerId);
+        if (bar == null) {
+            bar = Bukkit.createBossBar("Combo", BarColor.YELLOW, BarStyle.SEGMENTED_10);
+            comboBossBarByPlayer.put(playerId, bar);
+        }
+
+        double maxScore = getComboMaxScore(player);
+        double progress = Math.max(0.0D, Math.min(1.0D, comboScore / Math.max(1.0D, maxScore)));
+        bar.setProgress(progress);
+        bar.setTitle(color("&6Combo &f" + (int) Math.floor(comboScore)
+                + "&7/&f" + (int) Math.floor(maxScore)
+                + " &7| &ePoints x" + formatComboMultiplier(getComboMultiplier(player, comboScore))));
+        bar.setVisible(true);
+        if (!bar.getPlayers().contains(player)) {
+            bar.addPlayer(player);
+        }
+    }
+
+    private static void removeComboBossBar(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        BossBar bar = comboBossBarByPlayer.remove(playerId);
+        if (bar == null) {
+            return;
+        }
+        bar.removeAll();
+        bar.setVisible(false);
     }
 
     public static void announceTierUnlock(Player player, SheepTier tier) {
@@ -2819,6 +3142,15 @@ public final class SheepMergeManager {
                         "Flat bonus: +" + getShearFlatBonus(player),
                         "Click to open")));
 
+        inventory.setItem(COMBO_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.BLAZE_POWDER,
+                "Combo Upgrades",
+                List.of(
+                        "Combo score: " + (int) Math.floor(getComboScore(player))
+                                + " / " + (int) Math.floor(getComboMaxScore(player)),
+                        "Points x" + formatComboMultiplier(getComboMultiplier(player, getComboScore(player))),
+                        "Click to open")));
+
         player.openInventory(inventory);
     }
 
@@ -2840,6 +3172,10 @@ public final class SheepMergeManager {
 
     public static boolean isShopMenuTitle(String title) {
         return SHOP_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isComboShopMenuTitle(String title) {
+        return COMBO_SHOP_MENU_TITLE.equals(title);
     }
 
     public static void handleUpgradeMenuClick(Player player, int slot) {
@@ -2901,6 +3237,10 @@ public final class SheepMergeManager {
             }
             case SHOP_MENU_OPEN_SLOT -> {
                 openShopMenu(player);
+                return;
+            }
+            case COMBO_MENU_OPEN_SLOT -> {
+                openComboShopMenu(player);
                 return;
             }
             default -> {
@@ -3086,6 +3426,101 @@ public final class SheepMergeManager {
         }
         updatePointsScoreboard(player);
         openPrestigeMenu(player);
+    }
+
+    public static void openComboShopMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, COMBO_SHOP_MENU_TITLE);
+
+        int decayLevel = getComboDecayUpgradeLevel(player);
+        int gainLevel = getComboGainUpgradeLevel(player);
+        int maxLevel = getComboMaxUpgradeLevel(player);
+
+        inventory.setItem(COMBO_DECAY_SLOT, MenuItemFactory.create(
+                Material.CLOCK,
+                "Slower Combo Decay",
+                List.of(
+                        "Level: " + decayLevel + " / " + COMBO_DECAY_MAX_LEVEL,
+                        "Decay speed: " + (int) Math.round(getComboDecayMultiplier(player) * 100) + "%",
+                        decayLevel >= COMBO_DECAY_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + getComboDecayUpgradeCost(player) + " points",
+                        "Click to purchase")));
+
+        inventory.setItem(COMBO_MAX_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Maximum Combo",
+                List.of(
+                        "Level: " + maxLevel + " / " + COMBO_MAX_MAX_LEVEL,
+                        "Max score: " + (int) Math.floor(getComboMaxScore(player)),
+                        maxLevel >= COMBO_MAX_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + getComboMaxUpgradePrestigeCost(player) + " prestige points",
+                        "Click to purchase")));
+
+        inventory.setItem(COMBO_GAIN_SLOT, MenuItemFactory.create(
+                Material.EMERALD,
+                "Combo Gain Percentage",
+                List.of(
+                        "Level: " + gainLevel + " / " + COMBO_GAIN_MAX_LEVEL,
+                        "Points boost: +" + (int) Math.round(gainLevel * COMBO_GAIN_PERCENT_PER_LEVEL) + "%",
+                        gainLevel >= COMBO_GAIN_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + getComboGainUpgradeCost(player) + " points",
+                        "Click to purchase")));
+
+        inventory.setItem(COMBO_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back To Upgrades",
+                List.of("Click to go back")));
+
+        player.openInventory(inventory);
+    }
+
+    public static void handleComboShopMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+
+        switch (slot) {
+            case COMBO_DECAY_SLOT -> {
+                if (upgradeComboDecay(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Combo decay slowed."));
+                } else {
+                    player.sendMessage(warning("Unable to buy combo decay upgrade."));
+                }
+            }
+            case COMBO_MAX_SLOT -> {
+                if (upgradeComboMax(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Combo max increased."));
+                } else {
+                    player.sendMessage(warning("Unable to buy combo max upgrade."));
+                }
+            }
+            case COMBO_GAIN_SLOT -> {
+                if (upgradeComboGain(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Combo point gain increased."));
+                } else {
+                    player.sendMessage(warning("Unable to buy combo gain upgrade."));
+                }
+            }
+            case COMBO_BACK_TO_UPGRADES_SLOT -> {
+                openUpgradeMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+
+        updateComboBossBar(player, getComboScore(player));
+        updatePointsScoreboard(player);
+        openComboShopMenu(player);
     }
 
     public static void openQuestMenu(Player player) {
@@ -3628,6 +4063,7 @@ public final class SheepMergeManager {
             }
             clearEggTimer(player);
             clearPickedUpSheep(player);
+            clearComboRuntime(player);
         }
         savedInventories.clear();
         savedScoreboards.clear();
@@ -3689,6 +4125,9 @@ public final class SheepMergeManager {
             dataConfig.set("questReset", null);
             dataConfig.set("questUpgradeDuration", null);
             dataConfig.set("questUpgradePower", null);
+            dataConfig.set("comboDecayUpgrade", null);
+            dataConfig.set("comboMaxUpgrade", null);
+            dataConfig.set("comboGainUpgrade", null);
             dataConfig.set("pendingInventory", null);
             for (Map.Entry<UUID, Integer> entry : pointsByPlayer.entrySet()) {
                 dataConfig.set("points." + entry.getKey().toString(), entry.getValue());
@@ -3782,6 +4221,15 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : questUpgradePowerByPlayer.entrySet()) {
                 dataConfig.set("questUpgradePower." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : comboDecayUpgradeByPlayer.entrySet()) {
+                dataConfig.set("comboDecayUpgrade." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : comboMaxUpgradeByPlayer.entrySet()) {
+                dataConfig.set("comboMaxUpgrade." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : comboGainUpgradeByPlayer.entrySet()) {
+                dataConfig.set("comboGainUpgrade." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : savedInventories.entrySet()) {
                 String basePath = "pendingInventory." + entry.getKey();
@@ -4124,6 +4572,41 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     questUpgradePowerByPlayer.put(uuid, dataConfig.getInt("questUpgradePower." + key, 0));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("comboDecayUpgrade")) {
+            dataConfig.getConfigurationSection("comboDecayUpgrade").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    comboDecayUpgradeByPlayer.put(uuid,
+                            Math.max(0,
+                                    Math.min(COMBO_DECAY_MAX_LEVEL, dataConfig.getInt("comboDecayUpgrade." + key, 0))));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("comboMaxUpgrade")) {
+            dataConfig.getConfigurationSection("comboMaxUpgrade").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    comboMaxUpgradeByPlayer.put(uuid,
+                            Math.max(0, Math.min(COMBO_MAX_MAX_LEVEL, dataConfig.getInt("comboMaxUpgrade." + key, 0))));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("comboGainUpgrade")) {
+            dataConfig.getConfigurationSection("comboGainUpgrade").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    comboGainUpgradeByPlayer.put(uuid,
+                            Math.max(0,
+                                    Math.min(COMBO_GAIN_MAX_LEVEL, dataConfig.getInt("comboGainUpgrade." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
