@@ -33,6 +33,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.util.Vector;
 
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -62,6 +63,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> sheepRescueCooldownByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
@@ -91,6 +93,10 @@ public final class SheepMergeManager {
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
+    private static final long SHEEP_RESCUE_COOLDOWN_MS = 500L;
+    private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.95D;
+    private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.45D;
+    private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
     private static final int FARM_UPGRADE_COMMAND_SLOT = 8;
     private static final int SHEAR_SHOP_BASE_COST = 40;
     private static final long MERGE_REMINDER_DELAY_MS = 60_000L;
@@ -546,6 +552,9 @@ public final class SheepMergeManager {
                 || !isSheepFarmWorld(sheep.getWorld())) {
             return;
         }
+
+        applySheepRescueMotionIfNeeded(sheep);
+
         if (!sheep.isSheared()) {
             updateSheepName(sheep);
             return;
@@ -562,6 +571,44 @@ public final class SheepMergeManager {
             sheep.setAI(false);
         }
         updateSheepName(sheep);
+    }
+
+    private static void applySheepRescueMotionIfNeeded(Sheep sheep) {
+        if (sheep == null || !sheep.isValid()) {
+            return;
+        }
+
+        org.bukkit.Location location = sheep.getLocation();
+        if (!isOffPlatform(location)) {
+            sheepRescueCooldownByEntity.remove(sheep.getUniqueId());
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long lastRescue = sheepRescueCooldownByEntity.getOrDefault(sheep.getUniqueId(), 0L);
+        if (now - lastRescue < SHEEP_RESCUE_COOLDOWN_MS) {
+            return;
+        }
+
+        Vector toCenter = new Vector(0.5D - location.getX(), 0.0D, 0.5D - location.getZ());
+        if (toCenter.lengthSquared() > 0.0001D) {
+            toCenter.normalize().multiply(SHEEP_RESCUE_HORIZONTAL_VELOCITY);
+        }
+
+        sheep.setVelocity(new Vector(toCenter.getX(), SHEEP_RESCUE_UPWARD_VELOCITY, toCenter.getZ()));
+        sheep.setFallDistance(0.0F);
+        sheepRescueCooldownByEntity.put(sheep.getUniqueId(), now);
+    }
+
+    private static boolean isOffPlatform(org.bukkit.Location location) {
+        if (location == null) {
+            return false;
+        }
+        if (location.getY() < FARM_BASE_Y - 0.05D) {
+            return true;
+        }
+        return Math.abs(location.getX()) > FARM_RADIUS + SHEEP_RESCUE_EDGE_MARGIN
+                || Math.abs(location.getZ()) > FARM_RADIUS + SHEEP_RESCUE_EDGE_MARGIN;
     }
 
     public static long getNextEatTimestamp(Sheep sheep) {
