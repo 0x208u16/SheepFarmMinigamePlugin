@@ -35,7 +35,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
         scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
     }
 
-    private void scheduleDeleteWorldForPlayer(UUID playerId) {
+    public static void scheduleDeleteWorldForPlayer(UUID playerId) {
         if (playerId == null || SheepMergePlugin.instance == null) {
             return;
         }
@@ -46,29 +46,82 @@ public class SheepFarmWorldCleanupListener implements Listener {
                 return;
             }
 
-            String worldName = SheepFarmWorldCommand.getWorldName(playerId);
-            unloadWorld(worldName);
-
-            File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
-            Bukkit.getScheduler().runTaskAsynchronously(SheepMergePlugin.instance,
-                    () -> deleteWorldFolder(worldName, worldFolder));
-
-            String tutorialWorldName = SheepMergeManager.getTutorialWorldName(playerId);
-            unloadWorld(tutorialWorldName);
-            File tutorialWorldFolder = new File(Bukkit.getWorldContainer(), tutorialWorldName);
-            Bukkit.getScheduler().runTaskAsynchronously(SheepMergePlugin.instance,
-                    () -> deleteWorldFolder(tutorialWorldName, tutorialWorldFolder));
+            deleteFarmWorldForPlayer(playerId, true);
         }, WORLD_CLEANUP_DELAY_TICKS);
     }
 
-    private void unloadWorld(String worldName) {
+    public static void cleanupFarmWorldsOnStartup() {
+        File[] worldFolders = Bukkit.getWorldContainer().listFiles(File::isDirectory);
+        if (worldFolders == null || worldFolders.length == 0) {
+            return;
+        }
+
+        for (File worldFolder : worldFolders) {
+            String worldName = worldFolder.getName();
+            if (!isTemporaryFarmWorldName(worldName)) {
+                continue;
+            }
+            unloadWorld(worldName);
+            deleteWorldFolder(worldName, worldFolder);
+        }
+    }
+
+    public static void cleanupFarmWorldsOnShutdown() {
+        for (World world : Bukkit.getWorlds()) {
+            if (!SheepMergeManager.isSheepFarmWorld(world)) {
+                continue;
+            }
+            unloadWorld(world.getName());
+        }
+
+        File[] worldFolders = Bukkit.getWorldContainer().listFiles(File::isDirectory);
+        if (worldFolders == null || worldFolders.length == 0) {
+            return;
+        }
+
+        for (File worldFolder : worldFolders) {
+            String worldName = worldFolder.getName();
+            if (!isTemporaryFarmWorldName(worldName)) {
+                continue;
+            }
+            deleteWorldFolder(worldName, worldFolder);
+        }
+    }
+
+    private static void deleteFarmWorldForPlayer(UUID playerId, boolean asyncDelete) {
+        String worldName = SheepFarmWorldCommand.getWorldName(playerId);
+        deleteFarmWorld(worldName, asyncDelete);
+
+        String tutorialWorldName = SheepMergeManager.getTutorialWorldName(playerId);
+        deleteFarmWorld(tutorialWorldName, asyncDelete);
+    }
+
+    private static void deleteFarmWorld(String worldName, boolean asyncDelete) {
+        unloadWorld(worldName);
+
+        File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
+        if (!asyncDelete || SheepMergePlugin.instance == null) {
+            deleteWorldFolder(worldName, worldFolder);
+            return;
+        }
+
+        Bukkit.getScheduler().runTaskAsynchronously(SheepMergePlugin.instance,
+                () -> deleteWorldFolder(worldName, worldFolder));
+    }
+
+    private static boolean isTemporaryFarmWorldName(String worldName) {
+        return worldName != null
+                && (worldName.startsWith("sheepfarm_") || worldName.startsWith("sheeptutorial_"));
+    }
+
+    private static void unloadWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             Bukkit.unloadWorld(world, false);
         }
     }
 
-    private void deleteWorldFolder(String worldName, File worldFolder) {
+    private static void deleteWorldFolder(String worldName, File worldFolder) {
         if (worldFolder.exists()) {
             try {
                 deleteDirectory(worldFolder);
@@ -79,7 +132,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
         }
     }
 
-    private void deleteDirectory(File directory) throws IOException {
+    private static void deleteDirectory(File directory) throws IOException {
         Path path = directory.toPath();
         if (!Files.exists(path)) {
             return;

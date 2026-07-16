@@ -50,6 +50,7 @@ public class SheepMergePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         log = getLogger();
+        SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         SheepMergeManager.initialize(this);
         setup();
         SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
@@ -136,6 +137,7 @@ public class SheepMergePlugin extends JavaPlugin {
     public void onDisable() {
         SheepMergeManager.restoreAllPlayerStates();
         SheepMergeManager.saveData();
+        SheepFarmWorldCleanupListener.cleanupFarmWorldsOnShutdown();
         log.info("Thanks for using " + NAME + "!");
     }
 }
