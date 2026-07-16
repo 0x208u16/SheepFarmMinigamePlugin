@@ -1351,8 +1351,40 @@ public final class SheepMergeManager {
         nextAutoMergeAtByPlayer.remove(id);
         nextEggTimestampByPlayer.remove(id);
         lastSpawnLimitWarningTimestampByPlayer.remove(id);
+        carriedSheepByPlayer.remove(id);
+        resetFarmWorldForPlayer(id);
         saveData();
         return true;
+    }
+
+    private static void resetFarmWorldForPlayer(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        resetFarmWorldByName(SheepFarmWorldCommand.getWorldName(playerId));
+        resetFarmWorldByName(getTutorialWorldName(playerId));
+    }
+
+    private static void resetFarmWorldByName(String worldName) {
+        if (worldName == null || worldName.isBlank()) {
+            return;
+        }
+        World world = Bukkit.getWorld(worldName);
+        if (world == null || !isSheepFarmWorld(world)) {
+            return;
+        }
+
+        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+            if (sheep == null || !sheep.isValid()) {
+                continue;
+            }
+            UUID sheepId = sheep.getUniqueId();
+            sheep.remove();
+            clearSheepRescueState(sheepId);
+        }
+
+        applyFarmLayout(world);
+        refreshLiveSheepCount(world);
     }
 
     public static void adminGivePoints(Player player, int amount) {
@@ -1425,6 +1457,8 @@ public final class SheepMergeManager {
         if (sheep == null || tier == null) {
             return;
         }
+        sheep.setRemoveWhenFarAway(false);
+        sheep.setPersistent(true);
         sheep.setColor(tier.getColor() == null ? org.bukkit.DyeColor.WHITE : tier.getColor());
         sheep.getPersistentDataContainer().set(getTierKey(), PersistentDataType.INTEGER, tier.getLevel());
         if (sheep.isSheared()) {
