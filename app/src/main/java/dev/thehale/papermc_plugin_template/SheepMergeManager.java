@@ -443,7 +443,7 @@ public final class SheepMergeManager {
     }
 
     public static int getQuestPoints(Player player) {
-        return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 10);
     }
 
     private static void addQuestPoints(Player player, int amount) {
