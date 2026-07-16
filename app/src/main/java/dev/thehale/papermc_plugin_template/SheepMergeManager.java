@@ -13,10 +13,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Display;
@@ -27,7 +30,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -47,12 +49,16 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> prestigeDoublePointsChanceByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeHigherMaxLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeStartEggsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> prestigeEggCapByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearShopLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialCompletedByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> tutorialShearsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> tutorialSpawnsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> tutorialMergesByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextEggTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, InventorySnapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
@@ -61,7 +67,7 @@ public final class SheepMergeManager {
     private static final Pattern TUTORIAL_OWNER_ID_PATTERN = Pattern.compile("^sheeptutorial_([0-9a-fA-F]{32})$");
     private static final Random RANDOM = new Random();
     private static final int BASE_SHEEP_LIMIT = 10;
-    private static final int LIMIT_UPGRADE_STEP = 5;
+    private static final int LIMIT_UPGRADE_STEP = 10;
     private static final int LIMIT_UPGRADE_COST = 20;
     private static final int BASE_EGG_INTERVAL_SECONDS = 10;
     private static final int MIN_EGG_INTERVAL_SECONDS = 2;
@@ -74,12 +80,18 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
     private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
+    private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
+    private static final int BASE_EGG_CAP = 10;
+    private static final int PRESTIGE_EGG_CAP_STEP = 10;
     private static final int PRESTIGE_MAX_LEVEL = 50;
     private static final int FARM_RADIUS = 5;
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
+    private static final int FARM_UPGRADE_COMMAND_SLOT = 8;
     private static final int SHEAR_SHOP_BASE_COST = 40;
+    private static final long MERGE_REMINDER_DELAY_MS = 60_000L;
+    private static final long MERGE_REMINDER_REPEAT_MS = 20_000L;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
     private static final int TUTORIAL_SPAWN_TARGET = 1;
     private static final int TUTORIAL_MERGE_TARGET = 1;
@@ -96,6 +108,7 @@ public final class SheepMergeManager {
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
     public static final int PRESTIGE_START_EGGS_SLOT = 16;
+    public static final int PRESTIGE_EGG_CAP_SLOT = 18;
     public static final int PRESTIGE_BACK_TO_UPGRADES_SLOT = 26;
     public static final int SHOP_SHEAR_SLOT = 13;
     public static final int SHOP_BACK_TO_UPGRADES_SLOT = 26;
@@ -105,8 +118,6 @@ public final class SheepMergeManager {
     private static File dataFile;
     private static FileConfiguration farmLayoutConfig;
     private static File farmLayoutFile;
-    private static UUID pendingFarmLayoutSourceWorldId;
-    private static BukkitTask pendingFarmLayoutSyncTask;
 
     private SheepMergeManager() {
         throw new UnsupportedOperationException("Utility class");
@@ -145,43 +156,12 @@ public final class SheepMergeManager {
         for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
                 for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
-                    farmLayoutConfig.set("blocks." + keyFor(x, y, z), sourceWorld.getBlockAt(x, y, z).getType().name());
+                    farmLayoutConfig.set("blocks." + keyFor(x, y, z),
+                            sourceWorld.getBlockAt(x, y, z).getBlockData().getAsString());
                 }
             }
         }
         return saveFarmLayout();
-    }
-
-    public static boolean syncSharedFarmLayoutFromWorld(World sourceWorld) {
-        if (!saveSharedFarmLayoutFromWorld(sourceWorld)) {
-            return false;
-        }
-        applySharedFarmLayoutToAllFarmWorlds();
-        return true;
-    }
-
-    public static boolean scheduleAutoFarmLayoutSync(World sourceWorld) {
-        if (plugin == null || sourceWorld == null || !isSheepFarmWorld(sourceWorld)) {
-            return false;
-        }
-        pendingFarmLayoutSourceWorldId = sourceWorld.getUID();
-        if (pendingFarmLayoutSyncTask != null) {
-            return true;
-        }
-        pendingFarmLayoutSyncTask = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            pendingFarmLayoutSyncTask = null;
-            UUID sourceId = pendingFarmLayoutSourceWorldId;
-            pendingFarmLayoutSourceWorldId = null;
-            if (sourceId == null) {
-                return;
-            }
-            World world = plugin.getServer().getWorld(sourceId);
-            if (world == null) {
-                return;
-            }
-            syncSharedFarmLayoutFromWorld(world);
-        }, 20L);
-        return true;
     }
 
     public static int applySharedFarmLayoutToAllFarmWorlds() {
@@ -214,8 +194,11 @@ public final class SheepMergeManager {
         for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
                 for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
-                    String name = farmLayoutConfig.getString("blocks." + keyFor(x, y, z));
-                    world.getBlockAt(x, y, z).setType(parseMaterial(name));
+                    String serialized = farmLayoutConfig.getString("blocks." + keyFor(x, y, z));
+                    BlockData data = (serialized == null || serialized.isBlank())
+                            ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
+                            : parseBlockData(serialized);
+                    world.getBlockAt(x, y, z).setBlockData(data, true);
                 }
             }
         }
@@ -225,18 +208,24 @@ public final class SheepMergeManager {
         for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
                 for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
-                    Material material = Material.AIR;
-                    if (y == FARM_MIN_Y) {
-                        material = Material.DIRT;
-                    } else if (y == FARM_BASE_Y) {
-                        material = Material.GRASS_BLOCK;
-                    } else if (y == FARM_BASE_Y + 1 && (Math.abs(x) == FARM_RADIUS || Math.abs(z) == FARM_RADIUS)) {
-                        material = Material.OAK_FENCE;
-                    }
-                    world.getBlockAt(x, y, z).setType(material);
+                    Material material = getDefaultFarmMaterialAt(x, y, z);
+                    world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), true);
                 }
             }
         }
+    }
+
+    private static Material getDefaultFarmMaterialAt(int x, int y, int z) {
+        if (y == FARM_MIN_Y) {
+            return Material.DIRT;
+        }
+        if (y == FARM_BASE_Y) {
+            return Material.GRASS_BLOCK;
+        }
+        if (y == FARM_BASE_Y + 1 && (Math.abs(x) == FARM_RADIUS || Math.abs(z) == FARM_RADIUS)) {
+            return Material.OAK_FENCE;
+        }
+        return Material.AIR;
     }
 
     private static Material parseMaterial(String materialName) {
@@ -245,6 +234,17 @@ public final class SheepMergeManager {
         }
         Material material = Material.matchMaterial(materialName);
         return material == null ? Material.AIR : material;
+    }
+
+    private static BlockData parseBlockData(String serializedData) {
+        if (serializedData == null || serializedData.isBlank()) {
+            return Bukkit.createBlockData(Material.AIR);
+        }
+        try {
+            return Bukkit.createBlockData(serializedData);
+        } catch (IllegalArgumentException ignored) {
+            return Bukkit.createBlockData(parseMaterial(serializedData));
+        }
     }
 
     private static String keyFor(int x, int y, int z) {
@@ -358,6 +358,7 @@ public final class SheepMergeManager {
         int nextPrestige = current + 1;
         prestigeLevelByPlayer.put(player.getUniqueId(), nextPrestige);
         prestigePointsByPlayer.put(player.getUniqueId(), getPrestigePoints(player) + nextPrestige);
+        clearPrestigeReminder(player);
 
         // Reset regular progression purchased with normal points.
         pointsByPlayer.put(player.getUniqueId(), 0);
@@ -365,6 +366,7 @@ public final class SheepMergeManager {
         eggSpeedLevelByPlayer.remove(player.getUniqueId());
         woolRegenLevelByPlayer.remove(player.getUniqueId());
         higherTierChanceLevelByPlayer.remove(player.getUniqueId());
+        clearMergeReminder(player);
         nextEggTimestampByPlayer.remove(player.getUniqueId());
 
         saveData();
@@ -463,6 +465,8 @@ public final class SheepMergeManager {
         prestigeDoublePointsChanceByPlayer.remove(id);
         prestigeHigherMaxLevelByPlayer.remove(id);
         prestigeStartEggsByPlayer.remove(id);
+        prestigeEggCapByPlayer.remove(id);
+        lastPrestigeReminderTimestampByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
         tutorialCompletedByPlayer.remove(id);
         tutorialShearsByPlayer.remove(id);
@@ -651,6 +655,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         pointsByPlayer.put(playerId, pointsByPlayer.getOrDefault(playerId, 0) + points);
         saveData();
+        tickPrestigeReminder(player);
     }
 
     public static void showOverlay(Player player, String message) {
@@ -658,6 +663,250 @@ public final class SheepMergeManager {
             return;
         }
         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
+    }
+
+    public static String color(String message) {
+        if (message == null) {
+            return "";
+        }
+        return ChatColor.translateAlternateColorCodes('&', message);
+    }
+
+    public static String hint(String message) {
+        return color("&7" + message);
+    }
+
+    public static String action(String message) {
+        return color("&a" + message);
+    }
+
+    public static String warning(String message) {
+        return color("&e" + message);
+    }
+
+    public static String accent(String message) {
+        return color("&b" + message);
+    }
+
+    public static void resetMergeReminder(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        lastMergeTimestampByPlayer.put(playerId, now);
+        lastMergeReminderTimestampByPlayer.remove(playerId);
+    }
+
+    public static void clearMergeReminder(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        lastMergeTimestampByPlayer.remove(playerId);
+        lastMergeReminderTimestampByPlayer.remove(playerId);
+    }
+
+    public static void clearPrestigeReminder(Player player) {
+        if (player == null) {
+            return;
+        }
+        lastPrestigeReminderTimestampByPlayer.remove(player.getUniqueId());
+    }
+
+    public static void tickPrestigeReminder(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        if (getPrestigeLevel(player) >= PRESTIGE_MAX_LEVEL) {
+            clearPrestigeReminder(player);
+            return;
+        }
+
+        int prestigeCost = getPrestigeCost(player);
+        if (getPlayerPoints(player) < prestigeCost) {
+            clearPrestigeReminder(player);
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long lastReminder = lastPrestigeReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastReminder < 20_000L) {
+            return;
+        }
+
+        player.sendTitle(
+                color("&ePrestige ready"),
+                color("&7Use /sheepmerge prestige"),
+                10,
+                60,
+                10);
+        lastPrestigeReminderTimestampByPlayer.put(playerId, now);
+    }
+
+    public static void recordSheepMerge(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        lastMergeTimestampByPlayer.put(playerId, System.currentTimeMillis());
+        lastMergeReminderTimestampByPlayer.remove(playerId);
+    }
+
+    public static void announceTierUnlock(Player player, SheepTier tier) {
+        if (player == null || tier == null) {
+            return;
+        }
+
+        String message = getTierUnlockMessage(player, tier);
+        if (plugin != null && plugin.getServer() != null) {
+            plugin.getServer().broadcastMessage(message);
+        } else {
+            player.sendMessage(message);
+        }
+
+        playTierUnlockSound(player, tier);
+    }
+
+    private static String getTierUnlockMessage(Player player, SheepTier tier) {
+        String playerName = player.getName() == null || player.getName().isBlank() ? "Someone" : player.getName();
+        return switch (tier) {
+            case ORANGE -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &6Orange Sheep&7!");
+            case MAGENTA -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &dMagenta Sheep&7!");
+            case LIGHT_BLUE -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &bLight Blue Sheep&7!");
+            case YELLOW -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &eYellow Sheep&7!");
+            case LIME -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &aLime Sheep&7!");
+            case PINK -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &dPink Sheep&7!");
+            case GRAY -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &7Gray Sheep&7!");
+            case LIGHT_GRAY -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &fLight Gray Sheep&7!");
+            case CYAN -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &3Cyan Sheep&7!");
+            case PURPLE -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &5Purple Sheep&7!");
+            case BLUE -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &9Blue Sheep&7!");
+            case BROWN -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &6Brown Sheep&7!");
+            case GREEN -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &2Green Sheep&7!");
+            case RED -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &cRed Sheep&7!");
+            case BLACK -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &8Black Sheep&7!");
+            case RAINBOW -> color(
+                    "&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &dRainbow Sheep&b! &7Legendary tier reached!");
+            default -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked a new tier!");
+        };
+    }
+
+    private static void playTierUnlockSound(Player player, SheepTier tier) {
+        if (player == null || tier == null) {
+            return;
+        }
+
+        Sound sound = switch (tier.getLevel()) {
+            case 0, 1, 2, 3 -> Sound.BLOCK_NOTE_BLOCK_CHIME;
+            case 4, 5, 6, 7 -> Sound.ENTITY_PLAYER_LEVELUP;
+            case 8, 9, 10, 11 -> Sound.BLOCK_BEACON_POWER_SELECT;
+            case 12, 13, 14 -> Sound.UI_TOAST_CHALLENGE_COMPLETE;
+            default -> Sound.ENTITY_ENDER_DRAGON_GROWL;
+        };
+
+        float pitch = Math.min(2.0f, 0.9f + (tier.getLevel() * 0.08f));
+        playSound(player, sound, 1.0f, pitch);
+    }
+
+    public static void tickMergeReminder(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long lastMerge = lastMergeTimestampByPlayer.getOrDefault(playerId, now);
+        if (now - lastMerge < MERGE_REMINDER_DELAY_MS) {
+            return;
+        }
+        long lastReminder = lastMergeReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastReminder < MERGE_REMINDER_REPEAT_MS) {
+            return;
+        }
+        player.sendTitle(
+                color("&eMerge sheep"),
+                color("&7Sneak-right-click one sheep, then right-click the same tier"),
+                10,
+                60,
+                10);
+        lastMergeReminderTimestampByPlayer.put(playerId, now);
+    }
+
+    public static void enforceFarmLoadout(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+
+        var inventory = player.getInventory();
+        ItemStack[] contents = inventory.getContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            if (slot == FARM_UPGRADE_COMMAND_SLOT) {
+                continue;
+            }
+            ItemStack itemStack = contents[slot];
+            if (itemStack == null) {
+                continue;
+            }
+            Material type = itemStack.getType();
+            if (type == Material.SHEARS || type == Material.NETHER_STAR) {
+                contents[slot] = null;
+            }
+        }
+
+        inventory.setContents(contents);
+        inventory.setItemInOffHand(getSheepMergeShears());
+        inventory.setItem(FARM_UPGRADE_COMMAND_SLOT, getSheepMergeUpgradeCommandItem());
+    }
+
+    public static void applyFarmSaturation(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        player.setFoodLevel(20);
+        player.setSaturation(20.0f);
+        player.setExhaustion(0.0f);
+    }
+
+    public static ItemStack getSheepMergeUpgradeCommandItem() {
+        ItemStack item = new ItemStack(Material.NETHER_STAR, 1);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(color("&bSheep Merge Upgrades"));
+            meta.setLore(List.of(
+                    hint("Right-click to open upgrades"),
+                    hint("Hotbar slot 9")));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    public static boolean isSheepMergeUpgradeCommandItem(ItemStack itemStack) {
+        return itemStack != null && itemStack.getType() == Material.NETHER_STAR;
+    }
+
+    public static boolean isForcedFarmLoadoutItem(ItemStack itemStack) {
+        return itemStack != null
+                && (itemStack.getType() == Material.SHEARS || isSheepMergeUpgradeCommandItem(itemStack));
+    }
+
+    public static void playMergeSound(Player player) {
+        playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.2f);
+    }
+
+    public static void playUpgradeSound(Player player) {
+        playSound(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 1.1f);
+    }
+
+    public static void playPrestigeSound(Player player) {
+        playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+    }
+
+    private static void playSound(Player player, Sound sound, float volume, float pitch) {
+        if (player == null || sound == null) {
+            return;
+        }
+        player.playSound(player.getLocation(), sound, volume, pitch);
     }
 
     public static boolean trySpendPoints(Player player, int points) {
@@ -799,6 +1048,11 @@ public final class SheepMergeManager {
             return;
         }
 
+        if (getEggCount(player) >= getEggCap(player)) {
+            nextEggTimestampByPlayer.put(playerId, now + 2000L);
+            return;
+        }
+
         if (player.getInventory().firstEmpty() == -1) {
             nextEggTimestampByPlayer.put(playerId, now + 2000L);
             return;
@@ -806,12 +1060,32 @@ public final class SheepMergeManager {
 
         ItemStack egg = new ItemStack(Material.SHEEP_SPAWN_EGG, 1);
         player.getInventory().addItem(egg);
-        showOverlay(player, "+1 Sheep Spawn Egg");
+        showOverlay(player, action("+1 egg"));
         nextEggTimestampByPlayer.put(playerId, now + getEggIntervalSeconds(player) * 1000L);
     }
 
     public static int getStartEggsBonus(Player player) {
         return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0) * 2;
+    }
+
+    public static int getEggCap(Player player) {
+        if (player == null) {
+            return BASE_EGG_CAP;
+        }
+        return BASE_EGG_CAP + getPrestigeEggCapLevel(player) * PRESTIGE_EGG_CAP_STEP;
+    }
+
+    private static int getEggCount(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int total = 0;
+        for (ItemStack itemStack : player.getInventory().all(Material.SHEEP_SPAWN_EGG).values()) {
+            if (itemStack != null) {
+                total += itemStack.getAmount();
+            }
+        }
+        return total;
     }
 
     public static int getPrestigeDoublePointsChanceLevel(Player player) {
@@ -830,6 +1104,10 @@ public final class SheepMergeManager {
         return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
 
+    public static int getPrestigeEggCapLevel(Player player) {
+        return player == null ? 0 : prestigeEggCapByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
     public static int getPrestigeDoublePointsCost(Player player) {
         return getDoubledUpgradeCost(PRESTIGE_DOUBLE_POINTS_BASE_COST, getPrestigeDoublePointsChanceLevel(player));
     }
@@ -840,6 +1118,10 @@ public final class SheepMergeManager {
 
     public static int getPrestigeStartEggsCost(Player player) {
         return getDoubledUpgradeCost(PRESTIGE_START_EGGS_BASE_COST, getPrestigeStartEggsLevel(player));
+    }
+
+    public static int getPrestigeEggCapCost(Player player) {
+        return getDoubledUpgradeCost(PRESTIGE_EGG_CAP_BASE_COST, getPrestigeEggCapLevel(player));
     }
 
     private static boolean trySpendPrestigePoints(Player player, int points) {
@@ -881,6 +1163,16 @@ public final class SheepMergeManager {
             return false;
         }
         prestigeStartEggsByPlayer.put(player.getUniqueId(), getPrestigeStartEggsLevel(player) + 1);
+        saveData();
+        return true;
+    }
+
+    private static boolean upgradePrestigeEggCap(Player player) {
+        int cost = getPrestigeEggCapCost(player);
+        if (!trySpendPrestigePoints(player, cost)) {
+            return false;
+        }
+        prestigeEggCapByPlayer.put(player.getUniqueId(), getPrestigeEggCapLevel(player) + 1);
         saveData();
         return true;
     }
@@ -990,43 +1282,44 @@ public final class SheepMergeManager {
         switch (slot) {
             case LIMIT_UPGRADE_SLOT -> {
                 if (upgradeLimit(player)) {
-                    player.sendMessage("Sheep limit upgraded to level " + getLimitUpgradeLevel(player)
-                            + ". New limit: " + getPlayerLimit(player));
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Limit up: " + getPlayerLimit(player)));
                 } else {
-                    player.sendMessage("Not enough points for Sheep Limit upgrade.");
+                    player.sendMessage(warning("Not enough points."));
                 }
             }
             case EGG_SPEED_UPGRADE_SLOT -> {
                 if (upgradeEggSpeed(player)) {
-                    player.sendMessage("Egg spawn speed upgraded to level " + getEggSpeedLevel(player)
-                            + ". New interval: " + getEggIntervalSeconds(player) + "s");
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Eggs: every " + getEggIntervalSeconds(player) + "s"));
                 } else {
-                    player.sendMessage("Not enough points for Faster Egg Spawn upgrade.");
+                    player.sendMessage(warning("Not enough points."));
                 }
             }
             case WOOL_REGEN_UPGRADE_SLOT -> {
                 int level = woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
                 if (level >= getWoolRegenMaxLevel(player)) {
-                    player.sendMessage("Faster Wool Regen is already maxed.");
+                    player.sendMessage(warning("Wool regen maxed."));
                     break;
                 }
                 if (upgradeWoolRegen(player)) {
-                    player.sendMessage("Wool regen upgraded to level " + getWoolRegenLevel(player) + ".");
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Wool regen up"));
                 } else {
-                    player.sendMessage("Not enough points for Faster Wool Regen upgrade.");
+                    player.sendMessage(warning("Not enough points."));
                 }
             }
             case HIGHER_TIER_CHANCE_UPGRADE_SLOT -> {
                 int level = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
                 if (level >= getHigherTierChanceMaxLevel(player)) {
-                    player.sendMessage("Higher Tier Spawn Chance is already maxed.");
+                    player.sendMessage(warning("Spawn chance maxed."));
                     break;
                 }
                 if (upgradeHigherTierChance(player)) {
-                    player.sendMessage("Higher-tier spawn chance upgraded to level " + getHigherTierChanceLevel(player)
-                            + " (" + getHigherTierChancePercent(player) + "%).");
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Spawn chance: " + getHigherTierChancePercent(player) + "%"));
                 } else {
-                    player.sendMessage("Not enough points for Higher Tier Spawn Chance upgrade.");
+                    player.sendMessage(warning("Not enough points."));
                 }
             }
             case PRESTIGE_MENU_OPEN_SLOT -> {
@@ -1073,7 +1366,7 @@ public final class SheepMergeManager {
                 Material.ENCHANTED_BOOK,
                 "Higher Maximum Levels",
                 List.of(
-                        "Level: " + getPrestigeHigherMaxLevel(player),
+                        "Level: " + getPrestigeHigherMaxLevel(player) + " / " + PRESTIGE_MAX_LEVEL,
                         "Tier cap bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
                         "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
                         "Click to purchase")));
@@ -1085,6 +1378,16 @@ public final class SheepMergeManager {
                         "Level: " + getPrestigeStartEggsLevel(player),
                         "Extra starting eggs: +" + getStartEggsBonus(player),
                         "Cost: " + getPrestigeStartEggsCost(player) + " prestige points",
+                        "Click to purchase")));
+
+        inventory.setItem(PRESTIGE_EGG_CAP_SLOT, createMenuItem(
+                Material.EGG,
+                "Egg Capacity",
+                List.of(
+                        "Level: " + getPrestigeEggCapLevel(player),
+                        "Egg cap: " + getEggCap(player),
+                        "Adds: +" + PRESTIGE_EGG_CAP_STEP + " eggs per level",
+                        "Cost: " + getPrestigeEggCapCost(player) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_BACK_TO_UPGRADES_SLOT, createMenuItem(
@@ -1101,32 +1404,42 @@ public final class SheepMergeManager {
         switch (slot) {
             case PRESTIGE_UPGRADE_SLOT -> {
                 if (prestige(player)) {
-                    player.sendMessage("Prestige increased to " + getPrestigeLevel(player)
-                            + ". Prestige points: " + getPrestigePoints(player));
+                    playPrestigeSound(player);
+                    player.sendMessage(action("Prestige +1"));
                 } else {
-                    player.sendMessage("Not enough points to prestige.");
+                    player.sendMessage(warning("Not enough points."));
                 }
             }
             case PRESTIGE_DOUBLE_POINTS_SLOT -> {
                 if (upgradePrestigeDoublePoints(player)) {
-                    player.sendMessage(
-                            "Double points chance upgraded to " + getDoublePointsChancePercent(player) + "%.");
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Double points: " + getDoublePointsChancePercent(player) + "%"));
                 } else {
-                    player.sendMessage("Not enough prestige points for Double Points Chance.");
+                    player.sendMessage(warning("Not enough prestige points."));
                 }
             }
             case PRESTIGE_HIGHER_MAX_LEVEL_SLOT -> {
                 if (upgradePrestigeHigherMaxLevel(player)) {
-                    player.sendMessage("Higher maximum levels upgraded to " + getPrestigeHigherMaxLevel(player) + ".");
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Higher max levels up"));
                 } else {
-                    player.sendMessage("Not enough prestige points for Higher Maximum Levels.");
+                    player.sendMessage(warning("Not enough prestige points."));
                 }
             }
             case PRESTIGE_START_EGGS_SLOT -> {
                 if (upgradePrestigeStartEggs(player)) {
-                    player.sendMessage("Start eggs upgraded to level " + getPrestigeStartEggsLevel(player) + ".");
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Start eggs up"));
                 } else {
-                    player.sendMessage("Not enough prestige points for Start With Extra Eggs.");
+                    player.sendMessage(warning("Not enough prestige points."));
+                }
+            }
+            case PRESTIGE_EGG_CAP_SLOT -> {
+                if (upgradePrestigeEggCap(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Egg cap: " + getEggCap(player)));
+                } else {
+                    player.sendMessage(warning("Not enough prestige points."));
                 }
             }
             case PRESTIGE_BACK_TO_UPGRADES_SLOT -> {
@@ -1169,9 +1482,9 @@ public final class SheepMergeManager {
         switch (slot) {
             case SHOP_SHEAR_SLOT -> {
                 if (upgradeShearShop(player)) {
-                    player.sendMessage("Shear upgrade purchased. Level: " + getShearShopLevel(player));
+                    player.sendMessage(action("Shear shop +1"));
                 } else {
-                    player.sendMessage("Not enough points for Shear Upgrade.");
+                    player.sendMessage(warning("Not enough points."));
                 }
             }
             case SHOP_BACK_TO_UPGRADES_SLOT -> {
@@ -1449,6 +1762,7 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeDoublePoints", null);
             dataConfig.set("prestigeHigherMax", null);
             dataConfig.set("prestigeStartEggs", null);
+            dataConfig.set("prestigeEggCap", null);
             dataConfig.set("prestigeExpandFarm", null);
             dataConfig.set("shearShop", null);
             dataConfig.set("tutorialCompleted", null);
@@ -1484,6 +1798,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : prestigeStartEggsByPlayer.entrySet()) {
                 dataConfig.set("prestigeStartEggs." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : prestigeEggCapByPlayer.entrySet()) {
+                dataConfig.set("prestigeEggCap." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Integer> entry : shearShopLevelByPlayer.entrySet()) {
                 dataConfig.set("shearShop." + entry.getKey().toString(), entry.getValue());
@@ -1612,6 +1929,16 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     prestigeStartEggsByPlayer.put(uuid, dataConfig.getInt("prestigeStartEggs." + key, 0));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("prestigeEggCap")) {
+            dataConfig.getConfigurationSection("prestigeEggCap").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    prestigeEggCapByPlayer.put(uuid, dataConfig.getInt("prestigeEggCap." + key, 0));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }

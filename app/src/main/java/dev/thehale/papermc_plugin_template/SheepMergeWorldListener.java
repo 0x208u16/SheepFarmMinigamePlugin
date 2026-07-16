@@ -8,6 +8,9 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public class SheepMergeWorldListener implements Listener {
 
@@ -18,7 +21,8 @@ public class SheepMergeWorldListener implements Listener {
                 && SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.savePlayerInventory(player);
             player.getInventory().clear();
-            player.getInventory().setItemInMainHand(SheepMergeManager.getSheepMergeShears());
+            SheepMergeManager.enforceFarmLoadout(player);
+            SheepMergeManager.applyFarmSaturation(player);
             int extraEggs = SheepMergeManager.getStartEggsBonus(player);
             if (extraEggs > 0) {
                 player.getInventory()
@@ -27,6 +31,7 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.showPointsScoreboard(player);
             SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
+            SheepMergeManager.resetMergeReminder(player);
         } else if (SheepMergeManager.isSheepFarmWorld(event.getFrom())
                 && !SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.saveData();
@@ -34,12 +39,29 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.restorePlayerScoreboard(player);
             SheepMergeManager.clearEggTimer(player);
             SheepMergeManager.clearPickedUpSheep(player);
+            SheepMergeManager.clearMergeReminder(player);
+            SheepMergeManager.clearPrestigeReminder(player);
         }
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            Inventory clickedInventory = event.getClickedInventory();
+            if (clickedInventory != null && clickedInventory.equals(player.getInventory())) {
+                ItemStack currentItem = event.getCurrentItem();
+                ItemStack cursorItem = event.getCursor();
+                if (SheepMergeManager.isForcedFarmLoadoutItem(currentItem)
+                        || SheepMergeManager.isForcedFarmLoadoutItem(cursorItem)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
         if (!SheepMergeManager.isUpgradeMenuTitle(title)
                 && !SheepMergeManager.isPrestigeMenuTitle(title)
                 && !SheepMergeManager.isShopMenuTitle(title)) {
@@ -47,9 +69,6 @@ public class SheepMergeWorldListener implements Listener {
         }
 
         event.setCancelled(true);
-        if (!(event.getWhoClicked() instanceof Player player)) {
-            return;
-        }
         if (SheepMergeManager.isUpgradeMenuTitle(title)) {
             SheepMergeManager.handleUpgradeMenuClick(player, event.getRawSlot());
             return;
@@ -70,6 +89,13 @@ public class SheepMergeWorldListener implements Listener {
     }
 
     @EventHandler
+    public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent event) {
+        if (SheepMergeManager.isSheepFarmWorld(event.getPlayer().getWorld())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_AIR
                 && event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
@@ -78,6 +104,15 @@ public class SheepMergeWorldListener implements Listener {
 
         Player player = event.getPlayer();
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+
+        SheepMergeManager.applyFarmSaturation(player);
+
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (SheepMergeManager.isSheepMergeUpgradeCommandItem(item)) {
+            event.setCancelled(true);
+            player.performCommand("sheepmerge upgrade");
             return;
         }
 
@@ -97,7 +132,7 @@ public class SheepMergeWorldListener implements Listener {
         }
 
         if (SheepMergeManager.dropPickedUpSheep(player)) {
-            player.sendMessage("You dropped the sheep above your head.");
+            player.sendMessage(SheepMergeManager.hint("Sheep dropped."));
             event.setCancelled(true);
         }
     }

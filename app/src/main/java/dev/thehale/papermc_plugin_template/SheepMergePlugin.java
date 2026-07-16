@@ -55,6 +55,8 @@ public class SheepMergePlugin extends JavaPlugin {
         scheduleSheepEggDistribution();
         scheduleSheepNameUpdates();
         scheduleLiveSheepCountUpdates();
+        scheduleFarmLoadoutAndReminderUpdates();
+        scheduleFarmSaturationUpdates();
         getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
     }
@@ -83,7 +85,9 @@ public class SheepMergePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SheepFarmWorldProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmWorldCleanupListener(), this);
         getServer().getPluginManager().registerEvents(new SheepFarmGameListener(), this);
-        getCommand("sheepmerge").setExecutor(new SheepFarmWorldCommand());
+        SheepFarmWorldCommand command = new SheepFarmWorldCommand();
+        getCommand("sheepmerge").setExecutor(command);
+        getCommand("sheepmerge").setTabCompleter(command);
         new Metrics(this, BSTATS_PLUGIN_ID); // Enable bStats metrics
     }
 
@@ -91,6 +95,27 @@ public class SheepMergePlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player player : getServer().getOnlinePlayers()) {
                 SheepMergeManager.tickEggDistribution(player);
+            }
+        }, 20L, 20L);
+    }
+
+    private void scheduleFarmLoadoutAndReminderUpdates() {
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            for (Player player : getServer().getOnlinePlayers()) {
+                if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+                    continue;
+                }
+                SheepMergeManager.enforceFarmLoadout(player);
+                SheepMergeManager.tickPrestigeReminder(player);
+                SheepMergeManager.tickMergeReminder(player);
+            }
+        }, 20L, 20L);
+    }
+
+    private void scheduleFarmSaturationUpdates() {
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            for (Player player : getServer().getOnlinePlayers()) {
+                SheepMergeManager.applyFarmSaturation(player);
             }
         }, 20L, 20L);
     }

@@ -8,9 +8,26 @@ import org.bukkit.WorldType;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-public class SheepFarmWorldCommand implements CommandExecutor {
+import java.util.ArrayList;
+import java.util.List;
+
+public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
+
+    private static final List<String> ROOT_SUBCOMMANDS = List.of(
+            "upgrade",
+            "shop",
+            "status",
+            "topdisplay",
+            "resetdata",
+            "givepoints",
+            "mapsave",
+            "mapload",
+            "world");
+
+    private static final List<String> WORLD_SUBCOMMANDS = List.of("save", "load");
 
     public static String getWorldName(java.util.UUID playerId) {
         return "sheepfarm_" + playerId.toString().replace("-", "");
@@ -42,6 +59,8 @@ public class SheepFarmWorldCommand implements CommandExecutor {
                     + ", Wool regen level: " + SheepMergeManager.getWoolRegenLevel(player)
                     + ", Higher-tier spawn chance: " + SheepMergeManager.getHigherTierChancePercent(player) + "%"
                     + " (Lv." + SheepMergeManager.getHigherTierChanceLevel(player) + ")"
+                    + ", Egg cap: " + SheepMergeManager.getEggCap(player)
+                    + " (Lv." + SheepMergeManager.getPrestigeEggCapLevel(player) + ")"
                     + ", Prestige: " + SheepMergeManager.getPrestigeLevel(player)
                     + ", Prestige points: " + SheepMergeManager.getPrestigePoints(player));
             return true;
@@ -61,7 +80,8 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length == 1 && args[0].equalsIgnoreCase("mapsave")) {
+        if ((args.length == 1 && args[0].equalsIgnoreCase("mapsave"))
+                || (args.length == 2 && args[0].equalsIgnoreCase("world") && args[1].equalsIgnoreCase("save"))) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
@@ -79,7 +99,8 @@ public class SheepFarmWorldCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length == 1 && args[0].equalsIgnoreCase("mapload")) {
+        if ((args.length == 1 && args[0].equalsIgnoreCase("mapload"))
+                || (args.length == 2 && args[0].equalsIgnoreCase("world") && args[1].equalsIgnoreCase("load"))) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
@@ -148,6 +169,48 @@ public class SheepFarmWorldCommand implements CommandExecutor {
         player.teleport(teleportLocation);
         player.sendMessage("You were teleported to your sheep farm world.");
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            return filterSuggestions(ROOT_SUBCOMMANDS, args[0]);
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("world")) {
+            return filterSuggestions(WORLD_SUBCOMMANDS, args[1]);
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("givepoints") && sender.isOp()) {
+            return Bukkit.getOnlinePlayers().stream()
+                    .map(player -> player.getName())
+                    .filter(name -> name != null && name.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .toList();
+        }
+
+        if (args.length == 2 && (args[0].equalsIgnoreCase("resetdata")
+                || args[0].equalsIgnoreCase("givepoints"))) {
+            return Bukkit.getOnlinePlayers().stream()
+                    .map(player -> player.getName())
+                    .filter(name -> name != null && name.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .toList();
+        }
+
+        return List.of();
+    }
+
+    private List<String> filterSuggestions(List<String> suggestions, String prefix) {
+        if (prefix == null || prefix.isBlank()) {
+            return suggestions;
+        }
+        String lowerPrefix = prefix.toLowerCase();
+        List<String> matches = new ArrayList<>();
+        for (String suggestion : suggestions) {
+            if (suggestion.toLowerCase().startsWith(lowerPrefix)) {
+                matches.add(suggestion);
+            }
+        }
+        return matches;
     }
 
     private World ensureFarmWorld(String worldName) {

@@ -16,10 +16,6 @@ public class SheepFarmWorldProtectionListener implements Listener {
         if (isPersonalWorld(world) && !player.isOp()) {
             event.setCancelled(true);
             player.sendMessage("You cannot break blocks in your personal world.");
-            return;
-        }
-        if (isPersonalWorld(world) && player.isOp()) {
-            SheepMergeManager.scheduleAutoFarmLayoutSync(world);
         }
     }
 
@@ -30,10 +26,6 @@ public class SheepFarmWorldProtectionListener implements Listener {
         if (isPersonalWorld(world) && !player.isOp()) {
             event.setCancelled(true);
             player.sendMessage("You cannot place blocks in your personal world.");
-            return;
-        }
-        if (isPersonalWorld(world) && player.isOp()) {
-            SheepMergeManager.scheduleAutoFarmLayoutSync(world);
         }
     }
 

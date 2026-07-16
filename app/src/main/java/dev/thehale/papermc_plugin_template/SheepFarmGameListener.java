@@ -121,8 +121,7 @@ public class SheepFarmGameListener implements Listener {
         }
 
         if (SheepMergeManager.isWorldAtLimit(player.getWorld())) {
-            player.sendMessage(
-                    "You have reached the sheep limit for this world. Spend points with /sheepmerge upgrade to raise it. Or shift + right-click a sheep to merge it with another of the same tier.");
+            player.sendMessage(SheepMergeManager.warning("Farm full. Use /sheepmerge upgrade or merge sheep."));
             event.setCancelled(true);
             return;
         }
@@ -153,8 +152,8 @@ public class SheepFarmGameListener implements Listener {
         if (player.isSneaking() && !SheepMergeManager.hasPickedUpSheep(player)) {
             SheepTier tier = SheepMergeManager.getSheepTier(targetSheep);
             SheepMergeManager.storePickedUpSheep(player, targetSheep);
-            player.sendMessage("You picked up a " + tier.getDisplayName()
-                    + " above your head. Sneak-right-click another sheep of the same tier to merge, or right-click empty air to drop it.");
+            SheepMergeManager.showOverlay(player,
+                    SheepMergeManager.action("Held: " + tier.getDisplayName() + " | sneak-right-click same tier"));
             return;
         }
 
@@ -176,12 +175,13 @@ public class SheepFarmGameListener implements Listener {
         }
 
         if (!carriedTier.equals(targetTier)) {
-            player.sendMessage("You can only throw a sheep at another sheep of the same tier.");
+            SheepMergeManager.dropPickedUpSheep(player);
+            player.sendMessage(SheepMergeManager.warning("Tier mismatch. Sheep dropped."));
             return;
         }
 
         if (!carriedTier.hasNext()) {
-            player.sendMessage("That sheep is already the highest tier and cannot be merged further.");
+            player.sendMessage(SheepMergeManager.warning("Top tier. No merge."));
             return;
         }
 
@@ -199,8 +199,13 @@ public class SheepFarmGameListener implements Listener {
         mergedSheep.setVelocity(velocity);
         world.spawnParticle(Particle.VILLAGER_HAPPY, spawnLocation.add(0, 0.5, 0), 15, 0.3, 0.3, 0.3, 0.05);
 
-        SheepMergeManager.showOverlay(player, "Merged: " + carriedTier.getDisplayName() + " + "
-                + carriedTier.getDisplayName() + " -> " + mergedTier.getDisplayName());
+        if (mergedTier.getLevel() > SheepMergeManager.getUnlockedTierCap(world)) {
+            SheepMergeManager.announceTierUnlock(player, mergedTier);
+        }
+        SheepMergeManager.recordSheepMerge(player);
+        SheepMergeManager.showOverlay(player, SheepMergeManager.action(
+                carriedTier.getDisplayName() + " + " + carriedTier.getDisplayName() + " -> "
+                        + mergedTier.getDisplayName()));
         SheepMergeManager.clearPickedUpSheep(player);
     }
 
@@ -213,6 +218,8 @@ public class SheepFarmGameListener implements Listener {
             SheepMergeManager.restorePlayerScoreboard(player);
         }
         SheepMergeManager.clearPickedUpSheep(player);
+        SheepMergeManager.clearMergeReminder(player);
+        SheepMergeManager.clearPrestigeReminder(player);
     }
 
     @EventHandler
@@ -224,6 +231,8 @@ public class SheepFarmGameListener implements Listener {
             SheepMergeManager.restorePlayerScoreboard(player);
         }
         SheepMergeManager.clearPickedUpSheep(player);
+        SheepMergeManager.clearMergeReminder(player);
+        SheepMergeManager.clearPrestigeReminder(player);
     }
 
     @EventHandler
