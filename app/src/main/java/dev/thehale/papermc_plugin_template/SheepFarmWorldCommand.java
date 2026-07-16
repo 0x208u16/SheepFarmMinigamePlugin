@@ -1,6 +1,7 @@
 package dev.thehale.papermc_plugin_template;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Difficulty;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -339,9 +340,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     public static World ensureFarmWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
+            applyFarmWorldRules(world);
             return world;
         }
         return createFlatWorld(worldName);
+    }
+
+    public static void applyFarmRulesToLoadedWorlds() {
+        for (World world : Bukkit.getWorlds()) {
+            applyFarmWorldRules(world);
+        }
     }
 
     public static World ensureTutorialWorld(java.util.UUID playerId) {
@@ -380,6 +388,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static World createFlatWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
+            applyFarmWorldRules(world);
             return world;
         }
         WorldCreator creator = new WorldCreator(worldName);
@@ -394,7 +403,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return null;
         }
 
+        applyFarmWorldRules(world);
         SheepMergeManager.applyFarmLayout(world);
         return world;
+    }
+
+    private static void applyFarmWorldRules(World world) {
+        if (world == null || !SheepMergeManager.isSheepFarmWorld(world)) {
+            return;
+        }
+        world.setPVP(false);
+        world.setDifficulty(Difficulty.PEACEFUL);
     }
 }

@@ -20,6 +20,9 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Display;
@@ -88,6 +91,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
+    private static final Map<UUID, Integer> savedLevels = new HashMap<>();
+    private static final Map<UUID, Float> savedExpProgress = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
@@ -163,6 +168,13 @@ public final class SheepMergeManager {
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
     private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
     private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
+    private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
+    private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
+    private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
+    private static final long SHEEP_RAIN_MIN_INTERVAL_MS = 1_000L;
+    private static final long SHEEP_RAIN_MAX_INTERVAL_MS = 5_000L;
+    private static final int SHEEP_RAIN_SPAWN_HEIGHT = 12;
+    private static final double SHEEP_RAIN_HORIZONTAL_PADDING = 1.5D;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
     private static final int TUTORIAL_SPAWN_TARGET = 1;
     private static final int TUTORIAL_MERGE_TARGET = 1;
@@ -205,6 +217,10 @@ public final class SheepMergeManager {
     private static File dataFile;
     private static FileConfiguration farmLayoutConfig;
     private static File farmLayoutFile;
+    private static long nextRandomEventRollAtMs = 0L;
+    private static long sheepRainEventEndsAtMs = 0L;
+    private static long nextSheepRainSpawnAtMs = 0L;
+    private static BossBar sheepRainBossBar;
 
     private SheepMergeManager() {
         throw new UnsupportedOperationException("Utility class");
@@ -551,8 +567,144 @@ public final class SheepMergeManager {
                 "Jackpot Shears ended");
         tickAbilityVisual(player, playerId, now, activeAutoMergeUntilByPlayer, org.bukkit.Particle.ENCHANTMENT_TABLE,
                 "Auto Merge ended");
+        emitAbilityAura(player, playerId, now);
         tickAutoMergeAbility(player, playerId, now);
         updatePointsScoreboard(player);
+    }
+
+    public static void tickRandomFarmEvents() {
+        if (plugin == null) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (sheepRainEventEndsAtMs > now) {
+            tickSheepRainEvent(now);
+        } else if (sheepRainEventEndsAtMs > 0L) {
+            endSheepRainEvent();
+        }
+
+        if (nextRandomEventRollAtMs <= 0L) {
+            nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
+            return;
+        }
+        if (now < nextRandomEventRollAtMs || sheepRainEventEndsAtMs > now) {
+            return;
+        }
+
+        nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
+        if (RANDOM.nextInt(RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR) != 0) {
+            return;
+        }
+
+        startSheepRainEvent(now);
+    }
+
+    private static void startSheepRainEvent(long now) {
+        sheepRainEventEndsAtMs = now + SHEEP_RAIN_EVENT_DURATION_MS;
+        nextSheepRainSpawnAtMs = now;
+
+        if (sheepRainBossBar == null) {
+            sheepRainBossBar = Bukkit.createBossBar("Sheep Storm", BarColor.WHITE, BarStyle.SEGMENTED_10);
+        }
+        sheepRainBossBar.setVisible(true);
+
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            if (!isSheepFarmWorld(online.getWorld())) {
+                sheepRainBossBar.removePlayer(online);
+                continue;
+            }
+            sheepRainBossBar.addPlayer(online);
+            online.sendMessage(action("Random Event: Sheep Storm started."));
+            playSound(online, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.5f, 1.6f);
+        }
+        updateSheepRainBossBar(now);
+    }
+
+    private static void endSheepRainEvent() {
+        sheepRainEventEndsAtMs = 0L;
+        nextSheepRainSpawnAtMs = 0L;
+        if (sheepRainBossBar != null) {
+            sheepRainBossBar.removeAll();
+            sheepRainBossBar.setVisible(false);
+        }
+        if (plugin == null) {
+            return;
+        }
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            if (!isSheepFarmWorld(online.getWorld())) {
+                continue;
+            }
+            online.sendMessage(hint("Random Event: Sheep Storm ended."));
+            playSound(online, Sound.BLOCK_BEACON_DEACTIVATE, 0.7f, 1.2f);
+        }
+    }
+
+    private static void tickSheepRainEvent(long now) {
+        updateSheepRainBossBar(now);
+        if (now < nextSheepRainSpawnAtMs) {
+            return;
+        }
+
+        for (World world : plugin.getServer().getWorlds()) {
+            if (!isSheepFarmWorld(world) || isWorldAtLimit(world)) {
+                continue;
+            }
+            spawnRainSheep(world);
+        }
+        nextSheepRainSpawnAtMs = now + getRandomSheepRainIntervalMs();
+    }
+
+    private static void updateSheepRainBossBar(long now) {
+        if (sheepRainBossBar == null) {
+            return;
+        }
+
+        long remaining = Math.max(0L, sheepRainEventEndsAtMs - now);
+        double progress = Math.max(0.0D, Math.min(1.0D, remaining / (double) SHEEP_RAIN_EVENT_DURATION_MS));
+        sheepRainBossBar.setProgress(progress);
+        sheepRainBossBar.setTitle(color("&fSheep Storm &7- &e" + formatDuration(remaining) + " left"));
+
+        if (plugin == null) {
+            return;
+        }
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            if (isSheepFarmWorld(online.getWorld())) {
+                sheepRainBossBar.addPlayer(online);
+            } else {
+                sheepRainBossBar.removePlayer(online);
+            }
+        }
+    }
+
+    private static long getRandomSheepRainIntervalMs() {
+        long range = SHEEP_RAIN_MAX_INTERVAL_MS - SHEEP_RAIN_MIN_INTERVAL_MS;
+        if (range <= 0L) {
+            return SHEEP_RAIN_MIN_INTERVAL_MS;
+        }
+        return SHEEP_RAIN_MIN_INTERVAL_MS + RANDOM.nextInt((int) range + 1);
+    }
+
+    private static void spawnRainSheep(World world) {
+        double min = -FARM_RADIUS + SHEEP_RAIN_HORIZONTAL_PADDING;
+        double max = FARM_RADIUS - SHEEP_RAIN_HORIZONTAL_PADDING;
+        double x = min + RANDOM.nextDouble() * Math.max(0.01D, max - min);
+        double z = min + RANDOM.nextDouble() * Math.max(0.01D, max - min);
+        double y = FARM_BASE_Y + SHEEP_RAIN_SPAWN_HEIGHT;
+        Location spawnLocation = new Location(world, x, y, z);
+
+        Sheep sheep = world.spawn(spawnLocation, Sheep.class);
+        setSheepTier(sheep, rollSpawnTier(world));
+        sheep.setVelocity(new Vector(0.0D, -0.1D, 0.0D));
+
+        world.spawnParticle(org.bukkit.Particle.CLOUD,
+                spawnLocation.clone().add(0.0D, 0.4D, 0.0D),
+                14,
+                0.2D,
+                0.4D,
+                0.2D,
+                0.02D);
+        world.playSound(spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.7f, 1.5f);
     }
 
     private static void tickAutoMergeAbility(Player player, UUID playerId, long now) {
@@ -632,9 +784,64 @@ public final class SheepMergeManager {
         if (now >= until) {
             activeUntil.remove(playerId);
             player.sendMessage(hint(endedText));
+            playSound(player, Sound.BLOCK_BEACON_DEACTIVATE, 0.6f, 1.6f);
             return;
         }
         player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 5, 0.25, 0.35, 0.25, 0.01);
+    }
+
+    private static void emitAbilityAura(Player player, UUID playerId, long now) {
+        if (isAbilityActive(activeLuckyBurstUntilByPlayer, playerId)) {
+            player.getWorld().spawnParticle(org.bukkit.Particle.TOTEM,
+                    player.getLocation().add(0.0D, 1.1D, 0.0D),
+                    2,
+                    0.18D,
+                    0.28D,
+                    0.18D,
+                    0.0D);
+            if ((now / 3000L) % 2L == 0L) {
+                playSound(player, Sound.BLOCK_AMETHYST_CLUSTER_HIT, 0.25f, 1.8f);
+            }
+        }
+
+        if (isAbilityActive(activeWoolRushUntilByPlayer, playerId)) {
+            player.getWorld().spawnParticle(org.bukkit.Particle.SPORE_BLOSSOM_AIR,
+                    player.getLocation().add(0.0D, 0.9D, 0.0D),
+                    4,
+                    0.22D,
+                    0.26D,
+                    0.22D,
+                    0.01D);
+            if ((now / 4000L) % 2L == 0L) {
+                playSound(player, Sound.BLOCK_WOOL_PLACE, 0.25f, 1.7f);
+            }
+        }
+
+        if (isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)) {
+            player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORKS_SPARK,
+                    player.getLocation().add(0.0D, 1.25D, 0.0D),
+                    3,
+                    0.25D,
+                    0.35D,
+                    0.25D,
+                    0.01D);
+            if ((now / 3000L) % 2L == 1L) {
+                playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.2f, 1.9f);
+            }
+        }
+
+        if (isAbilityActive(activeAutoMergeUntilByPlayer, playerId)) {
+            player.getWorld().spawnParticle(org.bukkit.Particle.WAX_ON,
+                    player.getLocation().add(0.0D, 1.0D, 0.0D),
+                    5,
+                    0.22D,
+                    0.28D,
+                    0.22D,
+                    0.02D);
+            if ((now / 4000L) % 2L == 1L) {
+                playSound(player, Sound.BLOCK_PISTON_CONTRACT, 0.2f, 1.6f);
+            }
+        }
     }
 
     public static int getShearShopLevel(Player player) {
@@ -1743,21 +1950,25 @@ public final class SheepMergeManager {
         Long nextTimestamp = nextEggTimestampByPlayer.get(playerId);
         if (nextTimestamp == null) {
             nextEggTimestampByPlayer.put(playerId, now + getEggIntervalSeconds(player) * 1000L);
+            updateEggHud(player);
             return;
         }
 
         long next = nextTimestamp;
         if (now < next) {
+            updateEggHud(player);
             return;
         }
 
         if (getEggCount(player) >= getEggCap(player)) {
             nextEggTimestampByPlayer.put(playerId, now + 2000L);
+            updateEggHud(player);
             return;
         }
 
         if (player.getInventory().firstEmpty() == -1) {
             nextEggTimestampByPlayer.put(playerId, now + 2000L);
+            updateEggHud(player);
             return;
         }
 
@@ -1765,6 +1976,7 @@ public final class SheepMergeManager {
         player.getInventory().addItem(egg);
         showOverlay(player, action("+1 egg"));
         nextEggTimestampByPlayer.put(playerId, now + getEggIntervalSeconds(player) * 1000L);
+        updateEggHud(player);
     }
 
     public static int getStartEggsBonus(Player player) {
@@ -2118,6 +2330,7 @@ public final class SheepMergeManager {
         }
         nextEggTimestampByPlayer.put(player.getUniqueId(),
                 System.currentTimeMillis() + getEggIntervalSeconds(player) * 1000L);
+        updateEggHud(player);
     }
 
     public static void clearEggTimer(Player player) {
@@ -2125,6 +2338,49 @@ public final class SheepMergeManager {
             return;
         }
         nextEggTimestampByPlayer.remove(player.getUniqueId());
+        restoreSavedExperience(player);
+    }
+
+    private static void updateEggHud(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+
+        saveExperienceStateIfNeeded(player);
+        player.setLevel(getEggCount(player));
+
+        long now = System.currentTimeMillis();
+        long intervalMs = Math.max(1000L, getEggIntervalSeconds(player) * 1000L);
+        long next = nextEggTimestampByPlayer.getOrDefault(player.getUniqueId(), now + intervalMs);
+        long remainingMs = Math.max(0L, next - now);
+        float progress = 1.0f - Math.min(1.0f, remainingMs / (float) intervalMs);
+        player.setExp(Math.max(0.0f, Math.min(1.0f, progress)));
+    }
+
+    private static void saveExperienceStateIfNeeded(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (savedLevels.containsKey(playerId)) {
+            return;
+        }
+        savedLevels.put(playerId, player.getLevel());
+        savedExpProgress.put(playerId, player.getExp());
+    }
+
+    private static void restoreSavedExperience(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        Integer savedLevel = savedLevels.remove(playerId);
+        Float savedExp = savedExpProgress.remove(playerId);
+        if (savedLevel == null || savedExp == null) {
+            return;
+        }
+        player.setLevel(savedLevel);
+        player.setExp(savedExp);
     }
 
     public static void openUpgradeMenu(Player player) {
@@ -2578,6 +2834,9 @@ public final class SheepMergeManager {
                         Sound.BLOCK_BEACON_POWER_SELECT,
                         org.bukkit.Particle.END_ROD)) {
                     markTutorialAbilityUsed(player);
+                    player.getWorld().spawnParticle(org.bukkit.Particle.TOTEM,
+                            player.getLocation().add(0, 1.1, 0), 18, 0.45, 0.45, 0.45, 0.0);
+                    playSound(player, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 0.9f, 1.5f);
                     player.sendMessage(action("Lucky Burst active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
@@ -2592,6 +2851,9 @@ public final class SheepMergeManager {
                         Sound.ENTITY_ENDER_DRAGON_FLAP,
                         org.bukkit.Particle.CLOUD)) {
                     markTutorialAbilityUsed(player);
+                    player.getWorld().spawnParticle(org.bukkit.Particle.SPORE_BLOSSOM_AIR,
+                            player.getLocation().add(0, 1.0, 0), 28, 0.5, 0.35, 0.5, 0.01);
+                    playSound(player, Sound.BLOCK_MOSS_CARPET_PLACE, 1.0f, 0.8f);
                     player.sendMessage(action("Wool Rush active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
@@ -2606,6 +2868,9 @@ public final class SheepMergeManager {
                         Sound.ENTITY_PLAYER_LEVELUP,
                         org.bukkit.Particle.CRIT)) {
                     markTutorialAbilityUsed(player);
+                    player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORKS_SPARK,
+                            player.getLocation().add(0, 1.1, 0), 22, 0.45, 0.45, 0.45, 0.02);
+                    playSound(player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.8f, 1.6f);
                     player.sendMessage(action("Jackpot Shears active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
@@ -2621,6 +2886,9 @@ public final class SheepMergeManager {
                         org.bukkit.Particle.ENCHANTMENT_TABLE)) {
                     markTutorialAbilityUsed(player);
                     nextAutoMergeAtByPlayer.put(player.getUniqueId(), 0L);
+                    player.getWorld().spawnParticle(org.bukkit.Particle.WAX_ON,
+                            player.getLocation().add(0, 1.0, 0), 26, 0.5, 0.4, 0.5, 0.03);
+                    playSound(player, Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.3f);
                     player.sendMessage(action("Auto Merge active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
@@ -3008,6 +3276,8 @@ public final class SheepMergeManager {
         }
         savedInventories.clear();
         savedScoreboards.clear();
+        savedLevels.clear();
+        savedExpProgress.clear();
     }
 
     public static ItemStack getSheepMergeShears() {

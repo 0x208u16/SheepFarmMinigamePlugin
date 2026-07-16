@@ -52,11 +52,13 @@ public class SheepMergePlugin extends JavaPlugin {
         log = getLogger();
         SheepMergeManager.initialize(this);
         setup();
+        SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
         scheduleSheepEggDistribution();
         scheduleSheepNameUpdates();
         scheduleLiveSheepCountUpdates();
         scheduleFarmLoadoutAndReminderUpdates();
         scheduleFarmSaturationUpdates();
+        scheduleRandomFarmEvents();
         getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
     }
@@ -120,6 +122,13 @@ public class SheepMergePlugin extends JavaPlugin {
                 SheepMergeManager.applyFarmSaturation(player);
             }
         }, 20L, 20L);
+    }
+
+    private void scheduleRandomFarmEvents() {
+        getServer().getScheduler().runTaskTimer(this,
+                SheepMergeManager::tickRandomFarmEvents,
+                20L,
+                20L);
     }
 
     @Override
