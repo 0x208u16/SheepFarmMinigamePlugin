@@ -103,6 +103,7 @@ public final class SheepMergeManager {
     private static final Pattern TUTORIAL_OWNER_ID_PATTERN = Pattern.compile("^sheeptutorial_([0-9a-fA-F]{32})$");
     private static final Random RANDOM = new Random();
     private static final int BASE_SHEEP_LIMIT = 10;
+    private static final int MAX_SHEEP_LIMIT = 50;
     private static final int LIMIT_UPGRADE_STEP = 5;
     private static final int LIMIT_UPGRADE_COST = 20;
     private static final int BASE_EGG_INTERVAL_SECONDS = 10;
@@ -2034,8 +2035,9 @@ public final class SheepMergeManager {
         if (player == null) {
             return BASE_SHEEP_LIMIT;
         }
-        return BASE_SHEEP_LIMIT
-                + extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return Math.min(
+                MAX_SHEEP_LIMIT,
+                BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getOwnerLimit(World world) {
@@ -2043,8 +2045,9 @@ public final class SheepMergeManager {
         if (ownerId == null) {
             return BASE_SHEEP_LIMIT;
         }
-        return BASE_SHEEP_LIMIT
-                + extraLimitByPlayer.getOrDefault(ownerId, 0);
+        return Math.min(
+                MAX_SHEEP_LIMIT,
+                BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(ownerId, 0)));
     }
 
     public static int getUpgradeCost(Player player) {
@@ -2059,12 +2062,17 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
+        if (getPlayerLimit(player) >= MAX_SHEEP_LIMIT) {
+            return false;
+        }
         int cost = getUpgradeCost(player);
         if (!trySpendPoints(player, cost)) {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        extraLimitByPlayer.put(playerId, extraLimitByPlayer.getOrDefault(playerId, 0) + LIMIT_UPGRADE_STEP);
+        int currentExtra = Math.max(0, extraLimitByPlayer.getOrDefault(playerId, 0));
+        int maxExtra = MAX_SHEEP_LIMIT - BASE_SHEEP_LIMIT;
+        extraLimitByPlayer.put(playerId, Math.min(maxExtra, currentExtra + LIMIT_UPGRADE_STEP));
         saveData();
         return true;
     }
@@ -2073,7 +2081,9 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0) / LIMIT_UPGRADE_STEP;
+        int extra = Math.max(0, extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0));
+        int maxExtra = MAX_SHEEP_LIMIT - BASE_SHEEP_LIMIT;
+        return Math.min(maxExtra, extra) / LIMIT_UPGRADE_STEP;
     }
 
     public static int getEggSpeedLevel(Player player) {
@@ -2651,16 +2661,18 @@ public final class SheepMergeManager {
 
         Inventory inventory = Bukkit.createInventory(null, 27, UPGRADE_MENU_TITLE);
         int limitLevel = getLimitUpgradeLevel(player);
+        int currentLimit = getPlayerLimit(player);
+        boolean limitMaxed = currentLimit >= MAX_SHEEP_LIMIT;
         int limitCost = getUpgradeCost(player);
         inventory.setItem(LIMIT_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
                 "Sheep Limit",
                 List.of(
-                        "Level: " + limitLevel,
-                        "Current limit: " + getPlayerLimit(player),
+                        "Level: " + limitLevel + " / " + ((MAX_SHEEP_LIMIT - BASE_SHEEP_LIMIT) / LIMIT_UPGRADE_STEP),
+                        "Current limit: " + currentLimit + " / " + MAX_SHEEP_LIMIT,
                         "Increase by: +" + getLimitUpgradeStep(),
-                        "Cost: " + limitCost + " points",
-                        "Click to purchase")));
+                        limitMaxed ? "MAXED" : "Cost: " + limitCost + " points",
+                        limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
         int eggLevel = getEggSpeedLevel(player);
         int eggCost = getEggSpeedUpgradeCost(player);
@@ -2755,7 +2767,9 @@ public final class SheepMergeManager {
         }
         switch (slot) {
             case LIMIT_UPGRADE_SLOT -> {
-                if (upgradeLimit(player)) {
+                if (getPlayerLimit(player) >= MAX_SHEEP_LIMIT) {
+                    player.sendMessage(warning("Sheep limit maxed."));
+                } else if (upgradeLimit(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Limit up: " + getPlayerLimit(player)));
                 } else {
