@@ -149,8 +149,11 @@ public final class SheepMergeManager {
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
     private static final long SHEEP_RESCUE_TIMEOUT_MS = 10_000L;
+    private static final long SHEEP_RESCUE_INITIAL_YEET_MS = 450L;
     private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.95D;
     private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.45D;
+    private static final double SHEEP_RESCUE_INITIAL_YEET_HORIZONTAL_VELOCITY = 0.70D;
+    private static final double SHEEP_RESCUE_INITIAL_YEET_UPWARD_VELOCITY = 0.38D;
     private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
     private static final double SHEEP_FALL_TRIGGER_EDGE_MARGIN = 0.25D;
     private static final double SHEEP_FALL_TRIGGER_Y = FARM_BASE_Y + 1.05D;
@@ -1397,6 +1400,26 @@ public final class SheepMergeManager {
             sheepRescueStartByEntity.remove(sheepId);
             sheep.setCollidable(true);
             return false;
+        }
+
+        if (now - started < SHEEP_RESCUE_INITIAL_YEET_MS) {
+            Vector awayFromCenter = new Vector(location.getX() - 0.5D, 0.0D, location.getZ() - 0.5D);
+            double horizontalDistance = Math.sqrt(awayFromCenter.getX() * awayFromCenter.getX()
+                    + awayFromCenter.getZ() * awayFromCenter.getZ());
+            if (horizontalDistance < 0.0001D) {
+                awayFromCenter = sheep.getVelocity().clone().setY(0.0D);
+                horizontalDistance = Math.sqrt(awayFromCenter.getX() * awayFromCenter.getX()
+                        + awayFromCenter.getZ() * awayFromCenter.getZ());
+            }
+            if (horizontalDistance > 0.0001D) {
+                awayFromCenter.normalize().multiply(SHEEP_RESCUE_INITIAL_YEET_HORIZONTAL_VELOCITY);
+                sheep.setVelocity(new Vector(
+                        awayFromCenter.getX(),
+                        SHEEP_RESCUE_INITIAL_YEET_UPWARD_VELOCITY,
+                        awayFromCenter.getZ()));
+                sheep.setFallDistance(0.0F);
+                return true;
+            }
         }
 
         Vector toCenter = new Vector(0.5D - location.getX(), 0.0D, 0.5D - location.getZ());
