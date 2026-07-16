@@ -221,6 +221,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             SheepMergeManager.adminResetPlayer(target);
             player.sendMessage("Reset data for " + target.getName() + ".");
+            SheepMergeManager.startTutorial(target, false);
             return true;
         }
 
@@ -246,6 +247,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             SheepMergeManager.adminGivePoints(target, amount);
             SheepMergeManager.updatePointsScoreboard(target);
             player.sendMessage("Updated points for " + target.getName() + ".");
+            return true;
+        }
+
+        if (!SheepMergeManager.isTutorialCompleted(player)) {
+            SheepMergeManager.startTutorial(player, false);
             return true;
         }
 

@@ -60,6 +60,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> tutorialMergesByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialUpgradeOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialQuestOpenedByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> tutorialQuestUpgradesOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialPrestigeOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialAbilityUsedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialShearShopOpenedByPlayer = new HashMap<>();
@@ -762,16 +763,54 @@ public final class SheepMergeManager {
         if (tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
             count++;
         }
+        if (tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
+            count++;
+        }
         if (tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
             count++;
         }
         if (tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             count++;
         }
-        if (tutorialShearShopOpenedByPlayer.getOrDefault(playerId, false)) {
-            count++;
-        }
         return count;
+    }
+
+    private static String getTutorialNextStepLine(Player player) {
+        if (player == null) {
+            return "Step: Use /sheepmerge tutorial";
+        }
+        if (getTutorialShearCount(player) < TUTORIAL_SHEAR_TARGET) {
+            return "Step: Shear sheep with shears (" + getTutorialShearCount(player) + "/" + TUTORIAL_SHEAR_TARGET
+                    + ")";
+        }
+        if (getTutorialSpawnCount(player) < TUTORIAL_SPAWN_TARGET) {
+            return "Step: Spawn sheep with eggs (" + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET + ")";
+        }
+        if (getTutorialMergeCount(player) < TUTORIAL_MERGE_TARGET) {
+            return "Step: Merge same-tier sheep <While looking at a close by sheep: SHIFT + RIGHT CLICK> ("
+                    + getTutorialMergeCount(player) + "/" + TUTORIAL_MERGE_TARGET + ")";
+        }
+
+        UUID playerId = player.getUniqueId();
+        if (!tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: Run /sheepmerge upgrade";
+        }
+        if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Upgrades, click Quests";
+        }
+        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Quests, click Quest Upgrades";
+        }
+        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Upgrades, click Prestige";
+        }
+        if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Quests, activate any ability";
+        }
+        if (!tutorialShearShopOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Bonus: In Upgrades, open Shear Shop to learn shear upgrades";
+        }
+        return "Step: Tutorial complete";
     }
 
     public static void startTutorial(Player player, boolean resetProgress) {
@@ -786,6 +825,7 @@ public final class SheepMergeManager {
             tutorialMergesByPlayer.put(playerId, 0);
             tutorialUpgradeOpenedByPlayer.remove(playerId);
             tutorialQuestOpenedByPlayer.remove(playerId);
+            tutorialQuestUpgradesOpenedByPlayer.remove(playerId);
             tutorialPrestigeOpenedByPlayer.remove(playerId);
             tutorialAbilityUsedByPlayer.remove(playerId);
             tutorialShearShopOpenedByPlayer.remove(playerId);
@@ -798,12 +838,15 @@ public final class SheepMergeManager {
         }
 
         player.sendTitle(color("&eSheepMerge Tutorial"), color("&7Learn the full game flow"), 10, 55, 10);
-        player.sendMessage(hint("Tutorial goals:"));
+        player.sendMessage(hint("Tutorial steps:"));
         player.sendMessage(hint("1) Shear 3 sheep, spawn 1 sheep, merge 1 pair."));
-        player.sendMessage(hint("2) Open: Upgrades, Quests, Prestige, Shear Shop."));
-        player.sendMessage(hint("3) Activate one quest ability."));
-        player.sendMessage(hint("Use /sheepmerge upgrade to start."));
+        player.sendMessage(hint("2) Run /sheepmerge upgrade, then open Quests."));
+        player.sendMessage(hint("3) In Quests, open Quest Upgrades (counts as section 5 fix)."));
+        player.sendMessage(hint("4) Open Prestige from Upgrades."));
+        player.sendMessage(hint("5) Activate one quest ability."));
+        player.sendMessage(hint("Bonus: Open Shear Shop to learn shear upgrades."));
         player.sendMessage(hint(getTutorialProgressLine(player)));
+        player.sendMessage(hint(getTutorialNextStepLine(player)));
     }
 
     private static void markTutorialSection(Player player, Map<UUID, Boolean> sectionMap, String message) {
@@ -817,6 +860,7 @@ public final class SheepMergeManager {
         sectionMap.put(playerId, true);
         player.sendMessage(action(message));
         player.sendMessage(hint(getTutorialProgressLine(player)));
+        player.sendMessage(hint(getTutorialNextStepLine(player)));
         checkTutorialCompletion(player);
     }
 
@@ -830,6 +874,10 @@ public final class SheepMergeManager {
 
     public static void markTutorialPrestigeOpened(Player player) {
         markTutorialSection(player, tutorialPrestigeOpenedByPlayer, "Tutorial: Opened Prestige.");
+    }
+
+    public static void markTutorialQuestUpgradesOpened(Player player) {
+        markTutorialSection(player, tutorialQuestUpgradesOpenedByPlayer, "Tutorial: Opened Quest Upgrades.");
     }
 
     public static void markTutorialAbilityUsed(Player player) {
@@ -846,6 +894,7 @@ public final class SheepMergeManager {
         }
         tutorialShearsByPlayer.put(player.getUniqueId(), getTutorialShearCount(player) + 1);
         player.sendMessage(hint(getTutorialProgressLine(player)));
+        player.sendMessage(hint(getTutorialNextStepLine(player)));
         checkTutorialCompletion(player);
     }
 
@@ -855,6 +904,7 @@ public final class SheepMergeManager {
         }
         tutorialSpawnsByPlayer.put(player.getUniqueId(), getTutorialSpawnCount(player) + 1);
         player.sendMessage(hint(getTutorialProgressLine(player)));
+        player.sendMessage(hint(getTutorialNextStepLine(player)));
         checkTutorialCompletion(player);
     }
 
@@ -864,6 +914,7 @@ public final class SheepMergeManager {
         }
         tutorialMergesByPlayer.put(player.getUniqueId(), getTutorialMergeCount(player) + 1);
         player.sendMessage(hint(getTutorialProgressLine(player)));
+        player.sendMessage(hint(getTutorialNextStepLine(player)));
         checkTutorialCompletion(player);
     }
 
@@ -917,6 +968,7 @@ public final class SheepMergeManager {
         tutorialMergesByPlayer.remove(id);
         tutorialUpgradeOpenedByPlayer.remove(id);
         tutorialQuestOpenedByPlayer.remove(id);
+        tutorialQuestUpgradesOpenedByPlayer.remove(id);
         tutorialPrestigeOpenedByPlayer.remove(id);
         tutorialAbilityUsedByPlayer.remove(id);
         tutorialShearShopOpenedByPlayer.remove(id);
@@ -2593,6 +2645,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
+        markTutorialQuestUpgradesOpened(player);
         Inventory inventory = Bukkit.createInventory(null, 27, QUEST_UPGRADES_MENU_TITLE);
         inventory.setItem(QUEST_UPGRADE_DURATION_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
@@ -3001,6 +3054,7 @@ public final class SheepMergeManager {
             dataConfig.set("tutorialMerges", null);
             dataConfig.set("tutorialUpgradeOpened", null);
             dataConfig.set("tutorialQuestOpened", null);
+            dataConfig.set("tutorialQuestUpgradesOpened", null);
             dataConfig.set("tutorialPrestigeOpened", null);
             dataConfig.set("tutorialAbilityUsed", null);
             dataConfig.set("tutorialShearShopOpened", null);
@@ -3072,6 +3126,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : tutorialQuestOpenedByPlayer.entrySet()) {
                 dataConfig.set("tutorialQuestOpened." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : tutorialQuestUpgradesOpenedByPlayer.entrySet()) {
+                dataConfig.set("tutorialQuestUpgradesOpened." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Boolean> entry : tutorialPrestigeOpenedByPlayer.entrySet()) {
                 dataConfig.set("tutorialPrestigeOpened." + entry.getKey().toString(), entry.getValue());
@@ -3334,6 +3391,17 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     tutorialQuestOpenedByPlayer.put(uuid, dataConfig.getBoolean("tutorialQuestOpened." + key, false));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("tutorialQuestUpgradesOpened")) {
+            dataConfig.getConfigurationSection("tutorialQuestUpgradesOpened").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    tutorialQuestUpgradesOpenedByPlayer.put(uuid,
+                            dataConfig.getBoolean("tutorialQuestUpgradesOpened." + key, false));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
