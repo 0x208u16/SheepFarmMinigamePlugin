@@ -85,6 +85,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> activeJackpotShearsUntilByPlayer = new HashMap<>();
     private static final Map<UUID, Long> activeAutoMergeUntilByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutoMergeAtByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastAbilityAuraSoundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextEggTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> prestigeTitleReminderShownByPlayer = new HashMap<>();
@@ -148,6 +149,7 @@ public final class SheepMergeManager {
     private static final long QUEST_WOOL_RUSH_BASE_DURATION_MS = 4L * 60L * 1000L;
     private static final long QUEST_JACKPOT_SHEARS_BASE_DURATION_MS = 2L * 60L * 1000L;
     private static final long QUEST_AUTO_MERGE_BASE_DURATION_MS = 90L * 1000L;
+    private static final long ABILITY_AURA_SOUND_INTERVAL_MS = 15_000L;
     private static final long QUEST_AUTO_MERGE_INTERVAL_MS = 1000L;
     private static final int QUEST_UPGRADE_DURATION_BASE_COST = 12;
     private static final int QUEST_UPGRADE_POWER_BASE_COST = 15;
@@ -1050,7 +1052,9 @@ public final class SheepMergeManager {
     }
 
     private static void emitAbilityAura(Player player, UUID playerId, long now) {
+        boolean hasActiveAbility = false;
         if (isAbilityActive(activeLuckyBurstUntilByPlayer, playerId)) {
+            hasActiveAbility = true;
             player.getWorld().spawnParticle(org.bukkit.Particle.TOTEM,
                     player.getLocation().add(0.0D, 1.1D, 0.0D),
                     2,
@@ -1058,12 +1062,10 @@ public final class SheepMergeManager {
                     0.28D,
                     0.18D,
                     0.0D);
-            if ((now / 3000L) % 2L == 0L) {
-                playSound(player, Sound.BLOCK_AMETHYST_CLUSTER_HIT, 0.25f, 1.8f);
-            }
         }
 
         if (isAbilityActive(activeWoolRushUntilByPlayer, playerId)) {
+            hasActiveAbility = true;
             player.getWorld().spawnParticle(org.bukkit.Particle.SPORE_BLOSSOM_AIR,
                     player.getLocation().add(0.0D, 0.9D, 0.0D),
                     4,
@@ -1071,12 +1073,10 @@ public final class SheepMergeManager {
                     0.26D,
                     0.22D,
                     0.01D);
-            if ((now / 4000L) % 2L == 0L) {
-                playSound(player, Sound.BLOCK_WOOL_PLACE, 0.25f, 1.7f);
-            }
         }
 
         if (isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)) {
+            hasActiveAbility = true;
             player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORKS_SPARK,
                     player.getLocation().add(0.0D, 1.25D, 0.0D),
                     3,
@@ -1084,12 +1084,10 @@ public final class SheepMergeManager {
                     0.35D,
                     0.25D,
                     0.01D);
-            if ((now / 3000L) % 2L == 1L) {
-                playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.2f, 1.9f);
-            }
         }
 
         if (isAbilityActive(activeAutoMergeUntilByPlayer, playerId)) {
+            hasActiveAbility = true;
             player.getWorld().spawnParticle(org.bukkit.Particle.WAX_ON,
                     player.getLocation().add(0.0D, 1.0D, 0.0D),
                     5,
@@ -1097,10 +1095,24 @@ public final class SheepMergeManager {
                     0.28D,
                     0.22D,
                     0.02D);
-            if ((now / 4000L) % 2L == 1L) {
-                playSound(player, Sound.BLOCK_PISTON_CONTRACT, 0.2f, 1.6f);
-            }
         }
+
+        if (!hasActiveAbility) {
+            return;
+        }
+
+        long lastSoundAt = lastAbilityAuraSoundTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastSoundAt < ABILITY_AURA_SOUND_INTERVAL_MS) {
+            return;
+        }
+
+        lastAbilityAuraSoundTimestampByPlayer.put(playerId, now);
+        Sound[] gentleAuraSounds = {
+                Sound.BLOCK_NOTE_BLOCK_CHIME,
+                Sound.BLOCK_NOTE_BLOCK_HARP,
+                Sound.BLOCK_AMETHYST_BLOCK_CHIME
+        };
+        playSound(player, gentleAuraSounds[RANDOM.nextInt(gentleAuraSounds.length)], 0.16f, 1.0f);
     }
 
     public static int getShearShopLevel(Player player) {
@@ -2126,6 +2138,7 @@ public final class SheepMergeManager {
         comboLastUpdateTimestampByPlayer.remove(playerId);
         stackedPointsOverlayByPlayer.remove(playerId);
         pointsOverlayExpiresAtByPlayer.remove(playerId);
+        lastAbilityAuraSoundTimestampByPlayer.remove(playerId);
         removeComboBossBar(playerId);
     }
 
