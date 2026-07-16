@@ -103,8 +103,8 @@ public final class SheepMergeManager {
     private static final double SHEEP_FALL_TRIGGER_Y = FARM_BASE_Y + 1.05D;
     private static final int FARM_UPGRADE_COMMAND_SLOT = 8;
     private static final int SHEAR_SHOP_BASE_COST = 40;
-    private static final long MERGE_REMINDER_DELAY_MS = 60_000L;
-    private static final long MERGE_REMINDER_REPEAT_MS = 20_000L;
+    private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
+    private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
     private static final int TUTORIAL_SPAWN_TARGET = 1;
     private static final int TUTORIAL_MERGE_TARGET = 1;
@@ -1223,7 +1223,7 @@ public final class SheepMergeManager {
     }
 
     public static int getStartEggsBonus(Player player) {
-        return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0) * 2;
+        return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0) * 10;
     }
 
     public static int getEggCap(Player player) {
