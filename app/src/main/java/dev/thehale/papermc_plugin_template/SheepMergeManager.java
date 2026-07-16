@@ -468,6 +468,32 @@ public final class SheepMergeManager {
                 || tutorialBypassedByPlayer.getOrDefault(playerId, false);
     }
 
+    private static void clearTutorialRuntimeState(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        tutorialStartedAtByPlayer.remove(playerId);
+        lastTutorialReminderTimestampByPlayer.remove(playerId);
+    }
+
+    private static void resetTutorialProgress(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        tutorialCompletedByPlayer.remove(playerId);
+        tutorialBypassedByPlayer.remove(playerId);
+        tutorialShearsByPlayer.remove(playerId);
+        tutorialSpawnsByPlayer.remove(playerId);
+        tutorialMergesByPlayer.remove(playerId);
+        tutorialUpgradeOpenedByPlayer.remove(playerId);
+        tutorialQuestOpenedByPlayer.remove(playerId);
+        tutorialQuestUpgradesOpenedByPlayer.remove(playerId);
+        tutorialPrestigeOpenedByPlayer.remove(playerId);
+        tutorialAbilityUsedByPlayer.remove(playerId);
+        tutorialShearShopOpenedByPlayer.remove(playerId);
+        clearTutorialRuntimeState(playerId);
+    }
+
     public static int getPrestigeLevel(Player player) {
         return player == null ? 0 : prestigeLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
@@ -540,8 +566,7 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         if (!isTutorialInProgress(player) || !isInTutorialWorld(player)) {
-            tutorialStartedAtByPlayer.remove(playerId);
-            lastTutorialReminderTimestampByPlayer.remove(playerId);
+            clearTutorialRuntimeState(playerId);
             return;
         }
 
@@ -550,8 +575,7 @@ public final class SheepMergeManager {
         tutorialStartedAtByPlayer.putIfAbsent(playerId, now);
         if (now - startedAt >= TUTORIAL_FAIL_TIMEOUT_MS && hasCompletedBasicTutorialTasks(player)) {
             tutorialBypassedByPlayer.put(playerId, true);
-            tutorialStartedAtByPlayer.remove(playerId);
-            lastTutorialReminderTimestampByPlayer.remove(playerId);
+            clearTutorialRuntimeState(playerId);
             player.sendTitle(color("&cTutorial Failed"), color("&7Use /sheepmerge tutorial to retry"), 10, 70, 10);
             player.sendMessage(warning("You finished the basic tutorial, but ran out of time on the rest."));
             player.sendMessage(hint("You were sent to your farm. Use /sheepmerge tutorial to retry anytime."));
@@ -1097,17 +1121,7 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         if (resetProgress) {
-            tutorialCompletedByPlayer.put(playerId, false);
-            tutorialBypassedByPlayer.remove(playerId);
-            tutorialShearsByPlayer.put(playerId, 0);
-            tutorialSpawnsByPlayer.put(playerId, 0);
-            tutorialMergesByPlayer.put(playerId, 0);
-            tutorialUpgradeOpenedByPlayer.remove(playerId);
-            tutorialQuestOpenedByPlayer.remove(playerId);
-            tutorialQuestUpgradesOpenedByPlayer.remove(playerId);
-            tutorialPrestigeOpenedByPlayer.remove(playerId);
-            tutorialAbilityUsedByPlayer.remove(playerId);
-            tutorialShearShopOpenedByPlayer.remove(playerId);
+            resetTutorialProgress(playerId);
             saveData();
         }
 
@@ -1224,8 +1238,7 @@ public final class SheepMergeManager {
                 && getTutorialSectionCount(player) >= TUTORIAL_MENU_SECTION_TARGET) {
             UUID playerId = player.getUniqueId();
             tutorialCompletedByPlayer.put(playerId, true);
-            tutorialStartedAtByPlayer.remove(playerId);
-            lastTutorialReminderTimestampByPlayer.remove(playerId);
+            clearTutorialRuntimeState(playerId);
             player.sendTitle(color("&aTutorial Complete"), color("&7Sending you to your farm"), 10, 60, 10);
             SheepFarmWorldCommand.teleportToFarmWorld(player);
             player.sendMessage(action("Tutorial complete! Use /sheepmerge tutorial anytime to replay."));
@@ -1254,16 +1267,7 @@ public final class SheepMergeManager {
         highestAnnouncedTierByPlayer.remove(id);
         lastPrestigeReminderTimestampByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
-        tutorialCompletedByPlayer.remove(id);
-        tutorialShearsByPlayer.remove(id);
-        tutorialSpawnsByPlayer.remove(id);
-        tutorialMergesByPlayer.remove(id);
-        tutorialUpgradeOpenedByPlayer.remove(id);
-        tutorialQuestOpenedByPlayer.remove(id);
-        tutorialQuestUpgradesOpenedByPlayer.remove(id);
-        tutorialPrestigeOpenedByPlayer.remove(id);
-        tutorialAbilityUsedByPlayer.remove(id);
-        tutorialShearShopOpenedByPlayer.remove(id);
+        resetTutorialProgress(id);
         farmVisitEnabledByPlayer.remove(id);
         questPointsByPlayer.remove(id);
         nextQuestResetTimestampByPlayer.remove(id);
@@ -3431,6 +3435,7 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeExpandFarm", null);
             dataConfig.set("shearShop", null);
             dataConfig.set("tutorialCompleted", null);
+            dataConfig.set("tutorialBypassed", null);
             dataConfig.set("tutorialShears", null);
             dataConfig.set("tutorialSpawns", null);
             dataConfig.set("tutorialMerges", null);
@@ -3493,6 +3498,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : tutorialCompletedByPlayer.entrySet()) {
                 dataConfig.set("tutorialCompleted." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : tutorialBypassedByPlayer.entrySet()) {
+                dataConfig.set("tutorialBypassed." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Integer> entry : tutorialShearsByPlayer.entrySet()) {
                 dataConfig.set("tutorialShears." + entry.getKey().toString(), entry.getValue());
@@ -3722,6 +3730,16 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     tutorialCompletedByPlayer.put(uuid, dataConfig.getBoolean("tutorialCompleted." + key, false));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("tutorialBypassed")) {
+            dataConfig.getConfigurationSection("tutorialBypassed").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    tutorialBypassedByPlayer.put(uuid, dataConfig.getBoolean("tutorialBypassed." + key, false));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
