@@ -99,6 +99,7 @@ public final class SheepMergeManager {
     private static final int WOOL_REGEN_MAX_LEVEL = 8;
     private static final int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 30;
     private static final int HIGHER_TIER_CHANCE_MAX_LEVEL = 10;
+    private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 20;
     private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
     private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
@@ -127,6 +128,7 @@ public final class SheepMergeManager {
     private static final int BASE_EGG_CAP = 10;
     private static final int PRESTIGE_EGG_CAP_STEP = 10;
     private static final int PRESTIGE_MAX_LEVEL = 50;
+    private static final int PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP = 8;
     private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
     private static final int FARM_RADIUS = 5;
     private static final int FARM_BASE_Y = 100;
@@ -1499,7 +1501,8 @@ public final class SheepMergeManager {
     }
 
     public static int getEggSpeedMaxLevel(Player player) {
-        return EGG_SPEED_MAX_LEVEL + getPrestigeHigherMaxLevel(player) * 2;
+        // Egg speed reaches its real stat cap once MIN_EGG_INTERVAL_SECONDS is reached.
+        return EGG_SPEED_MAX_LEVEL;
     }
 
     public static int getWoolRegenMaxLevel(Player player) {
@@ -1507,7 +1510,8 @@ public final class SheepMergeManager {
     }
 
     public static int getHigherTierChanceMaxLevel(Player player) {
-        return HIGHER_TIER_CHANCE_MAX_LEVEL + getPrestigeHigherMaxLevel(player) * 2;
+        int boostedMax = HIGHER_TIER_CHANCE_MAX_LEVEL + getPrestigeHigherMaxLevel(player) * 2;
+        return Math.min(HIGHER_TIER_CHANCE_HARD_MAX_LEVEL, boostedMax);
     }
 
     public static int getWoolRegenLevel(Player player) {
@@ -1627,7 +1631,11 @@ public final class SheepMergeManager {
     }
 
     public static int getPrestigeHigherMaxLevel(Player player) {
-        return player == null ? 0 : prestigeHigherMaxLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        if (player == null) {
+            return 0;
+        }
+        int raw = prestigeHigherMaxLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return Math.min(PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP, raw);
     }
 
     public static int getPrestigeStartEggsLevel(Player player) {
@@ -1883,6 +1891,12 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradePrestigeHigherMaxLevel(Player player) {
+        if (player == null) {
+            return false;
+        }
+        if (getPrestigeHigherMaxLevel(player) >= PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP) {
+            return false;
+        }
         int cost = getPrestigeHigherMaxLevelCost(player);
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
@@ -2144,9 +2158,11 @@ public final class SheepMergeManager {
                 Material.ENCHANTED_BOOK,
                 "Higher Maximum Levels",
                 List.of(
-                        "Level: " + getPrestigeHigherMaxLevel(player) + " / " + PRESTIGE_MAX_LEVEL,
+                        "Level: " + getPrestigeHigherMaxLevel(player) + " / " + PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP,
                         "Tier cap bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
-                        "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
+                        getPrestigeHigherMaxLevel(player) >= PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP
+                                ? "MAXED"
+                                : "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_START_EGGS_SLOT, MenuItemFactory.create(
@@ -2221,6 +2237,10 @@ public final class SheepMergeManager {
                 }
             }
             case PRESTIGE_HIGHER_MAX_LEVEL_SLOT -> {
+                if (getPrestigeHigherMaxLevel(player) >= PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP) {
+                    player.sendMessage(warning("Higher max levels are capped."));
+                    break;
+                }
                 if (upgradePrestigeHigherMaxLevel(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Higher max levels up"));
