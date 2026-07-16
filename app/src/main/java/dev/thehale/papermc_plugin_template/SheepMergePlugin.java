@@ -82,7 +82,7 @@ public class SheepMergePlugin extends JavaPlugin {
                     SheepMergeManager.processSheepEatTimer(sheep);
                 }
             }
-        }, 20L, 20L);
+        }, 2L, 2L);
     }
 
     private void setup() {

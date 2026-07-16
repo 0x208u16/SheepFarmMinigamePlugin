@@ -92,6 +92,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
+    private static final Map<UUID, org.bukkit.Location> sheepRescueOriginByEntity = new HashMap<>();
+    private static final Map<UUID, Long> sheepRescueNextCorrectionAtByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Map<UUID, Integer> savedLevels = new HashMap<>();
@@ -150,11 +152,15 @@ public final class SheepMergeManager {
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
     private static final long SHEEP_RESCUE_TIMEOUT_MS = 10_000L;
-    private static final long SHEEP_RESCUE_INITIAL_YEET_MS = 450L;
-    private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.95D;
-    private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.45D;
-    private static final double SHEEP_RESCUE_INITIAL_YEET_HORIZONTAL_VELOCITY = 0.70D;
-    private static final double SHEEP_RESCUE_INITIAL_YEET_UPWARD_VELOCITY = 0.38D;
+    private static final long SHEEP_RESCUE_PATH_DURATION_MS = 1_350L;
+    private static final long SHEEP_RESCUE_CORRECTION_INTERVAL_MS = 80L;
+    private static final double SHEEP_RESCUE_POSITION_CORRECTION_DISTANCE = 0.42D;
+    private static final double SHEEP_RESCUE_HORIZONTAL_VELOCITY = 0.62D;
+    private static final double SHEEP_RESCUE_UPWARD_VELOCITY = 0.75D;
+    private static final double SHEEP_RESCUE_DOWNWARD_VELOCITY = -0.85D;
+    private static final double SHEEP_RESCUE_ARCH_HEIGHT_BASE = 1.20D;
+    private static final double SHEEP_RESCUE_ARCH_HEIGHT_PER_BLOCK = 0.14D;
+    private static final double SHEEP_RESCUE_ARCH_HEIGHT_MAX = 3.20D;
     private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
     private static final double SHEEP_FALL_TRIGGER_EDGE_MARGIN = 0.25D;
     private static final double SHEEP_FALL_TRIGGER_Y = FARM_BASE_Y + 1.05D;
@@ -1493,7 +1499,7 @@ public final class SheepMergeManager {
                 ? !isSafelyOnPlatform(sheep, location)
                 : (isOffPlatform(location) || isFallingOffPlatform(sheep, location));
         if (!shouldRescue) {
-            sheepRescueStartByEntity.remove(sheepId);
+            clearSheepRescueState(sheepId);
             sheep.setCollidable(true);
             return false;
         }
@@ -1504,50 +1510,91 @@ public final class SheepMergeManager {
         sheep.setGravity(true);
 
         long now = System.currentTimeMillis();
-        long started = sheepRescueStartByEntity.getOrDefault(sheepId, now);
-        sheepRescueStartByEntity.putIfAbsent(sheepId, now);
+        long started = sheepRescueStartByEntity.computeIfAbsent(sheepId, key -> now);
+        sheepRescueOriginByEntity.computeIfAbsent(sheepId, key -> location.clone());
+        sheepRescueNextCorrectionAtByEntity.putIfAbsent(sheepId, now);
+
         if (now - started >= SHEEP_RESCUE_TIMEOUT_MS) {
             teleportSheepToFarmCenter(sheep);
-            sheepRescueStartByEntity.remove(sheepId);
+            clearSheepRescueState(sheepId);
             sheep.setCollidable(true);
             return false;
         }
 
-        if (now - started < SHEEP_RESCUE_INITIAL_YEET_MS) {
-            Vector awayFromCenter = new Vector(location.getX() - 0.5D, 0.0D, location.getZ() - 0.5D);
-            double horizontalDistance = Math.sqrt(awayFromCenter.getX() * awayFromCenter.getX()
-                    + awayFromCenter.getZ() * awayFromCenter.getZ());
-            if (horizontalDistance < 0.0001D) {
-                awayFromCenter = sheep.getVelocity().clone().setY(0.0D);
-                horizontalDistance = Math.sqrt(awayFromCenter.getX() * awayFromCenter.getX()
-                        + awayFromCenter.getZ() * awayFromCenter.getZ());
+        org.bukkit.Location origin = sheepRescueOriginByEntity.getOrDefault(sheepId, location.clone());
+        org.bukkit.Location desired = getRescuePathTargetLocation(sheep, origin, started, now);
+        Vector steeringVelocity = getRescueSteeringVelocity(location, desired);
+        sheep.setVelocity(steeringVelocity);
+
+        long nextCorrectionAt = sheepRescueNextCorrectionAtByEntity.getOrDefault(sheepId, now);
+        if (now >= nextCorrectionAt) {
+            if (location.distanceSquared(desired) >= SHEEP_RESCUE_POSITION_CORRECTION_DISTANCE
+                    * SHEEP_RESCUE_POSITION_CORRECTION_DISTANCE) {
+                sheep.teleport(desired);
             }
-            if (horizontalDistance > 0.0001D) {
-                awayFromCenter.normalize().multiply(SHEEP_RESCUE_INITIAL_YEET_HORIZONTAL_VELOCITY);
-                sheep.setVelocity(new Vector(
-                        awayFromCenter.getX(),
-                        SHEEP_RESCUE_INITIAL_YEET_UPWARD_VELOCITY,
-                        awayFromCenter.getZ()));
-                sheep.setFallDistance(0.0F);
-                return true;
-            }
+            sheepRescueNextCorrectionAtByEntity.put(sheepId, now + SHEEP_RESCUE_CORRECTION_INTERVAL_MS);
         }
 
-        Vector toCenter = new Vector(0.5D - location.getX(), 0.0D, 0.5D - location.getZ());
-        double horizontalDistance = Math.sqrt(toCenter.getX() * toCenter.getX() + toCenter.getZ() * toCenter.getZ());
-        if (horizontalDistance > 0.0001D) {
-            double horizontalSpeed = Math.min(SHEEP_RESCUE_HORIZONTAL_VELOCITY, 0.18D + horizontalDistance * 0.07D);
-            toCenter.normalize().multiply(horizontalSpeed);
-        }
-
-        double belowTarget = Math.max(0.0D, (FARM_BASE_Y + 1.0D) - location.getY());
-        double upwardVelocity = 0.20D + Math.min(0.55D, horizontalDistance * 0.08D + belowTarget * 0.22D);
-        upwardVelocity = Math.min(SHEEP_RESCUE_UPWARD_VELOCITY, upwardVelocity);
-
-        // Apply rescue steering every tick for smooth arching flight toward center.
-        sheep.setVelocity(new Vector(toCenter.getX(), upwardVelocity, toCenter.getZ()));
         sheep.setFallDistance(0.0F);
         return true;
+    }
+
+    private static org.bukkit.Location getRescuePathTargetLocation(Sheep sheep, org.bukkit.Location origin,
+            long started,
+            long now) {
+        org.bukkit.Location center = new org.bukkit.Location(
+                sheep.getWorld(),
+                0.5D,
+                FARM_BASE_Y + 1.0D,
+                0.5D,
+                sheep.getLocation().getYaw(),
+                sheep.getLocation().getPitch());
+
+        if (origin == null) {
+            return center;
+        }
+
+        double progress = Math.min(1.0D, Math.max(0.0D, (now - started) / (double) SHEEP_RESCUE_PATH_DURATION_MS));
+        double dx = center.getX() - origin.getX();
+        double dz = center.getZ() - origin.getZ();
+        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+        double archHeight = Math.min(
+                SHEEP_RESCUE_ARCH_HEIGHT_MAX,
+                SHEEP_RESCUE_ARCH_HEIGHT_BASE + horizontalDistance * SHEEP_RESCUE_ARCH_HEIGHT_PER_BLOCK);
+
+        double x = lerp(origin.getX(), center.getX(), progress);
+        double z = lerp(origin.getZ(), center.getZ(), progress);
+        double linearY = lerp(origin.getY(), center.getY(), progress);
+        double y = linearY + Math.sin(Math.PI * progress) * archHeight;
+        return new org.bukkit.Location(sheep.getWorld(), x, y, z, center.getYaw(), center.getPitch());
+    }
+
+    private static Vector getRescueSteeringVelocity(org.bukkit.Location current, org.bukkit.Location target) {
+        double correctionHorizonSeconds = SHEEP_RESCUE_CORRECTION_INTERVAL_MS / 1000.0D;
+        Vector toTarget = target.toVector().subtract(current.toVector());
+        Vector horizontal = new Vector(toTarget.getX(), 0.0D, toTarget.getZ());
+        double horizontalLength = horizontal.length();
+        if (horizontalLength > 0.0001D) {
+            horizontal.normalize().multiply(Math.min(
+                    SHEEP_RESCUE_HORIZONTAL_VELOCITY,
+                    horizontalLength / Math.max(0.001D, correctionHorizonSeconds)));
+        } else {
+            horizontal.zero();
+        }
+
+        double yVelocity = toTarget.getY() / Math.max(0.001D, correctionHorizonSeconds);
+        yVelocity = Math.max(SHEEP_RESCUE_DOWNWARD_VELOCITY, Math.min(SHEEP_RESCUE_UPWARD_VELOCITY, yVelocity));
+        return new Vector(horizontal.getX(), yVelocity, horizontal.getZ());
+    }
+
+    private static double lerp(double start, double end, double progress) {
+        return start + (end - start) * progress;
+    }
+
+    private static void clearSheepRescueState(UUID sheepId) {
+        sheepRescueStartByEntity.remove(sheepId);
+        sheepRescueOriginByEntity.remove(sheepId);
+        sheepRescueNextCorrectionAtByEntity.remove(sheepId);
     }
 
     private static boolean isSafelyOnPlatform(Sheep sheep, org.bukkit.Location location) {
