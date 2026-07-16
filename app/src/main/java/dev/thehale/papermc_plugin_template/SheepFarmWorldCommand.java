@@ -20,6 +20,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "upgrade",
             "prestige",
             "shop",
+            "tutorial",
             "visit",
             "kick",
             "status",
@@ -55,6 +56,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1 && args[0].equalsIgnoreCase("prestige")) {
             SheepMergeManager.openPrestigeMenu(player);
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("tutorial")) {
+            SheepMergeManager.startTutorial(player, true);
             return true;
         }
 
@@ -324,7 +330,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return matches;
     }
 
-    private World ensureFarmWorld(String worldName) {
+    public static World ensureFarmWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             return world;
@@ -332,7 +338,40 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return createFlatWorld(worldName);
     }
 
-    private World createFlatWorld(String worldName) {
+    public static World ensureTutorialWorld(java.util.UUID playerId) {
+        if (playerId == null) {
+            return null;
+        }
+        return ensureFarmWorld(SheepMergeManager.getTutorialWorldName(playerId));
+    }
+
+    public static boolean teleportToFarmWorld(Player player) {
+        if (player == null) {
+            return false;
+        }
+        World world = ensureFarmWorld(getWorldName(player.getUniqueId()));
+        if (world == null) {
+            return false;
+        }
+        world.setSpawnLocation(0, 101, 0);
+        player.teleport(new Location(world, 0.5, 101, 0.5));
+        return true;
+    }
+
+    public static boolean teleportToTutorialWorld(Player player) {
+        if (player == null) {
+            return false;
+        }
+        World world = ensureTutorialWorld(player.getUniqueId());
+        if (world == null) {
+            return false;
+        }
+        world.setSpawnLocation(0, 101, 0);
+        player.teleport(new Location(world, 0.5, 101, 0.5));
+        return true;
+    }
+
+    private static World createFlatWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             return world;

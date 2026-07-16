@@ -52,6 +52,12 @@ public class SheepFarmWorldCleanupListener implements Listener {
             File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
             Bukkit.getScheduler().runTaskAsynchronously(SheepMergePlugin.instance,
                     () -> deleteWorldFolder(worldName, worldFolder));
+
+            String tutorialWorldName = SheepMergeManager.getTutorialWorldName(playerId);
+            unloadWorld(tutorialWorldName);
+            File tutorialWorldFolder = new File(Bukkit.getWorldContainer(), tutorialWorldName);
+            Bukkit.getScheduler().runTaskAsynchronously(SheepMergePlugin.instance,
+                    () -> deleteWorldFolder(tutorialWorldName, tutorialWorldFolder));
         }, WORLD_CLEANUP_DELAY_TICKS);
     }
 

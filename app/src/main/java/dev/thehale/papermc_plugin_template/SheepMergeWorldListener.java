@@ -1,5 +1,6 @@
 package dev.thehale.papermc_plugin_template;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
@@ -18,6 +19,13 @@ public class SheepMergeWorldListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        if (!player.hasPlayedBefore() && !SheepMergeManager.isTutorialCompleted(player)) {
+            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance, () -> {
+                if (player.isOnline() && !SheepMergeManager.isTutorialCompleted(player)) {
+                    SheepMergeManager.startTutorial(player, false);
+                }
+            }, 1L);
+        }
         SheepMergeManager.restoreSavedStateOutsideFarm(player);
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             return;

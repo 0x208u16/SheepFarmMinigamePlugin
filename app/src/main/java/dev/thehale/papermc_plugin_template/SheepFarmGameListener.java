@@ -67,6 +67,7 @@ public class SheepFarmGameListener implements Listener {
         int points = SheepMergeManager.calculateShearPoints(event.getPlayer(), tier);
         SheepMergeManager.addPoints(event.getPlayer(), points);
         SheepMergeManager.recordQuestShear(event.getPlayer());
+        SheepMergeManager.recordTutorialShear(event.getPlayer());
         SheepMergeManager.updatePointsScoreboard(event.getPlayer());
     }
 
@@ -142,6 +143,7 @@ public class SheepFarmGameListener implements Listener {
         }
 
         SheepMergeManager.recordQuestSpawn(player);
+        SheepMergeManager.recordTutorialSpawn(player);
 
     }
 
@@ -222,6 +224,7 @@ public class SheepFarmGameListener implements Listener {
         }
         SheepMergeManager.recordSheepMerge(player);
         SheepMergeManager.recordQuestMerge(player);
+        SheepMergeManager.recordTutorialMerge(player);
         SheepMergeManager.showOverlay(player, SheepMergeManager.action(
                 carriedTier.getDisplayName() + " + " + carriedTier.getDisplayName() + " -> "
                         + mergedTier.getDisplayName()));
