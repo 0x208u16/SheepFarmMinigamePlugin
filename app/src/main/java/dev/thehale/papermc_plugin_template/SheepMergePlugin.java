@@ -108,6 +108,7 @@ public class SheepMergePlugin extends JavaPlugin {
                     continue;
                 }
                 SheepMergeManager.enforceFarmLoadout(player);
+                SheepMergeManager.tickTutorialReminder(player);
                 SheepMergeManager.tickPrestigeReminder(player);
                 SheepMergeManager.tickMergeReminder(player);
                 SheepMergeManager.tickQuestSystem(player);

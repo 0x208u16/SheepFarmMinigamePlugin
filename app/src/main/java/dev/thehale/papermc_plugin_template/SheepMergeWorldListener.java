@@ -19,9 +19,9 @@ public class SheepMergeWorldListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (!player.hasPlayedBefore() && !SheepMergeManager.isTutorialCompleted(player)) {
+        if (!player.hasPlayedBefore() && !SheepMergeManager.hasUnlockedFarm(player)) {
             Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance, () -> {
-                if (player.isOnline() && !SheepMergeManager.isTutorialCompleted(player)) {
+                if (player.isOnline() && !SheepMergeManager.hasUnlockedFarm(player)) {
                     SheepMergeManager.startTutorial(player, false);
                 }
             }, 1L);

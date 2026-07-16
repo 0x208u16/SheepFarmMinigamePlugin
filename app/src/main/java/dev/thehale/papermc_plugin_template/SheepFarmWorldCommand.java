@@ -265,7 +265,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (!SheepMergeManager.isTutorialCompleted(player)) {
+        if (!SheepMergeManager.hasUnlockedFarm(player)) {
             SheepMergeManager.startTutorial(player, false);
             return true;
         }

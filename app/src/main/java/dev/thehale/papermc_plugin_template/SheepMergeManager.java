@@ -67,6 +67,9 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> tutorialPrestigeOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialAbilityUsedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialShearShopOpenedByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> tutorialBypassedByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> tutorialStartedAtByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
@@ -168,6 +171,9 @@ public final class SheepMergeManager {
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
     private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
     private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
+    private static final long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
+    private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
+    private static final long TUTORIAL_FAIL_TIMEOUT_MS = 5L * 60L * 1000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -450,6 +456,15 @@ public final class SheepMergeManager {
         return player != null && tutorialCompletedByPlayer.getOrDefault(player.getUniqueId(), false);
     }
 
+    public static boolean hasUnlockedFarm(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        return tutorialCompletedByPlayer.getOrDefault(playerId, false)
+                || tutorialBypassedByPlayer.getOrDefault(playerId, false);
+    }
+
     public static int getPrestigeLevel(Player player) {
         return player == null ? 0 : prestigeLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
@@ -513,6 +528,46 @@ public final class SheepMergeManager {
         questMergesCompleteByPlayer.put(playerId, false);
         nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
         player.sendTitle(color("&eNew quests"), color("&7Quest board refreshed"), 10, 40, 10);
+    }
+
+    public static void tickTutorialReminder(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        if (!isTutorialInProgress(player) || !isInTutorialWorld(player)) {
+            tutorialStartedAtByPlayer.remove(playerId);
+            lastTutorialReminderTimestampByPlayer.remove(playerId);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long startedAt = tutorialStartedAtByPlayer.getOrDefault(playerId, now);
+        tutorialStartedAtByPlayer.putIfAbsent(playerId, now);
+        if (now - startedAt >= TUTORIAL_FAIL_TIMEOUT_MS && hasCompletedBasicTutorialTasks(player)) {
+            tutorialBypassedByPlayer.put(playerId, true);
+            tutorialStartedAtByPlayer.remove(playerId);
+            lastTutorialReminderTimestampByPlayer.remove(playerId);
+            player.sendTitle(color("&cTutorial Failed"), color("&7Use /sheepmerge tutorial to retry"), 10, 70, 10);
+            player.sendMessage(warning("You finished the basic tutorial, but ran out of time on the rest."));
+            player.sendMessage(hint("You were sent to your farm. Use /sheepmerge tutorial to retry anytime."));
+            SheepFarmWorldCommand.teleportToFarmWorld(player);
+            saveData();
+            return;
+        }
+        if (now - startedAt < TUTORIAL_REMINDER_DELAY_MS) {
+            return;
+        }
+
+        long lastReminder = lastTutorialReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastReminder < TUTORIAL_REMINDER_REPEAT_MS) {
+            return;
+        }
+
+        lastTutorialReminderTimestampByPlayer.put(playerId, now);
+        player.sendMessage(warning("Finish the tutorial to unlock your actual sheep farm."));
+        player.sendMessage(hint(getTutorialNextStepLine(player)));
     }
 
     public static void recordQuestShear(Player player) {
@@ -964,7 +1019,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean isTutorialInProgress(Player player) {
-        return player != null && !isTutorialCompleted(player);
+        return player != null && !hasUnlockedFarm(player);
     }
 
     private static boolean isInTutorialWorld(Player player) {
@@ -1037,9 +1092,10 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
+        UUID playerId = player.getUniqueId();
         if (resetProgress) {
-            UUID playerId = player.getUniqueId();
             tutorialCompletedByPlayer.put(playerId, false);
+            tutorialBypassedByPlayer.remove(playerId);
             tutorialShearsByPlayer.put(playerId, 0);
             tutorialSpawnsByPlayer.put(playerId, 0);
             tutorialMergesByPlayer.put(playerId, 0);
@@ -1051,6 +1107,9 @@ public final class SheepMergeManager {
             tutorialShearShopOpenedByPlayer.remove(playerId);
             saveData();
         }
+
+        tutorialStartedAtByPlayer.put(playerId, System.currentTimeMillis());
+        lastTutorialReminderTimestampByPlayer.remove(playerId);
 
         if (!SheepFarmWorldCommand.teleportToTutorialWorld(player)) {
             player.sendMessage(warning("Unable to open your tutorial world right now."));
@@ -1145,15 +1204,25 @@ public final class SheepMergeManager {
                 + " | Sections " + getTutorialSectionCount(player) + "/" + TUTORIAL_MENU_SECTION_TARGET;
     }
 
+    private static boolean hasCompletedBasicTutorialTasks(Player player) {
+        return player != null
+                && getTutorialShearCount(player) >= TUTORIAL_SHEAR_TARGET
+                && getTutorialSpawnCount(player) >= TUTORIAL_SPAWN_TARGET
+                && getTutorialMergeCount(player) >= TUTORIAL_MERGE_TARGET;
+    }
+
     private static void checkTutorialCompletion(Player player) {
-        if (player == null || isTutorialCompleted(player)) {
+        if (player == null || hasUnlockedFarm(player)) {
             return;
         }
         if (getTutorialShearCount(player) >= TUTORIAL_SHEAR_TARGET
                 && getTutorialSpawnCount(player) >= TUTORIAL_SPAWN_TARGET
                 && getTutorialMergeCount(player) >= TUTORIAL_MERGE_TARGET
                 && getTutorialSectionCount(player) >= TUTORIAL_MENU_SECTION_TARGET) {
-            tutorialCompletedByPlayer.put(player.getUniqueId(), true);
+            UUID playerId = player.getUniqueId();
+            tutorialCompletedByPlayer.put(playerId, true);
+            tutorialStartedAtByPlayer.remove(playerId);
+            lastTutorialReminderTimestampByPlayer.remove(playerId);
             player.sendTitle(color("&aTutorial Complete"), color("&7Sending you to your farm"), 10, 60, 10);
             SheepFarmWorldCommand.teleportToFarmWorld(player);
             player.sendMessage(action("Tutorial complete! Use /sheepmerge tutorial anytime to replay."));
