@@ -87,6 +87,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> nextAutoMergeAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextEggTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> prestigeTitleReminderShownByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextPrestigeRefundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
@@ -1220,8 +1221,8 @@ public final class SheepMergeManager {
             return 0;
         }
 
-        int totalCost = getTotalPrestigeCostForNextLevels(current, affordableLevels);
-        if (!trySpendPoints(player, totalCost)) {
+        long totalCost = getTotalPrestigeCostForNextLevels(current, affordableLevels);
+        if (totalCost <= 0L || totalCost > Integer.MAX_VALUE || !trySpendPoints(player, (int) totalCost)) {
             return 0;
         }
 
@@ -1282,11 +1283,11 @@ public final class SheepMergeManager {
         return gained;
     }
 
-    private static int getTotalPrestigeCostForNextLevels(int currentLevel, int levelsToBuy) {
-        int total = 0;
+    private static long getTotalPrestigeCostForNextLevels(int currentLevel, int levelsToBuy) {
+        long total = 0L;
         int cappedLevels = Math.max(0, levelsToBuy);
         for (int i = 0; i < cappedLevels; i++) {
-            total += getPrestigeCostForLevel(currentLevel + i);
+            total += (long) getPrestigeCostForLevel(currentLevel + i);
         }
         return total;
     }
@@ -2157,12 +2158,17 @@ public final class SheepMergeManager {
             return;
         }
 
-        player.sendTitle(
-                color("&ePrestige ready"),
-                color("&7Use /sheepmerge prestige"),
-                10,
-                60,
-                10);
+        if (!prestigeTitleReminderShownByPlayer.getOrDefault(playerId, false)) {
+            player.sendTitle(
+                    color("&ePrestige ready"),
+                    color("&7Use /sheepmerge prestige"),
+                    10,
+                    60,
+                    10);
+            prestigeTitleReminderShownByPlayer.put(playerId, true);
+        } else {
+            player.sendMessage(hint("Prestige ready. Use /sheepmerge prestige"));
+        }
         lastPrestigeReminderTimestampByPlayer.put(playerId, now);
     }
 
@@ -3343,7 +3349,7 @@ public final class SheepMergeManager {
         }
         markTutorialPrestigeOpened(player);
         int affordablePrestiges = getAffordablePrestigeLevels(player);
-        int totalCostForAffordable = getTotalPrestigeCostForNextLevels(getPrestigeLevel(player), affordablePrestiges);
+        long totalCostForAffordable = getTotalPrestigeCostForNextLevels(getPrestigeLevel(player), affordablePrestiges);
         int rewardForAffordable = getPrestigePointsRewardForNextLevels(getPrestigeLevel(player), affordablePrestiges);
         Inventory inventory = Bukkit.createInventory(null, 27, PRESTIGE_MENU_TITLE);
         inventory.setItem(PRESTIGE_UPGRADE_SLOT, MenuItemFactory.create(
@@ -3357,7 +3363,7 @@ public final class SheepMergeManager {
                         affordablePrestiges > 0
                                 ? "Gain prestige points: +" + rewardForAffordable
                                 : "Gain prestige points: +0",
-                        "Cost: " + getPrestigeCost(player) + " normal points",
+                        "Next prestige cost: " + getPrestigeCost(player) + " normal points",
                         affordablePrestiges > 0
                                 ? "Total cost now: " + totalCostForAffordable + " normal points"
                                 : "Need more points for next prestige",
