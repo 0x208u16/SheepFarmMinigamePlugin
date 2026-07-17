@@ -1985,6 +1985,8 @@ public final class SheepMergeManager {
         shearWoolSaveLevelByPlayer.remove(id);
         shearTierBoostLevelByPlayer.remove(id);
         resetTutorialProgress(id);
+        tutorialShearTaskRewardGrantedByPlayer.remove(id);
+        tutorialPrestigePrepRewardGrantedByPlayer.remove(id);
         farmVisitEnabledByPlayer.remove(id);
         questPointsByPlayer.remove(id);
         nextQuestResetTimestampByPlayer.remove(id);
