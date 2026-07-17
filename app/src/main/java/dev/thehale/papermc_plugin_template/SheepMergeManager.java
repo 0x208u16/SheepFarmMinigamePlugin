@@ -1962,16 +1962,36 @@ public final class SheepMergeManager {
         long now = System.currentTimeMillis();
         long nextEat = getNextEatTimestamp(sheep);
         if (now >= nextEat && nextEat > 0L) {
-            setNextEatTimestamp(sheep, 0L);
-            sheep.setSheared(false);
-            sheep.setGravity(true);
-            sheep.setAI(true);
-            updateSheepName(sheep);
+            promptSheepToEatGrass(sheep);
             return;
         }
         sheep.setSheared(true);
         sheep.setGravity(true);
         sheep.setAI(true);
+        updateSheepName(sheep);
+    }
+
+    private static void promptSheepToEatGrass(Sheep sheep) {
+        if (sheep == null || sheep.getWorld() == null) {
+            return;
+        }
+
+        setNextEatTimestamp(sheep, 0L);
+        sheep.setAI(true);
+        sheep.setGravity(true);
+        sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
+
+        org.bukkit.Location mouth = sheep.getLocation().add(0.0D, 0.35D, 0.0D);
+        sheep.getWorld().spawnParticle(org.bukkit.Particle.CLOUD,
+                mouth,
+                10,
+                0.18D,
+                0.08D,
+                0.18D,
+                0.01D);
+        sheep.getWorld().playSound(mouth, Sound.ENTITY_SHEEP_AMBIENT, 0.75f, 1.05f);
+
+        sheep.setSheared(false);
         updateSheepName(sheep);
     }
 
