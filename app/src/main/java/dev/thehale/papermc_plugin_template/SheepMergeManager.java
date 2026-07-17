@@ -104,6 +104,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> nextPrestigeRefundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> mergeTitleReminderShownByPlayer = new HashMap<>();
     private static final Map<UUID, Double> comboScoreByPlayer = new HashMap<>();
     private static final Map<UUID, Long> comboLastUpdateTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> comboDecayUpgradeByPlayer = new HashMap<>();
@@ -139,12 +140,6 @@ public final class SheepMergeManager {
     private static final int EGG_SPEED_MAX_LEVEL = BASE_EGG_INTERVAL_SECONDS - MIN_EGG_INTERVAL_SECONDS;
     private static final int EGG_SPEED_UPGRADE_BASE_COST = 15;
     private static final int WOOL_REGEN_UPGRADE_BASE_COST = 25;
-    private static final int WOOL_REGEN_MAX_LEVEL = 8;
-    private static final int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 30;
-    private static final int HIGHER_TIER_CHANCE_MAX_LEVEL = 10;
-    private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 20;
-    private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
-    private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
     private static final int PRESTIGE_BASE_SPAWN_TIER_BASE_COST = 10;
@@ -913,6 +908,9 @@ public final class SheepMergeManager {
         String tip = getNextGameplayTip();
         String message = color("&8[&6SheepMerge Tip&8] &f" + tip);
         for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (!isSheepFarmWorld(player.getWorld())) {
+                continue;
+            }
             player.sendMessage(message);
         }
     }
@@ -1240,7 +1238,7 @@ public final class SheepMergeManager {
     }
 
     public static int getShearFlatBonus(Player player) {
-        return Math.max(0, getShearShopLevel(player));
+        return 0;
     }
 
     public static int getShearPointMultiplier(Player player) {
@@ -2444,7 +2442,7 @@ public final class SheepMergeManager {
 
     public static int calculateShearPoints(Player player, SheepTier tier) {
         int base = tier == null ? 1 : tier.getPointsOnShear();
-        int points = base * getShearPointMultiplier(player) + getShearFlatBonus(player);
+        int points = base * getShearPointMultiplier(player);
         if (isAbilityActive(activeJackpotShearsUntilByPlayer, player == null ? null : player.getUniqueId())) {
             points *= (2 + getQuestUpgradePowerLevel(player));
         }
@@ -2752,6 +2750,7 @@ public final class SheepMergeManager {
         long now = System.currentTimeMillis();
         lastMergeTimestampByPlayer.put(playerId, now);
         lastMergeReminderTimestampByPlayer.remove(playerId);
+        mergeTitleReminderShownByPlayer.remove(playerId);
     }
 
     public static void clearMergeReminder(Player player) {
@@ -2761,6 +2760,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         lastMergeTimestampByPlayer.remove(playerId);
         lastMergeReminderTimestampByPlayer.remove(playerId);
+        mergeTitleReminderShownByPlayer.remove(playerId);
     }
 
     public static void clearComboRuntime(Player player) {
@@ -2827,6 +2827,7 @@ public final class SheepMergeManager {
         long now = System.currentTimeMillis();
         lastMergeTimestampByPlayer.put(playerId, now);
         lastMergeReminderTimestampByPlayer.remove(playerId);
+        mergeTitleReminderShownByPlayer.remove(playerId);
 
         tickComboDecay(player, now);
         double comboGain = (mergedFromTier.getLevel() + 1);
@@ -2986,10 +2987,15 @@ public final class SheepMergeManager {
         }
 
         String message = getTierUnlockMessage(player, tier);
-        if (plugin != null && plugin.getServer() != null) {
-            plugin.getServer().broadcastMessage(message);
-        } else {
+        if (plugin == null || plugin.getServer() == null) {
             player.sendMessage(message);
+        } else {
+            for (Player online : plugin.getServer().getOnlinePlayers()) {
+                if (!isSheepFarmWorld(online.getWorld())) {
+                    continue;
+                }
+                online.sendMessage(message);
+            }
         }
 
         playTierUnlockSound(player, tier);
@@ -3072,12 +3078,17 @@ public final class SheepMergeManager {
         if (now - lastReminder < MERGE_REMINDER_REPEAT_MS) {
             return;
         }
-        player.sendTitle(
-                color("&eMerge sheep"),
-                color("&7Sneak-right-click one sheep, then right-click the same tier"),
-                10,
-                60,
-                10);
+        if (!mergeTitleReminderShownByPlayer.getOrDefault(playerId, false)) {
+            player.sendTitle(
+                    color("&eMerge sheep"),
+                    color("&7Sneak-right-click one sheep, then right-click the same tier"),
+                    10,
+                    60,
+                    10);
+            mergeTitleReminderShownByPlayer.put(playerId, true);
+        } else {
+            player.sendMessage(hint("Merge sheep. Sneak-right-click one sheep, then right-click the same tier."));
+        }
         lastMergeReminderTimestampByPlayer.put(playerId, now);
     }
 
@@ -3852,7 +3863,7 @@ public final class SheepMergeManager {
                 "Shear Shop",
                 List.of(
                         "Shear level: " + getShearShopLevel(player),
-                        "Flat bonus: +" + getShearFlatBonus(player),
+                        "Points multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
         inventory.setItem(COMBO_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -4571,7 +4582,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + getShearShopLevel(player),
                         "Cost: " + getShearUpgradeCost(player) + " points",
-                        "Points: base x" + getShearPointMultiplier(player) + " +" + getShearFlatBonus(player),
+                        "Points: base x" + getShearPointMultiplier(player),
                         "Wool reward scales with level",
                         "Click to purchase")));
         inventory.setItem(SHOP_SHEAR_KEEP_WOOL_SLOT, MenuItemFactory.create(

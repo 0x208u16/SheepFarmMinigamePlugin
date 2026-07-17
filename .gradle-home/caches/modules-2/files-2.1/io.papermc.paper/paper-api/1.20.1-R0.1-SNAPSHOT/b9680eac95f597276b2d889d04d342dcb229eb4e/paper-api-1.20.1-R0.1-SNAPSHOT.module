@@ -1,0 +1,347 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.papermc.paper",
+    "module": "paper-api",
+    "version": "1.20.1-R0.1-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.guava",
+          "module": "guava",
+          "version": {
+            "requires": "31.1-jre"
+          }
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.10"
+          }
+        },
+        {
+          "group": "net.md-5",
+          "module": "bungeecord-chat",
+          "version": {
+            "requires": "1.20-R0.1-deprecated+build.14"
+          }
+        },
+        {
+          "group": "org.yaml",
+          "module": "snakeyaml",
+          "version": {
+            "requires": "2.0"
+          }
+        },
+        {
+          "group": "org.joml",
+          "module": "joml",
+          "version": {
+            "requires": "1.10.5"
+          }
+        },
+        {
+          "group": "com.googlecode.json-simple",
+          "module": "json-simple",
+          "version": {
+            "requires": "1.1.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "it.unimi.dsi",
+          "module": "fastutil",
+          "version": {
+            "requires": "8.5.6"
+          }
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-api",
+          "version": {
+            "requires": "2.17.1"
+          }
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.8.0-beta4"
+          }
+        },
+        {
+          "group": "org.apache.maven",
+          "module": "maven-resolver-provider",
+          "version": {
+            "requires": "3.8.5"
+          }
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-bom",
+          "version": {
+            "requires": "4.14.0"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          },
+          "endorseStrictVersions": true
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-api"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-minimessage"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-serializer-gson"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-serializer-legacy"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-serializer-plain"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-logger-slf4j"
+        },
+        {
+          "group": "org.checkerframework",
+          "module": "checker-qual",
+          "version": {
+            "requires": "3.21.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "paper-api-1.20.1-R0.1-SNAPSHOT.jar",
+          "url": "paper-api-1.20.1-R0.1-SNAPSHOT.jar",
+          "size": 1941026,
+          "sha512": "0114f8820895f18ec5bc01e3603867fafa7c7dd750ea3d6d55ac508d4ec353d3ec43847bea2b80f778a4167ec9671dc4ae2ce48aa2e8b4bb3c553d6b3e349189",
+          "sha256": "161ecf24e6ffb325a79eb7eb04904419c2b80f602672e4758785e9389e9038d1",
+          "sha1": "71680be2f2e80f25e20ae4b49ebd84539d306a44",
+          "md5": "14abc9bbae3aa707d3309d8a6ccfe84f"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.ow2.asm",
+          "module": "asm",
+          "version": {
+            "requires": "9.4"
+          }
+        },
+        {
+          "group": "org.ow2.asm",
+          "module": "asm-commons",
+          "version": {
+            "requires": "9.4"
+          }
+        },
+        {
+          "group": "com.google.guava",
+          "module": "guava",
+          "version": {
+            "requires": "31.1-jre"
+          }
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.10"
+          }
+        },
+        {
+          "group": "net.md-5",
+          "module": "bungeecord-chat",
+          "version": {
+            "requires": "1.20-R0.1-deprecated+build.14"
+          }
+        },
+        {
+          "group": "org.yaml",
+          "module": "snakeyaml",
+          "version": {
+            "requires": "2.0"
+          }
+        },
+        {
+          "group": "org.joml",
+          "module": "joml",
+          "version": {
+            "requires": "1.10.5"
+          }
+        },
+        {
+          "group": "com.googlecode.json-simple",
+          "module": "json-simple",
+          "version": {
+            "requires": "1.1.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "it.unimi.dsi",
+          "module": "fastutil",
+          "version": {
+            "requires": "8.5.6"
+          }
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-api",
+          "version": {
+            "requires": "2.17.1"
+          }
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.8.0-beta4"
+          }
+        },
+        {
+          "group": "org.apache.maven",
+          "module": "maven-resolver-provider",
+          "version": {
+            "requires": "3.8.5"
+          }
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-bom",
+          "version": {
+            "requires": "4.14.0"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          },
+          "endorseStrictVersions": true
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-api"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-minimessage"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-serializer-gson"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-serializer-legacy"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-serializer-plain"
+        },
+        {
+          "group": "net.kyori",
+          "module": "adventure-text-logger-slf4j"
+        }
+      ],
+      "files": [
+        {
+          "name": "paper-api-1.20.1-R0.1-SNAPSHOT.jar",
+          "url": "paper-api-1.20.1-R0.1-SNAPSHOT.jar",
+          "size": 1941026,
+          "sha512": "0114f8820895f18ec5bc01e3603867fafa7c7dd750ea3d6d55ac508d4ec353d3ec43847bea2b80f778a4167ec9671dc4ae2ce48aa2e8b4bb3c553d6b3e349189",
+          "sha256": "161ecf24e6ffb325a79eb7eb04904419c2b80f602672e4758785e9389e9038d1",
+          "sha1": "71680be2f2e80f25e20ae4b49ebd84539d306a44",
+          "md5": "14abc9bbae3aa707d3309d8a6ccfe84f"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "paper-api-1.20.1-R0.1-SNAPSHOT-sources.jar",
+          "url": "paper-api-1.20.1-R0.1-SNAPSHOT-sources.jar",
+          "size": 1421718,
+          "sha512": "3df9fec26c1413ee62af22fd42f2ac25f182fe728c65ff321a1cbf49eb36a427a0744823b7ac6b91557d65aff1e73b705d862fb95d33bd64fb0c1b38681de154",
+          "sha256": "5bd121fbc5b2d87ff72bcd74372e02a57a37aca4c1b89d036b38bfca20961377",
+          "sha1": "a3a6bb6c9a25aab02fce4b43fe16e04085227397",
+          "md5": "e2301cd7357946c154ca1c7b5db044d0"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "paper-api-1.20.1-R0.1-SNAPSHOT-javadoc.jar",
+          "url": "paper-api-1.20.1-R0.1-SNAPSHOT-javadoc.jar",
+          "size": 11044980,
+          "sha512": "6fc1203189249949b0025374da8258fd7c388ab54ccbceca2c01027daff6d8cad1dcf536ebd16bd3e22acc21e348f4bc8282d8d1351ff055367ce0b570f62e09",
+          "sha256": "a086254102041ee5fc87f0de156d6cebba16b29f0fe187d6c989385f7979490c",
+          "sha1": "37f0b5d2964476a8101047e11de8717b3af4d7dd",
+          "md5": "5dea86e57500d33e786525051d9a035c"
+        }
+      ]
+    }
+  ]
+}

@@ -54,8 +54,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "clear");
     private static final List<String> LAYOUT_SUBCOMMANDS = List.of("help", "-help", "save", "load");
     private static final List<String> HELP_FLAGS = List.of("help", "-help");
-    private static final List<String> LEADERBOARD_COORDINATE_HINTS = List.of("<x>", "<y>", "<z>", "[world]", "[yaw]",
-            "[pitch]");
+    private static final List<String> LEADERBOARD_COORDINATE_HINTS = List.of("<x>", "<y>", "<z>", "[world]");
     private static final List<String> AMOUNT_HINTS = List.of("<amount>", "0", "100");
     private static final List<String> LEVEL_HINTS = List.of("<level>", "0", "1");
     private static final List<String> ADMIN_AMOUNT_PLAYER_SUBCOMMANDS = List.of(
@@ -99,7 +98,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 ChatColor.GRAY + "- " + label("/sheepmerge kick <player>") + ": remove a visitor from your farm");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard")
                 + ": move the leaderboard display to you");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]")
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard <x> <y> <z> [world]")
                 + ": place the leaderboard at coordinates");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard remove")
                 + ": remove the leaderboard display");
@@ -149,7 +148,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard")
                     + ": move the leaderboard display to your position");
             player.sendMessage(
-                    ChatColor.GRAY + "- " + label("/sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]")
+                    ChatColor.GRAY + "- " + label("/sheepmerge leaderboard <x> <y> <z> [world]")
                             + ": move the leaderboard to explicit coordinates");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard remove")
                     + ": remove the leaderboard display and clear the saved location");
@@ -430,7 +429,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length >= 4 && args[0].equalsIgnoreCase("leaderboard")
+        if ((args.length == 4 || args.length == 5) && args[0].equalsIgnoreCase("leaderboard")
                 && isCoordinate(args[1]) && isCoordinate(args[2]) && isCoordinate(args[3])) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -438,13 +437,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
 
             World targetWorld = player.getWorld();
-            int extraArgIndex = 4;
-            if (args.length >= 5) {
+            if (args.length == 5) {
                 World byName = Bukkit.getWorld(args[4]);
-                if (byName != null) {
-                    targetWorld = byName;
-                    extraArgIndex = 5;
+                if (byName == null) {
+                    player.sendMessage("Unknown world. Usage: /sheepmerge leaderboard <x> <y> <z> [world]");
+                    return true;
                 }
+                targetWorld = byName;
             }
 
             try {
@@ -452,12 +451,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 double y = Double.parseDouble(args[2]);
                 double z = Double.parseDouble(args[3]);
                 Location location = new Location(targetWorld, x, y, z);
-                if (args.length > extraArgIndex) {
-                    location.setYaw(Float.parseFloat(args[extraArgIndex]));
-                }
-                if (args.length > extraArgIndex + 1) {
-                    location.setPitch(Float.parseFloat(args[extraArgIndex + 1]));
-                }
 
                 boolean createdOrMoved = SheepMergeManager.spawnOrMoveTopPointsDisplay(location);
                 if (createdOrMoved) {
@@ -469,7 +462,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return true;
             } catch (NumberFormatException exception) {
                 player.sendMessage(
-                        "Invalid coordinates. Usage: /sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]");
+                        "Invalid coordinates. Usage: /sheepmerge leaderboard <x> <y> <z> [world]");
                 return true;
             }
         }
@@ -773,14 +766,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(appendHelpFlags(List.of("[world]", "remove"), args[4]), args[4]);
         }
 
-        if (args.length == 6 && args[0].equalsIgnoreCase("leaderboard")) {
-            return filterSuggestions(appendHelpFlags(List.of("[yaw]", "remove"), args[5]), args[5]);
-        }
-
-        if (args.length == 7 && args[0].equalsIgnoreCase("leaderboard")) {
-            return filterSuggestions(appendHelpFlags(List.of("[pitch]", "remove"), args[6]), args[6]);
-        }
-
         if (args.length == 2 && args[0].equalsIgnoreCase("kick") && sender instanceof Player player) {
             List<String> kickTargets = new ArrayList<>();
             for (Player online : Bukkit.getOnlinePlayers()) {
@@ -858,7 +843,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         String root = args[0] == null ? "" : args[0].toLowerCase(Locale.ROOT);
         if (root.equals("leaderboard")) {
             player.sendMessage(error(
-                    "Invalid leaderboard command. Use /sheepmerge leaderboard, /sheepmerge leaderboard remove, or /sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]."));
+                    "Invalid leaderboard command. Use /sheepmerge leaderboard, /sheepmerge leaderboard remove, or /sheepmerge leaderboard <x> <y> <z> [world]."));
             sendCommandHelp(player, "leaderboard");
             return;
         }

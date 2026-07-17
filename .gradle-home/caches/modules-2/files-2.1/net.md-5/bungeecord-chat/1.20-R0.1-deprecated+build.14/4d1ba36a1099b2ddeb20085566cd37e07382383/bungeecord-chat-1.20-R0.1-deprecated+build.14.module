@@ -1,0 +1,112 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.md-5",
+    "module": "bungeecord-chat",
+    "version": "1.20-R0.1-deprecated+build.14",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.4"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.8"
+          }
+        },
+        {
+          "group": "com.google.guava",
+          "module": "guava",
+          "version": {
+            "requires": "21.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "bungeecord-chat-1.20-R0.1-deprecated+build.14.jar",
+          "url": "bungeecord-chat-1.20-R0.1-deprecated+build.14.jar",
+          "size": 151235,
+          "sha512": "b2aa93bdcb147044ec9bb5d32f6e485936190d5ec6dad94ca9264074ea65ad9b3d1ad41781126081716a0c9ce5f9118b76207040eea8ae8384f1abdc36dad426",
+          "sha256": "793e12e65953d0e49756478172200a0eb586c908761e9b2d538b904c109252b5",
+          "sha1": "d9c3b08d76aad08ac1c4231f34ae6cffe678ebfb",
+          "md5": "48d69bad3166d3343e7d6d5dc24e7900"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.8"
+          }
+        },
+        {
+          "group": "com.google.guava",
+          "module": "guava",
+          "version": {
+            "requires": "21.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "bungeecord-chat-1.20-R0.1-deprecated+build.14.jar",
+          "url": "bungeecord-chat-1.20-R0.1-deprecated+build.14.jar",
+          "size": 151235,
+          "sha512": "b2aa93bdcb147044ec9bb5d32f6e485936190d5ec6dad94ca9264074ea65ad9b3d1ad41781126081716a0c9ce5f9118b76207040eea8ae8384f1abdc36dad426",
+          "sha256": "793e12e65953d0e49756478172200a0eb586c908761e9b2d538b904c109252b5",
+          "sha1": "d9c3b08d76aad08ac1c4231f34ae6cffe678ebfb",
+          "md5": "48d69bad3166d3343e7d6d5dc24e7900"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "bungeecord-chat-1.20-R0.1-deprecated+build.14-sources.jar",
+          "url": "bungeecord-chat-1.20-R0.1-deprecated+build.14-sources.jar",
+          "size": 37438,
+          "sha512": "3cb1884c91dcbaf1246baf22631f6c69bf3a9ea64200eb5dc0b6494c95d51a3d34ea85bde040c873452472cac752d83e7924cc2bebd037fe620e5a6dd8c19469",
+          "sha256": "fa270cc861392ec31d116c71816e9ca75d23e448fb1b45e5c25cf892854922b6",
+          "sha1": "e8e5edb8655d6945f91acb9c05c5b579c831bfec",
+          "md5": "86aa95244ae68ff820256a94fef8207d"
+        }
+      ]
+    }
+  ]
+}
