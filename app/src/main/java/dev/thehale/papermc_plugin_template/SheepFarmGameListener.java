@@ -190,9 +190,10 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
-        if (!(event.getRightClicked() instanceof Sheep targetSheep)) {
+        if (!(event.getRightClicked() instanceof Sheep)) {
             return;
         }
+        Sheep targetSheep = (Sheep) event.getRightClicked();
 
         Player player = event.getPlayer();
         if (!SheepMergeManager.isSheepFarmWorld(targetSheep.getWorld())) {
@@ -226,7 +227,13 @@ public class SheepFarmGameListener implements Listener {
         }
 
         if (pickedSheep.getUniqueId().equals(targetSheep.getUniqueId())) {
-            return;
+            Sheep retargetedSheep = findMergeTargetInSight(player, pickedSheep);
+            if (retargetedSheep == null) {
+                event.setCancelled(true);
+                player.sendMessage(SheepMergeManager.hint("Aim at another sheep to merge."));
+                return;
+            }
+            targetSheep = retargetedSheep;
         }
 
         SheepTier carriedTier = SheepMergeManager.getSheepTier(pickedSheep);
@@ -280,6 +287,22 @@ public class SheepFarmGameListener implements Listener {
                 carriedTier.getDisplayName() + " + " + carriedTier.getDisplayName() + " -> "
                         + mergedTier.getDisplayName()));
         SheepMergeManager.clearPickedUpSheep(player);
+    }
+
+    private Sheep findMergeTargetInSight(Player player, Sheep carriedSheep) {
+        if (player == null || carriedSheep == null || player.getWorld() == null) {
+            return null;
+        }
+        org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
+                player.getEyeLocation(),
+                player.getLocation().getDirection(),
+                5.5,
+                0.2,
+                entity -> entity instanceof Sheep && !entity.getUniqueId().equals(carriedSheep.getUniqueId()));
+        if (result == null || !(result.getHitEntity() instanceof Sheep sheep)) {
+            return null;
+        }
+        return sheep;
     }
 
     @EventHandler
