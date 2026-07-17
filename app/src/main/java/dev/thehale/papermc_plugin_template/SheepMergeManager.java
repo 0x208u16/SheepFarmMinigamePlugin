@@ -140,6 +140,12 @@ public final class SheepMergeManager {
     private static final int EGG_SPEED_MAX_LEVEL = BASE_EGG_INTERVAL_SECONDS - MIN_EGG_INTERVAL_SECONDS;
     private static final int EGG_SPEED_UPGRADE_BASE_COST = 15;
     private static final int WOOL_REGEN_UPGRADE_BASE_COST = 25;
+    private static final int WOOL_REGEN_MAX_LEVEL = 8;
+    private static final int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 30;
+    private static final int HIGHER_TIER_CHANCE_MAX_LEVEL = 10;
+    private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 20;
+    private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
+    private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
     private static final int PRESTIGE_BASE_SPAWN_TIER_BASE_COST = 10;
