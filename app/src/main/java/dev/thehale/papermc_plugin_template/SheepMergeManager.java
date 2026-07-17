@@ -3349,12 +3349,12 @@ public final class SheepMergeManager {
 
     private static String getAbilityMenuStatus(Map<UUID, Long> activeUntil, UUID playerId) {
         long remaining = getAbilityRemainingMs(activeUntil, playerId);
-        return remaining > 0L ? "Time left: " + formatDuration(remaining) : "Time left: ready";
+        return remaining > 0L ? "Time left: " + formatDuration(remaining) : "Time left: inactive";
     }
 
     private static String getAbilityScoreLine(String label, Map<UUID, Long> activeUntil, UUID playerId) {
         long remaining = getAbilityRemainingMs(activeUntil, playerId);
-        return label + ": " + (remaining > 0L ? formatDuration(remaining) : "ready");
+        return label + ": " + (remaining > 0L ? formatDuration(remaining) : "inactive");
     }
 
     private static long getQuestResetRemainingMs(Player player) {
