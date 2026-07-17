@@ -42,8 +42,12 @@ public class SheepMergeWorldListener implements Listener {
     @EventHandler
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
-        if (!SheepMergeManager.isSheepFarmWorld(event.getFrom())
-                && SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+        boolean fromManagedWorld = SheepMergeManager.isSheepFarmWorld(event.getFrom());
+        boolean toManagedWorld = SheepMergeManager.isSheepFarmWorld(player.getWorld());
+        boolean fromTutorialWorld = SheepMergeManager.isTutorialWorld(event.getFrom());
+        boolean toTutorialWorld = SheepMergeManager.isTutorialWorld(player.getWorld());
+
+        if (!fromManagedWorld && toManagedWorld) {
             SheepMergeManager.savePlayerInventory(player);
             player.getInventory().clear();
             SheepMergeManager.upgradeSheepBelowMinimumSpawnTier(player.getWorld());
@@ -63,8 +67,17 @@ public class SheepMergeWorldListener implements Listener {
                         50,
                         10);
             }
-        } else if (SheepMergeManager.isSheepFarmWorld(event.getFrom())
-                && !SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+        } else if (fromTutorialWorld && toManagedWorld && !toTutorialWorld) {
+            player.getInventory().clear();
+            SheepMergeManager.clearPickedUpSheep(player);
+            SheepMergeManager.clearEggTimer(player);
+            SheepMergeManager.enforceFarmLoadout(player);
+            SheepMergeManager.applyFarmSaturation(player);
+            SheepMergeManager.showPointsScoreboard(player);
+            SheepMergeManager.updatePointsScoreboard(player);
+            SheepMergeManager.resetEggTimer(player);
+            SheepMergeManager.resetMergeReminder(player);
+        } else if (fromManagedWorld && !toManagedWorld) {
             SheepMergeManager.saveData();
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);
