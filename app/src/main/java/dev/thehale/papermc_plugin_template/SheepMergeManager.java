@@ -4513,6 +4513,12 @@ public final class SheepMergeManager {
         if (plugin == null) {
             return;
         }
+        World fallbackWorld = plugin.getServer().getWorlds().isEmpty() ? null : plugin.getServer().getWorlds().get(0);
+        for (World world : plugin.getServer().getWorlds()) {
+            if (isSheepFarmWorld(world)) {
+                world.save();
+            }
+        }
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             if (savedInventories.containsKey(player.getUniqueId())) {
                 restorePlayerInventory(player);
@@ -4523,6 +4529,10 @@ public final class SheepMergeManager {
             clearEggTimer(player);
             clearPickedUpSheep(player);
             clearComboRuntime(player);
+            if (fallbackWorld != null && isSheepFarmWorld(player.getWorld())) {
+                Location fallbackSpawn = fallbackWorld.getSpawnLocation().clone().add(0.5D, 0.0D, 0.5D);
+                player.teleport(fallbackSpawn);
+            }
         }
         savedInventories.clear();
         savedScoreboards.clear();
