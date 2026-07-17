@@ -691,8 +691,7 @@ public final class SheepMergeManager {
             clearTutorialRuntimeState(playerId);
             player.sendTitle(color("&cTutorial Failed"), color("&7Use /sheepmerge tutorial to retry"), 10, 70, 10);
             player.sendMessage(warning("You finished the basic tutorial, but ran out of time on the rest."));
-            player.sendMessage(hint("You were sent to your farm. Use /sheepmerge tutorial to retry anytime."));
-            SheepFarmWorldCommand.teleportToFarmWorld(player);
+            player.sendMessage(hint("Use /sheepmerge to go to your farm. Use /sheepmerge tutorial to retry anytime."));
             saveData();
             return;
         }
@@ -1745,9 +1744,9 @@ public final class SheepMergeManager {
             UUID playerId = player.getUniqueId();
             tutorialCompletedByPlayer.put(playerId, true);
             clearTutorialRuntimeState(playerId);
-            player.sendTitle(color("&aTutorial Complete"), color("&7Sending you to your farm"), 10, 60, 10);
-            SheepFarmWorldCommand.teleportToFarmWorld(player);
-            player.sendMessage(action("Tutorial complete! Use /sheepmerge tutorial anytime to replay."));
+            player.sendTitle(color("&aTutorial Complete"), color("&7Run /sheepmerge to go to your farm"), 10, 60, 10);
+            player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
+            player.sendMessage(hint("Use /sheepmerge tutorial anytime to replay."));
             saveData();
         }
     }
@@ -1953,7 +1952,12 @@ public final class SheepMergeManager {
         }
 
         boolean rescueActive = applySheepRescueMotionIfNeeded(sheep);
-        applyRainbowColorAnimation(sheep, getSheepTier(sheep));
+        SheepTier tier = getSheepTier(sheep);
+        if (tier == SheepTier.RAINBOW) {
+            applyRainbowColorAnimation(sheep, tier);
+        } else if (tier != null && tier.getColor() != null && sheep.getColor() != tier.getColor()) {
+            sheep.setColor(tier.getColor());
+        }
 
         long now = System.currentTimeMillis();
         long nextEat = getNextEatTimestamp(sheep);

@@ -167,12 +167,17 @@ public class SheepMergeWorldListener implements Listener {
             return;
         }
 
+        Sheep carriedSheep = SheepMergeManager.getPickedUpSheep(player);
+        if (carriedSheep == null) {
+            return;
+        }
+
         org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
                 player.getEyeLocation(),
                 player.getLocation().getDirection(),
                 5,
                 0.2,
-                entity -> entity instanceof Sheep);
+                entity -> entity instanceof Sheep && !entity.getUniqueId().equals(carriedSheep.getUniqueId()));
 
         if (result != null && result.getHitEntity() instanceof Sheep) {
             return;

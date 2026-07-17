@@ -14,6 +14,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.io.File;
 import java.util.List;
 
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
@@ -679,6 +680,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             applyFarmWorldRules(world);
+            ensureWorldStorageFolders(world);
             return world;
         }
         return createFlatWorld(worldName);
@@ -742,8 +744,24 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         applyFarmWorldRules(world);
+        ensureWorldStorageFolders(world);
         SheepMergeManager.applyFarmLayout(world);
         return world;
+    }
+
+    private static void ensureWorldStorageFolders(World world) {
+        if (world == null || world.getWorldFolder() == null) {
+            return;
+        }
+        File worldFolder = world.getWorldFolder();
+        File dataFolder = new File(worldFolder, "data");
+        File regionFolder = new File(worldFolder, "region");
+        if (!dataFolder.exists()) {
+            dataFolder.mkdirs();
+        }
+        if (!regionFolder.exists()) {
+            regionFolder.mkdirs();
+        }
     }
 
     private static void applyFarmWorldRules(World world) {
