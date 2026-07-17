@@ -2534,6 +2534,23 @@ public final class SheepMergeManager {
         return true;
     }
 
+    public static boolean removeTopPointsDisplay() {
+        List<TextDisplay> displays = findTopPointsDisplays();
+        if (displays.isEmpty() && !hasSavedTopPointsDisplayLocation()) {
+            return false;
+        }
+
+        for (TextDisplay display : displays) {
+            if (display != null) {
+                display.remove();
+            }
+        }
+
+        clearTopPointsDisplayLocation();
+        saveData();
+        return true;
+    }
+
     public static void restoreTopPointsDisplayIfPossible() {
         Location savedLocation = getSavedTopPointsDisplayLocation();
         if (savedLocation == null || savedLocation.getWorld() == null) {
@@ -2614,6 +2631,22 @@ public final class SheepMergeManager {
         dataConfig.set(TOP_POINTS_DISPLAY_YAW_KEY, location.getYaw());
         dataConfig.set(TOP_POINTS_DISPLAY_PITCH_KEY, location.getPitch());
         saveData();
+    }
+
+    private static void clearTopPointsDisplayLocation() {
+        if (dataConfig == null) {
+            return;
+        }
+        dataConfig.set(TOP_POINTS_DISPLAY_WORLD_KEY, null);
+        dataConfig.set(TOP_POINTS_DISPLAY_X_KEY, null);
+        dataConfig.set(TOP_POINTS_DISPLAY_Y_KEY, null);
+        dataConfig.set(TOP_POINTS_DISPLAY_Z_KEY, null);
+        dataConfig.set(TOP_POINTS_DISPLAY_YAW_KEY, null);
+        dataConfig.set(TOP_POINTS_DISPLAY_PITCH_KEY, null);
+    }
+
+    private static boolean hasSavedTopPointsDisplayLocation() {
+        return dataConfig != null && dataConfig.contains(TOP_POINTS_DISPLAY_WORLD_KEY);
     }
 
     private static Location getSavedTopPointsDisplayLocation() {

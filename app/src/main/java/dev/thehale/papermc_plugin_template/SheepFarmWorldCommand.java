@@ -278,6 +278,20 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length == 2 && args[0].equalsIgnoreCase("topdisplay") && args[1].equalsIgnoreCase("remove")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            boolean removed = SheepMergeManager.removeTopPointsDisplay();
+            if (removed) {
+                player.sendMessage("Top points display removed.");
+            } else {
+                player.sendMessage("No top points display was found.");
+            }
+            return true;
+        }
+
         if (args.length == 1 && args[0].equalsIgnoreCase("storm")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
