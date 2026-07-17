@@ -299,7 +299,7 @@ public final class SheepMergeManager {
             "&7Bigger &eSheep Limit &7means more sheep alive at once and more merge opportunities.",
             "&7Faster &eEgg Speed &7means spawn eggs are generated more often.",
             "&7Your egg count is shown in the XP level; XP bar fill shows time to next egg.",
-            "&7Use the egg item in hotbar slot 8 to spawn sheep without consuming stack size.",
+            "&7Use the egg item in hotbar slot 8 to spawn sheep.",
             "&7Higher &eWool Regen &7levels regrow wool faster for more shearing.",
             "&7Upgrade &eHigher-Tier Chance &7to roll better sheep from eggs more often.",
             "&7Sneak-right-click a sheep to carry it, then right-click the same tier to merge.",
