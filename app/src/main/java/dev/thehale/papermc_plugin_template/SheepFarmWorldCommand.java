@@ -23,7 +23,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "help",
             "-help",
-            "--help",
             "upgrade",
             "prestige",
             "shop",
@@ -34,7 +33,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "storm",
             "combofrenzy",
             "leaderboard",
-            "topdisplay",
             "resetdata",
             "stats",
             "checkpoints",
@@ -46,20 +44,17 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "setquestpoints",
             "setprestige",
             "layout",
-            "mapsave",
-            "mapload",
             "world");
 
-    private static final List<String> WORLD_SUBCOMMANDS = List.of("help", "-help", "--help", "save", "load");
+    private static final List<String> WORLD_SUBCOMMANDS = List.of("help", "-help", "save", "load");
     private static final List<String> LEADERBOARD_SUBCOMMANDS = List.of(
             "help",
             "-help",
-            "--help",
             "move",
             "remove",
             "clear");
-    private static final List<String> LAYOUT_SUBCOMMANDS = List.of("help", "-help", "--help", "save", "load");
-    private static final List<String> HELP_FLAGS = List.of("help", "-help", "--help");
+    private static final List<String> LAYOUT_SUBCOMMANDS = List.of("help", "-help", "save", "load");
+    private static final List<String> HELP_FLAGS = List.of("help", "-help");
     private static final List<String> LEADERBOARD_COORDINATE_HINTS = List.of("<x>", "<y>", "<z>", "[world]", "[yaw]",
             "[pitch]");
     private static final List<String> AMOUNT_HINTS = List.of("<amount>", "0", "100");
@@ -83,8 +78,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private static boolean isHelpFlag(String value) {
         return value != null && (value.equalsIgnoreCase("help")
-                || value.equalsIgnoreCase("-help")
-                || value.equalsIgnoreCase("--help"));
+                || value.equalsIgnoreCase("-help"));
     }
 
     private void sendCommandHelp(Player player, String topic) {
@@ -111,16 +105,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": place the leaderboard at coordinates");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard remove")
                 + ": remove the leaderboard display");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge topdisplay")
-                + ": legacy alias for leaderboard");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge layout save")
                 + ": save the current farm layout");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge layout load")
                 + ": load the saved farm layout");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge mapsave") + ": legacy alias for layout save");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge mapload") + ": legacy alias for layout load");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge world save|load") + ": save or load the farm layout");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata [player]") + ": admin reset a player");
@@ -153,18 +143,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     ChatColor.GRAY + "- " + label("/sheepmerge visit -toggle") + ": toggle your farm visit access");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit -toggle <player>")
                     + ": operator toggle for another player");
-            return;
-        }
-
-        if (topic.equalsIgnoreCase("topdisplay")) {
-            player.sendMessage(ChatColor.DARK_AQUA + "Leaderboard hints:");
-            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard")
-                    + ": move the leaderboard display to your position");
-            player.sendMessage(
-                    ChatColor.GRAY + "- " + label("/sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]")
-                            + ": move the leaderboard to explicit coordinates");
-            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard remove")
-                    + ": remove the leaderboard display and clear the saved location");
             return;
         }
 
@@ -452,21 +430,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 1 && args[0].equalsIgnoreCase("topdisplay")) {
-            if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
-                return true;
-            }
-            boolean createdOrMoved = SheepMergeManager.spawnOrMoveTopPointsDisplay(player);
-            if (createdOrMoved) {
-                player.sendMessage("Top points display created or moved to your position.");
-            } else {
-                player.sendMessage("Unable to create top points display right now.");
-            }
-            return true;
-        }
-
-        if (args.length >= 2 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))
+        if (args.length >= 2 && args[0].equalsIgnoreCase("leaderboard")
                 && args[1].equalsIgnoreCase("remove")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -477,7 +441,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length >= 4 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))
+        if (args.length >= 4 && args[0].equalsIgnoreCase("leaderboard")
                 && isCoordinate(args[1]) && isCoordinate(args[2]) && isCoordinate(args[3])) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -547,8 +511,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if ((args.length == 1 && args[0].equalsIgnoreCase("mapsave"))
-                || (args.length == 2 && args[0].equalsIgnoreCase("layout") && args[1].equalsIgnoreCase("save"))
+        if ((args.length == 2 && args[0].equalsIgnoreCase("layout") && args[1].equalsIgnoreCase("save"))
                 || (args.length == 2 && args[0].equalsIgnoreCase("world") && args[1].equalsIgnoreCase("save"))) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -567,15 +530,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if ((args.length == 1 && args[0].equalsIgnoreCase("mapload"))
-                || (args.length == 2 && args[0].equalsIgnoreCase("layout") && args[1].equalsIgnoreCase("load"))
+        if ((args.length == 2 && args[0].equalsIgnoreCase("layout") && args[1].equalsIgnoreCase("load"))
                 || (args.length == 2 && args[0].equalsIgnoreCase("world") && args[1].equalsIgnoreCase("load"))) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
             }
             if (!SheepMergeManager.hasSavedFarmLayout()) {
-                player.sendMessage("No saved farm layout found yet. Use /sheepmerge mapsave first.");
+                player.sendMessage("No saved farm layout found yet. Use /sheepmerge layout save first.");
                 return true;
             }
             int updated = SheepMergeManager.applySharedFarmLayoutToAllFarmWorlds();
@@ -803,13 +765,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(visitOptions, args[1]);
         }
 
-        if (args.length == 2 && args[0].equalsIgnoreCase("topdisplay")) {
-            List<String> suggestions = new ArrayList<>(LEADERBOARD_SUBCOMMANDS);
-            suggestions.addAll(HELP_FLAGS);
-            suggestions.addAll(LEADERBOARD_COORDINATE_HINTS);
-            return filterSuggestions(suggestions, args[1]);
-        }
-
         if (args.length == 2 && args[0].equalsIgnoreCase("leaderboard")) {
             List<String> suggestions = new ArrayList<>(LEADERBOARD_SUBCOMMANDS);
             suggestions.addAll(HELP_FLAGS);
@@ -817,23 +772,23 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(suggestions, args[1]);
         }
 
-        if (args.length == 3 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+        if (args.length == 3 && args[0].equalsIgnoreCase("leaderboard")) {
             return filterSuggestions(appendHelpFlags(List.of("<y>", "remove"), args[2]), args[2]);
         }
 
-        if (args.length == 4 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+        if (args.length == 4 && args[0].equalsIgnoreCase("leaderboard")) {
             return filterSuggestions(appendHelpFlags(List.of("<z>", "remove"), args[3]), args[3]);
         }
 
-        if (args.length == 5 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+        if (args.length == 5 && args[0].equalsIgnoreCase("leaderboard")) {
             return filterSuggestions(appendHelpFlags(List.of("[world]", "remove"), args[4]), args[4]);
         }
 
-        if (args.length == 6 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+        if (args.length == 6 && args[0].equalsIgnoreCase("leaderboard")) {
             return filterSuggestions(appendHelpFlags(List.of("[yaw]", "remove"), args[5]), args[5]);
         }
 
-        if (args.length == 7 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+        if (args.length == 7 && args[0].equalsIgnoreCase("leaderboard")) {
             return filterSuggestions(appendHelpFlags(List.of("[pitch]", "remove"), args[6]), args[6]);
         }
 
@@ -912,16 +867,34 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         String root = args[0] == null ? "" : args[0].toLowerCase(Locale.ROOT);
-        if (root.equals("leaderboard") || root.equals("topdisplay")) {
+        if (root.equals("leaderboard")) {
             player.sendMessage(error(
                     "Invalid leaderboard command. Use /sheepmerge leaderboard, /sheepmerge leaderboard remove, or /sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]."));
             sendCommandHelp(player, "leaderboard");
             return;
         }
 
-        if (root.equals("layout") || root.equals("mapsave") || root.equals("mapload") || root.equals("world")) {
+        if (root.equals("topdisplay")) {
+            player.sendMessage(error("/sheepmerge topdisplay was removed. Use /sheepmerge leaderboard instead."));
+            sendCommandHelp(player, "leaderboard");
+            return;
+        }
+
+        if (root.equals("layout") || root.equals("world")) {
             player.sendMessage(
                     error("Invalid layout command. Use /sheepmerge layout save or /sheepmerge layout load."));
+            sendCommandHelp(player, "world");
+            return;
+        }
+
+        if (root.equals("mapsave")) {
+            player.sendMessage(error("/sheepmerge mapsave was removed. Use /sheepmerge layout save instead."));
+            sendCommandHelp(player, "world");
+            return;
+        }
+
+        if (root.equals("mapload")) {
+            player.sendMessage(error("/sheepmerge mapload was removed. Use /sheepmerge layout load instead."));
             sendCommandHelp(player, "world");
             return;
         }
