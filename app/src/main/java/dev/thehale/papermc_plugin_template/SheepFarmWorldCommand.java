@@ -20,6 +20,8 @@ import java.util.List;
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
+            "help",
+            "-help",
             "upgrade",
             "prestige",
             "shop",
@@ -62,11 +64,71 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return "sheepfarm_" + playerId.toString().replace("-", "");
     }
 
+    private static boolean isHelpFlag(String value) {
+        return value != null && (value.equalsIgnoreCase("help")
+                || value.equalsIgnoreCase("-help")
+                || value.equalsIgnoreCase("--help"));
+    }
+
+    private void sendCommandHelp(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        player.sendMessage(adminHeader("SheepMerge Help"));
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge") + ": return to your sheep farm world");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge help") + ": show this help page");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge upgrade") + ": open upgrade menu");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge prestige") + ": open prestige menu");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge shop") + ": open shop menu");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge tutorial") + ": open the tutorial world");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge status") + ": view your current stats");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit <player>") + ": visit another open farm");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge visit -toggle [player]") + ": toggle farm visit access");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge kick <player>") + ": remove a visitor from your farm");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge topdisplay") + ": move the leaderboard display to you");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge topdisplay remove") + ": remove the leaderboard display");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge mapsave") + ": save the current farm layout");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge mapload") + ": load the saved farm layout");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge world save|load") + ": save or load the farm layout");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata [player]") + ": admin reset a player");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge stats [player]") + ": admin stats view");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge checkpoints [player]") + ": admin points check");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge checkquestpoints [player]") + ": admin quest points check");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge checkprestige [player]") + ": admin prestige check");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge givepoints <amount> [player]") + ": admin give points");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge setpoints <amount> [player]") + ": admin set points");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge givequestpoints <amount> [player]")
+                + ": admin give quest points");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge setquestpoints <amount> [player]")
+                + ": admin set quest points");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge setprestige <level> [player]")
+                + ": admin set prestige level");
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Only players can use this command.");
             return true;
+        }
+
+        for (String arg : args) {
+            if (isHelpFlag(arg)) {
+                sendCommandHelp(player);
+                return true;
+            }
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("upgrade")) {

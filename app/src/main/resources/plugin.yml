@@ -7,10 +7,10 @@
 ---  # Denotes the start of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
 name: SheepMerge
 main: dev.thehale.papermc_plugin_template.SheepMergePlugin
-version: 0.3.3
+version: 0.3.4
 api-version: "1.20"
 commands:
   sheepmerge:
     description: Teleports you to your sheep farm world and manages your merge game
-    usage: /sheepmerge [upgrade|prestige|shop|tutorial|status|stats|checkpoints|checkquestpoints|checkprestige|visit|kick|storm|combofrenzy|topdisplay|resetdata|givepoints|setpoints|givequestpoints|setquestpoints|setprestige|mapsave|mapload|world save|world load]
+    usage: /sheepmerge [help|upgrade|prestige|shop|tutorial|status|stats|checkpoints|checkquestpoints|checkprestige|visit|kick|storm|combofrenzy|topdisplay|resetdata|givepoints|setpoints|givequestpoints|setquestpoints|setprestige|mapsave|mapload|world save|world load]
 ... # Denotes the end of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
