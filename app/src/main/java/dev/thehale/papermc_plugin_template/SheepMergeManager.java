@@ -70,6 +70,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> tutorialBypassedByPlayer = new HashMap<>();
     private static final Map<UUID, Long> tutorialStartedAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastTutorialTaskTitleTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, String> lastTutorialTaskTitleStepByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
@@ -194,6 +196,7 @@ public final class SheepMergeManager {
     private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
     private static final long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
     private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
+    private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 4_000L;
     private static final long TUTORIAL_FAIL_TIMEOUT_MS = 5L * 60L * 1000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
@@ -540,6 +543,8 @@ public final class SheepMergeManager {
         }
         tutorialStartedAtByPlayer.remove(playerId);
         lastTutorialReminderTimestampByPlayer.remove(playerId);
+        lastTutorialTaskTitleTimestampByPlayer.remove(playerId);
+        lastTutorialTaskTitleStepByPlayer.remove(playerId);
     }
 
     private static void resetTutorialProgress(UUID playerId) {
@@ -641,6 +646,7 @@ public final class SheepMergeManager {
         }
 
         long now = System.currentTimeMillis();
+        tickTutorialTaskTitle(player, now);
         long startedAt = tutorialStartedAtByPlayer.getOrDefault(playerId, now);
         tutorialStartedAtByPlayer.putIfAbsent(playerId, now);
         if (now - startedAt >= TUTORIAL_FAIL_TIMEOUT_MS && hasCompletedBasicTutorialTasks(player)) {
@@ -665,6 +671,31 @@ public final class SheepMergeManager {
         lastTutorialReminderTimestampByPlayer.put(playerId, now);
         player.sendMessage(warning("Finish the tutorial to unlock your actual sheep farm."));
         player.sendMessage(hint(getTutorialNextStepLine(player)));
+    }
+
+    private static void tickTutorialTaskTitle(Player player, long now) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        String stepLine = getTutorialNextStepLine(player);
+        String titleStep = stepLine;
+        if (titleStep.startsWith("Step: ")) {
+            titleStep = titleStep.substring("Step: ".length());
+        } else if (titleStep.startsWith("Bonus: ")) {
+            titleStep = titleStep.substring("Bonus: ".length());
+        }
+
+        String previousStep = lastTutorialTaskTitleStepByPlayer.get(playerId);
+        long lastShownAt = lastTutorialTaskTitleTimestampByPlayer.getOrDefault(playerId, 0L);
+        boolean stepChanged = !titleStep.equals(previousStep);
+        if (!stepChanged && now - lastShownAt < TUTORIAL_TASK_TITLE_REPEAT_MS) {
+            return;
+        }
+
+        player.sendTitle(color("&eTutorial Task"), color("&7" + titleStep), 0, 30, 10);
+        lastTutorialTaskTitleTimestampByPlayer.put(playerId, now);
+        lastTutorialTaskTitleStepByPlayer.put(playerId, titleStep);
     }
 
     public static void recordQuestShear(Player player) {
