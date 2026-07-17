@@ -7,8 +7,8 @@
 ---  # Denotes the start of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
 name: SheepMerge
 main: dev.thehale.papermc_plugin_template.SheepMergePlugin
-version: 0.3.2
-api-version: 1.19
+version: 0.3.3
+api-version: 1.20
 commands:
   sheepmerge:
     description: Teleports you to your sheep farm world and manages your merge game

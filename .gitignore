@@ -2,6 +2,7 @@
 **/.server
 app/bin
 test-server-1/
+test-server-2/
 
 ###############################################
 ## Gradle files to ignore
