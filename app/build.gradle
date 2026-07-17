@@ -26,7 +26,9 @@ plugins {
 }
 
 tasks.withType(JavaCompile).configureEach {
-  options.release = 22
+  // Paper 1.20.1's bytecode converter cannot process class version 66,
+  // so compile to Java 17 bytecode even when running the server on Java 22+.
+  options.release = 17
 }
 
 def paperJarName = 'paper-' + paperVersion + '-' + paperBuild + '.jar'
