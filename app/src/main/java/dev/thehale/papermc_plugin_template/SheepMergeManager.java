@@ -2,6 +2,7 @@ package dev.thehale.papermc_plugin_template;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1406,6 +1407,7 @@ public final class SheepMergeManager {
 
         // Reset regular progression purchased with normal points.
         pointsByPlayer.put(player.getUniqueId(), 0);
+        refreshTopPointsDisplays();
         extraLimitByPlayer.remove(player.getUniqueId());
         eggSpeedLevelByPlayer.remove(player.getUniqueId());
         woolRegenLevelByPlayer.remove(player.getUniqueId());
@@ -1756,6 +1758,7 @@ public final class SheepMergeManager {
         }
         UUID id = player.getUniqueId();
         pointsByPlayer.remove(id);
+        refreshTopPointsDisplays();
         extraLimitByPlayer.remove(id);
         eggSpeedLevelByPlayer.remove(id);
         woolRegenLevelByPlayer.remove(id);
@@ -1842,6 +1845,7 @@ public final class SheepMergeManager {
         }
         UUID id = player.getUniqueId();
         pointsByPlayer.put(id, Math.max(0, pointsByPlayer.getOrDefault(id, 0) + amount));
+        refreshTopPointsDisplays();
         saveData();
     }
 
@@ -1850,6 +1854,7 @@ public final class SheepMergeManager {
             return;
         }
         pointsByPlayer.put(player.getUniqueId(), Math.max(0, amount));
+        refreshTopPointsDisplays();
         saveData();
     }
 
@@ -2284,6 +2289,9 @@ public final class SheepMergeManager {
                     }
                     builder.append("\n").append(name).append(": ").append(entry.getValue());
                 });
+        if (builder.toString().equals("Top Sheep Merge Points")) {
+            builder.append("\nNo scores yet");
+        }
         return builder.toString();
     }
 
@@ -2292,36 +2300,60 @@ public final class SheepMergeManager {
             return false;
         }
 
-        World world = player.getWorld();
         Location location = player.getLocation().clone().add(0, 2.2, 0);
-        TextDisplay display = findTopPointsDisplay(world);
+        List<TextDisplay> displays = findTopPointsDisplays();
+        TextDisplay display = displays.isEmpty() ? null : displays.get(0);
         if (display == null) {
-            display = world.spawn(location, TextDisplay.class);
+            display = player.getWorld().spawn(location, TextDisplay.class);
             display.getPersistentDataContainer().set(getTopPointsDisplayKey(), PersistentDataType.BYTE, (byte) 1);
-            display.setBillboard(Display.Billboard.CENTER);
-            display.setSeeThrough(true);
-            display.setDefaultBackground(false);
-            display.setShadowed(true);
-            display.setLineWidth(260);
         } else {
             display.teleport(location);
         }
 
-        display.setText(buildTopPointsText(10));
+        // Keep a single marker entity around even if older duplicates already exist.
+        for (int index = 1; index < displays.size(); index++) {
+            displays.get(index).remove();
+        }
+
+        configureTopPointsDisplay(display);
+        refreshTopPointsDisplays();
         return true;
     }
 
-    private static TextDisplay findTopPointsDisplay(World world) {
-        if (world == null) {
-            return null;
+    private static void refreshTopPointsDisplays() {
+        String topPointsText = buildTopPointsText(10);
+        for (TextDisplay display : findTopPointsDisplays()) {
+            configureTopPointsDisplay(display);
+            display.setText(topPointsText);
         }
-        for (TextDisplay display : world.getEntitiesByClass(TextDisplay.class)) {
-            Byte marker = display.getPersistentDataContainer().get(getTopPointsDisplayKey(), PersistentDataType.BYTE);
-            if (marker != null && marker == (byte) 1) {
-                return display;
+    }
+
+    private static void configureTopPointsDisplay(TextDisplay display) {
+        if (display == null) {
+            return;
+        }
+        display.setBillboard(Display.Billboard.CENTER);
+        display.setSeeThrough(true);
+        display.setDefaultBackground(false);
+        display.setShadowed(true);
+        display.setLineWidth(260);
+    }
+
+    private static List<TextDisplay> findTopPointsDisplays() {
+        List<TextDisplay> displays = new ArrayList<>();
+        if (plugin == null || plugin.getServer() == null) {
+            return displays;
+        }
+        for (World world : plugin.getServer().getWorlds()) {
+            for (TextDisplay display : world.getEntitiesByClass(TextDisplay.class)) {
+                Byte marker = display.getPersistentDataContainer().get(getTopPointsDisplayKey(),
+                        PersistentDataType.BYTE);
+                if (marker != null && marker == (byte) 1) {
+                    displays.add(display);
+                }
             }
         }
-        return null;
+        return displays;
     }
 
     public static void addPoints(Player player, int points) {
@@ -2330,6 +2362,7 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         pointsByPlayer.put(playerId, pointsByPlayer.getOrDefault(playerId, 0) + points);
+        refreshTopPointsDisplays();
         queuePointsGainOverlay(player, points);
         saveData();
         tickPrestigeReminder(player);
@@ -2864,6 +2897,7 @@ public final class SheepMergeManager {
             return false;
         }
         pointsByPlayer.put(uuid, current - points);
+        refreshTopPointsDisplays();
         saveData();
         return true;
     }
