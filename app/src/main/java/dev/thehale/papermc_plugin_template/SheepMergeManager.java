@@ -5169,8 +5169,9 @@ public final class SheepMergeManager {
         sheep.setAI(false);
         sheep.setGravity(false);
         sheep.setInvulnerable(true);
-        player.addPassenger(sheep);
+        sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
         carriedSheepByPlayer.put(player.getUniqueId(), sheep);
+        updateCarriedSheepPosition(player);
     }
 
     public static boolean hasPickedUpSheep(Player player) {
@@ -5197,7 +5198,6 @@ public final class SheepMergeManager {
         if (sheep == null) {
             return false;
         }
-        player.removePassenger(sheep);
         sheep.setGravity(true);
         sheep.setAI(true);
         sheep.setInvulnerable(false);
@@ -5216,6 +5216,30 @@ public final class SheepMergeManager {
         return true;
     }
 
+    public static void updateCarriedSheepPosition(Player player) {
+        if (player == null) {
+            return;
+        }
+        Sheep sheep = getPickedUpSheep(player);
+        if (sheep == null || sheep.getWorld() == null || !sheep.getWorld().equals(player.getWorld())) {
+            return;
+        }
+
+        Vector forward = player.getLocation().getDirection().normalize();
+        Vector lateral = new Vector(-forward.getZ(), 0.0D, forward.getX());
+        if (lateral.lengthSquared() > 0.0D) {
+            lateral.normalize();
+        }
+
+        Location carryLocation = player.getLocation().clone()
+                .add(forward.multiply(0.9D))
+                .add(lateral.multiply(0.55D))
+                .add(0.0D, 1.15D, 0.0D);
+        sheep.teleport(carryLocation);
+        sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
+        sheep.setFallDistance(0.0F);
+    }
+
     private static boolean isDropSpacePassable(Location location) {
         if (location == null || location.getWorld() == null) {
             return false;
@@ -5230,9 +5254,6 @@ public final class SheepMergeManager {
         }
         Sheep sheep = carriedSheepByPlayer.remove(player.getUniqueId());
         if (sheep != null && sheep.isValid()) {
-            if (player.getPassengers().contains(sheep)) {
-                player.removePassenger(sheep);
-            }
             sheep.setGravity(true);
             sheep.setAI(true);
             sheep.setInvulnerable(false);

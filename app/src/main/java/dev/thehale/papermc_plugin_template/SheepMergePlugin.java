@@ -82,6 +82,9 @@ public class SheepMergePlugin extends JavaPlugin {
                     SheepMergeManager.processSheepEatTimer(sheep);
                 }
             }
+            for (Player player : getServer().getOnlinePlayers()) {
+                SheepMergeManager.updateCarriedSheepPosition(player);
+            }
         }, 2L, 2L);
     }
 
