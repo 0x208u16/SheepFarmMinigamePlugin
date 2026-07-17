@@ -5201,10 +5201,27 @@ public final class SheepMergeManager {
         sheep.setGravity(true);
         sheep.setAI(true);
         sheep.setInvulnerable(false);
-        sheep.teleport(player.getLocation().add(player.getLocation().getDirection().multiply(1.0)).add(0, 1, 0));
-        sheep.setVelocity(player.getLocation().getDirection().multiply(0.3));
+        Vector forward = player.getLocation().getDirection().normalize();
+        Location dropLocation = player.getLocation().clone().add(forward.clone().multiply(1.6D)).add(0, 0.2D, 0);
+        if (!isDropSpacePassable(dropLocation)) {
+            dropLocation = player.getLocation().clone().add(0, 0.2D, 0);
+        }
+        if (!isDropSpacePassable(dropLocation)) {
+            dropLocation = player.getLocation().clone().add(0, 1.0D, 0);
+        }
+
+        sheep.teleport(dropLocation);
+        sheep.setVelocity(forward.multiply(0.2D).setY(0.15D));
         carriedSheepByPlayer.remove(player.getUniqueId());
         return true;
+    }
+
+    private static boolean isDropSpacePassable(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+        return location.getBlock().isPassable()
+                && location.clone().add(0, 1, 0).getBlock().isPassable();
     }
 
     public static void clearPickedUpSheep(Player player) {
