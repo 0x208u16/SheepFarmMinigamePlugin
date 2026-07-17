@@ -78,6 +78,9 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialTaskTitleTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialTaskTitleStepByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastTutorialStatusFeedTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, String> lastTutorialProgressFeedLineByPlayer = new HashMap<>();
+    private static final Map<UUID, String> lastTutorialStepFeedLineByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
@@ -211,6 +214,7 @@ public final class SheepMergeManager {
     private static final long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
     private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
     private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 4_000L;
+    private static final long TUTORIAL_STATUS_FEED_REPEAT_MS = 4_000L;
     private static final long TUTORIAL_FAIL_TIMEOUT_MS = 5L * 60L * 1000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
@@ -578,6 +582,9 @@ public final class SheepMergeManager {
         lastTutorialReminderTimestampByPlayer.remove(playerId);
         lastTutorialTaskTitleTimestampByPlayer.remove(playerId);
         lastTutorialTaskTitleStepByPlayer.remove(playerId);
+        lastTutorialStatusFeedTimestampByPlayer.remove(playerId);
+        lastTutorialProgressFeedLineByPlayer.remove(playerId);
+        lastTutorialStepFeedLineByPlayer.remove(playerId);
     }
 
     private static void resetTutorialProgress(UUID playerId) {
@@ -1629,8 +1636,7 @@ public final class SheepMergeManager {
         player.sendMessage(hint("5) Open Prestige, then prestige once."));
         player.sendMessage(hint("6) Activate one quest ability."));
         player.sendMessage(hint("Bonus: Open Shear Shop to learn shear upgrades."));
-        player.sendMessage(hint(getTutorialProgressLine(player)));
-        player.sendMessage(hint(getTutorialNextStepLine(player)));
+        sendTutorialStatusFeed(player);
     }
 
     private static void markTutorialSection(Player player, Map<UUID, Boolean> sectionMap, String message) {
@@ -1643,8 +1649,7 @@ public final class SheepMergeManager {
         }
         sectionMap.put(playerId, true);
         player.sendMessage(action(message));
-        player.sendMessage(hint(getTutorialProgressLine(player)));
-        player.sendMessage(hint(getTutorialNextStepLine(player)));
+        sendTutorialStatusFeed(player);
         checkTutorialCompletion(player);
     }
 
@@ -1701,8 +1706,7 @@ public final class SheepMergeManager {
             return;
         }
         tutorialShearsByPlayer.put(player.getUniqueId(), getTutorialShearCount(player) + 1);
-        player.sendMessage(hint(getTutorialProgressLine(player)));
-        player.sendMessage(hint(getTutorialNextStepLine(player)));
+        sendTutorialStatusFeed(player);
         checkTutorialCompletion(player);
     }
 
@@ -1711,8 +1715,7 @@ public final class SheepMergeManager {
             return;
         }
         tutorialSpawnsByPlayer.put(player.getUniqueId(), getTutorialSpawnCount(player) + 1);
-        player.sendMessage(hint(getTutorialProgressLine(player)));
-        player.sendMessage(hint(getTutorialNextStepLine(player)));
+        sendTutorialStatusFeed(player);
         checkTutorialCompletion(player);
     }
 
@@ -1721,9 +1724,31 @@ public final class SheepMergeManager {
             return;
         }
         tutorialMergesByPlayer.put(player.getUniqueId(), getTutorialMergeCount(player) + 1);
-        player.sendMessage(hint(getTutorialProgressLine(player)));
-        player.sendMessage(hint(getTutorialNextStepLine(player)));
+        sendTutorialStatusFeed(player);
         checkTutorialCompletion(player);
+    }
+
+    private static void sendTutorialStatusFeed(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        String progressLine = getTutorialProgressLine(player);
+        String stepLine = getTutorialNextStepLine(player);
+        long now = System.currentTimeMillis();
+        String previousProgressLine = lastTutorialProgressFeedLineByPlayer.get(playerId);
+        String previousStepLine = lastTutorialStepFeedLineByPlayer.get(playerId);
+        long lastSentAt = lastTutorialStatusFeedTimestampByPlayer.getOrDefault(playerId, 0L);
+        boolean changed = !progressLine.equals(previousProgressLine) || !stepLine.equals(previousStepLine);
+        if (!changed && now - lastSentAt < TUTORIAL_STATUS_FEED_REPEAT_MS) {
+            return;
+        }
+
+        lastTutorialStatusFeedTimestampByPlayer.put(playerId, now);
+        lastTutorialProgressFeedLineByPlayer.put(playerId, progressLine);
+        lastTutorialStepFeedLineByPlayer.put(playerId, stepLine);
+        player.sendMessage(hint(progressLine));
+        player.sendMessage(hint(stepLine));
     }
 
     public static String getTutorialProgressLine(Player player) {
