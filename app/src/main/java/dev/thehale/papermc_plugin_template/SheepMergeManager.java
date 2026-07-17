@@ -71,6 +71,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> tutorialAbilityUsedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialShearUpgradedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialRegularUpgradesBoughtByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> tutorialPrestigePrepRewardGrantedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialPrestigedOnceByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialShearShopOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialBypassedByPlayer = new HashMap<>();
@@ -603,6 +604,7 @@ public final class SheepMergeManager {
         tutorialAbilityUsedByPlayer.remove(playerId);
         tutorialShearUpgradedByPlayer.remove(playerId);
         tutorialRegularUpgradesBoughtByPlayer.remove(playerId);
+        tutorialPrestigePrepRewardGrantedByPlayer.remove(playerId);
         tutorialPrestigedOnceByPlayer.remove(playerId);
         tutorialShearShopOpenedByPlayer.remove(playerId);
         clearTutorialRuntimeState(playerId);
@@ -1580,7 +1582,7 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         if (!tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
-            return "Step: Buy at least one of each regular upgrade in /sheepmerge upgrade";
+            return "Step: Buy one regular upgrade in /sheepmerge upgrade";
         }
         if (!tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
             return "Step: Run /sheepmerge upgrade";
@@ -1630,7 +1632,7 @@ public final class SheepMergeManager {
         player.sendTitle(color("&eSheepMerge Tutorial"), color("&7Learn the full game flow"), 10, 55, 10);
         player.sendMessage(hint("Tutorial steps:"));
         player.sendMessage(hint("1) Shear 3 sheep, spawn 1 sheep, merge 1 pair."));
-        player.sendMessage(hint("2) Buy at least one of each regular upgrade in /sheepmerge upgrade."));
+        player.sendMessage(hint("2) Buy one regular upgrade in /sheepmerge upgrade."));
         player.sendMessage(hint("3) Open Quests and Quest Upgrades from the upgrade flow."));
         player.sendMessage(hint("4) Buy one Shear Shop upgrade."));
         player.sendMessage(hint("5) Open Prestige, then prestige once."));
@@ -1650,6 +1652,7 @@ public final class SheepMergeManager {
         sectionMap.put(playerId, true);
         player.sendMessage(action(message));
         sendTutorialStatusFeed(player);
+        maybeGrantTutorialPrestigePrepReward(player);
         checkTutorialCompletion(player);
     }
 
@@ -1686,15 +1689,15 @@ public final class SheepMergeManager {
             return;
         }
         if (getLimitUpgradeLevel(player) <= 0
-                || getEggSpeedLevel(player) <= 0
-                || getWoolRegenLevel(player) <= 0
-                || getHigherTierChanceLevel(player) <= 0) {
+                && getEggSpeedLevel(player) <= 0
+                && getWoolRegenLevel(player) <= 0
+                && getHigherTierChanceLevel(player) <= 0) {
             return;
         }
         markTutorialSection(
                 player,
                 tutorialRegularUpgradesBoughtByPlayer,
-                "Tutorial: Bought one of each regular upgrade.");
+                "Tutorial: Bought a regular upgrade.");
     }
 
     public static void markTutorialShearShopOpened(Player player) {
@@ -1707,6 +1710,7 @@ public final class SheepMergeManager {
         }
         tutorialShearsByPlayer.put(player.getUniqueId(), getTutorialShearCount(player) + 1);
         sendTutorialStatusFeed(player);
+        maybeGrantTutorialPrestigePrepReward(player);
         checkTutorialCompletion(player);
     }
 
@@ -1716,6 +1720,7 @@ public final class SheepMergeManager {
         }
         tutorialSpawnsByPlayer.put(player.getUniqueId(), getTutorialSpawnCount(player) + 1);
         sendTutorialStatusFeed(player);
+        maybeGrantTutorialPrestigePrepReward(player);
         checkTutorialCompletion(player);
     }
 
@@ -1725,7 +1730,35 @@ public final class SheepMergeManager {
         }
         tutorialMergesByPlayer.put(player.getUniqueId(), getTutorialMergeCount(player) + 1);
         sendTutorialStatusFeed(player);
+        maybeGrantTutorialPrestigePrepReward(player);
         checkTutorialCompletion(player);
+    }
+
+    private static void maybeGrantTutorialPrestigePrepReward(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (tutorialPrestigePrepRewardGrantedByPlayer.getOrDefault(playerId, false)
+                || tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
+            return;
+        }
+        if (getTutorialShearCount(player) < TUTORIAL_SHEAR_TARGET
+                || getTutorialSpawnCount(player) < TUTORIAL_SPAWN_TARGET
+                || getTutorialMergeCount(player) < TUTORIAL_MERGE_TARGET
+                || !tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)
+                || !tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)
+                || !tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)
+                || !tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)
+                || !tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)
+                || !tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)
+                || !tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
+            return;
+        }
+
+        tutorialPrestigePrepRewardGrantedByPlayer.put(playerId, true);
+        addPoints(player, 500);
+        player.sendMessage(action("Tutorial reward: +500 points for reaching prestige prep."));
     }
 
     private static void sendTutorialStatusFeed(Player player) {
@@ -4767,6 +4800,9 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Boolean> entry : tutorialRegularUpgradesBoughtByPlayer.entrySet()) {
                 dataConfig.set("tutorialRegularUpgradesBought." + entry.getKey().toString(), entry.getValue());
             }
+            for (Map.Entry<UUID, Boolean> entry : tutorialPrestigePrepRewardGrantedByPlayer.entrySet()) {
+                dataConfig.set("tutorialPrestigePrepRewardGranted." + entry.getKey().toString(), entry.getValue());
+            }
             for (Map.Entry<UUID, Boolean> entry : tutorialPrestigedOnceByPlayer.entrySet()) {
                 dataConfig.set("tutorialPrestigedOnce." + entry.getKey().toString(), entry.getValue());
             }
@@ -5118,6 +5154,17 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     tutorialRegularUpgradesBoughtByPlayer.put(uuid,
                             dataConfig.getBoolean("tutorialRegularUpgradesBought." + key, false));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("tutorialPrestigePrepRewardGranted")) {
+            dataConfig.getConfigurationSection("tutorialPrestigePrepRewardGranted").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    tutorialPrestigePrepRewardGrantedByPlayer.put(uuid,
+                            dataConfig.getBoolean("tutorialPrestigePrepRewardGranted." + key, false));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
