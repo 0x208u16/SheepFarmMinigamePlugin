@@ -58,7 +58,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
         for (File worldFolder : worldFolders) {
             String worldName = worldFolder.getName();
-            if (!isTemporaryFarmWorldName(worldName)) {
+            if (!isTemporaryTutorialWorldName(worldName)) {
                 continue;
             }
             unloadWorld(worldName);
@@ -68,7 +68,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
     public static void cleanupFarmWorldsOnShutdown() {
         for (World world : Bukkit.getWorlds()) {
-            if (!SheepMergeManager.isSheepFarmWorld(world)) {
+            if (!SheepMergeManager.isTutorialWorld(world)) {
                 continue;
             }
             unloadWorld(world.getName());
@@ -81,7 +81,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
         for (File worldFolder : worldFolders) {
             String worldName = worldFolder.getName();
-            if (!isTemporaryFarmWorldName(worldName)) {
+            if (!isTemporaryTutorialWorldName(worldName)) {
                 continue;
             }
             deleteWorldFolder(worldName, worldFolder);
@@ -89,9 +89,6 @@ public class SheepFarmWorldCleanupListener implements Listener {
     }
 
     private static void deleteFarmWorldForPlayer(UUID playerId, boolean asyncDelete) {
-        String worldName = SheepFarmWorldCommand.getWorldName(playerId);
-        deleteFarmWorld(worldName, asyncDelete);
-
         String tutorialWorldName = SheepMergeManager.getTutorialWorldName(playerId);
         deleteFarmWorld(tutorialWorldName, asyncDelete);
     }
@@ -109,9 +106,8 @@ public class SheepFarmWorldCleanupListener implements Listener {
                 () -> deleteWorldFolder(worldName, worldFolder));
     }
 
-    private static boolean isTemporaryFarmWorldName(String worldName) {
-        return worldName != null
-                && (worldName.startsWith("sheepfarm_") || worldName.startsWith("sheeptutorial_"));
+    private static boolean isTemporaryTutorialWorldName(String worldName) {
+        return worldName != null && worldName.startsWith("sheeptutorial_");
     }
 
     private static void unloadWorld(String worldName) {

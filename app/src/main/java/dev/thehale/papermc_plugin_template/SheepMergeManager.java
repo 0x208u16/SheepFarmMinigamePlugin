@@ -5225,16 +5225,9 @@ public final class SheepMergeManager {
             return;
         }
 
-        Vector forward = player.getLocation().getDirection().normalize();
-        Vector lateral = new Vector(-forward.getZ(), 0.0D, forward.getX());
-        if (lateral.lengthSquared() > 0.0D) {
-            lateral.normalize();
-        }
-
-        Location carryLocation = player.getLocation().clone()
-                .add(forward.multiply(0.9D))
-                .add(lateral.multiply(0.55D))
-                .add(0.0D, 1.15D, 0.0D);
+        Location carryLocation = player.getLocation().clone().add(0.0D, 2.15D, 0.0D);
+        carryLocation.setYaw(player.getLocation().getYaw());
+        carryLocation.setPitch(0.0F);
         sheep.teleport(carryLocation);
         sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
         sheep.setFallDistance(0.0F);
