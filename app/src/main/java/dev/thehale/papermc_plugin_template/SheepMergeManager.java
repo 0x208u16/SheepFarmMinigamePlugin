@@ -2957,24 +2957,8 @@ public final class SheepMergeManager {
         comboScoreByPlayer.put(playerId, updatedScore);
         comboLastUpdateTimestampByPlayer.put(playerId, now);
 
-        int mergePoints = calculateMergePointsFromCombo(player, mergedFromTier, updatedScore, woolReadySourceSheep);
-        if (mergePoints > 0) {
-            addPoints(player, mergePoints);
-        }
-        showOverlay(player, accent("Merge combo x" + formatComboMultiplier(getComboMultiplier(player, updatedScore))
-                + color(" &7(+" + mergePoints + " points)")));
+        showOverlay(player, accent("Merge combo x" + formatComboMultiplier(getComboMultiplier(player, updatedScore))));
         updateComboBossBar(player, updatedScore);
-    }
-
-    private static int calculateMergePointsFromCombo(Player player, SheepTier mergedFromTier, double comboScore,
-            int woolReadySourceSheep) {
-        int woolCount = Math.max(0, woolReadySourceSheep);
-        if (woolCount <= 0) {
-            return 0;
-        }
-        int basePoints = calculateShearPoints(player, mergedFromTier) * woolCount;
-        double comboMultiplier = getComboMultiplier(player, comboScore);
-        return Math.max(0, (int) Math.round(basePoints * comboMultiplier));
     }
 
     private static double getComboMultiplier(Player player, double comboScore) {

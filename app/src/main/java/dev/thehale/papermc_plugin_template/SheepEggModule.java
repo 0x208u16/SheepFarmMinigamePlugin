@@ -37,7 +37,6 @@ final class SheepEggModule {
         }
 
         addEggsInternal(player, 1, false);
-        SheepMergeManager.showOverlay(player, SheepMergeManager.action("+1 egg"));
         nextEggTimestampByPlayer.put(playerId, now + SheepMergeManager.getEggIntervalSeconds(player) * 1000L);
         updateEggHud(player);
     }
