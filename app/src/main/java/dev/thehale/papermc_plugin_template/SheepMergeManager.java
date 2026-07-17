@@ -3717,6 +3717,11 @@ public final class SheepMergeManager {
         prestigeStartEggsByPlayer.remove(playerId);
         prestigeEggCapByPlayer.remove(playerId);
         prestigeBaseSpawnTierByPlayer.remove(playerId);
+        comboMaxUpgradeByPlayer.remove(playerId);
+        Double comboScore = comboScoreByPlayer.get(playerId);
+        if (comboScore != null) {
+            comboScoreByPlayer.put(playerId, Math.min(COMBO_BASE_MAX_SCORE, Math.max(0.0D, comboScore)));
+        }
         if (clearRefundCooldown) {
             nextPrestigeRefundTimestampByPlayer.remove(playerId);
         }
@@ -3732,6 +3737,7 @@ public final class SheepMergeManager {
         total += getSpentCostForLevel(PRESTIGE_START_EGGS_BASE_COST, getPrestigeStartEggsLevel(player));
         total += getSpentCostForLevel(PRESTIGE_EGG_CAP_BASE_COST, getPrestigeEggCapLevel(player));
         total += getSpentCostForLevel(PRESTIGE_BASE_SPAWN_TIER_BASE_COST, getBaseSpawnTierLevel(player));
+        total += getSpentCostForLevel(COMBO_MAX_BASE_PRESTIGE_COST, getComboMaxUpgradeLevel(player));
         return Math.max(0, total);
     }
 
