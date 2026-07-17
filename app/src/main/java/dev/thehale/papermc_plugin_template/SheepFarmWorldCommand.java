@@ -26,7 +26,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "upgrade",
             "prestige",
             "shop",
-            "tutorial",
             "visit",
             "kick",
             "status",
@@ -92,7 +91,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge upgrade") + ": open upgrade menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge prestige") + ": open prestige menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge shop") + ": open shop menu");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge tutorial") + ": open the tutorial world");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge status") + ": view your current stats");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit <player>") + ": visit another open farm");
         player.sendMessage(
@@ -233,15 +231,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1 && args[0].equalsIgnoreCase("prestige")) {
             SheepMergeManager.openPrestigeMenu(player);
-            return true;
-        }
-
-        if (args.length == 1 && args[0].equalsIgnoreCase("tutorial")) {
-            if (SheepMergeManager.hasUnlockedFarm(player)) {
-                player.sendMessage("Tutorial has already been completed. Use /sheepmerge to return to your farm.");
-            } else {
-                SheepMergeManager.startTutorial(player, false);
-            }
             return true;
         }
 
@@ -903,6 +892,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(error(
                     "Invalid visit command. Use /sheepmerge visit <player> or /sheepmerge visit -toggle [player]."));
             sendCommandHelp(player, "visit");
+            return;
+        }
+
+        if (root.equals("tutorial")) {
+            player.sendMessage(error(
+                    "/sheepmerge tutorial was removed. The tutorial starts automatically until you unlock your farm."));
             return;
         }
 

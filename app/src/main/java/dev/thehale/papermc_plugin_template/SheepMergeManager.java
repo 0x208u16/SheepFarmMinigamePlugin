@@ -1564,7 +1564,7 @@ public final class SheepMergeManager {
 
     private static String getTutorialNextStepLine(Player player) {
         if (player == null) {
-            return "Step: Use /sheepmerge tutorial";
+            return "Step: Enter your tutorial world";
         }
         if (getTutorialSpawnCount(player) < TUTORIAL_SPAWN_TARGET) {
             return "Step: Spawn sheep with eggs (" + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET + ")";
@@ -1588,23 +1588,20 @@ public final class SheepMergeManager {
         if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Upgrades, click Quests";
         }
-        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Step: In Quests, click Quest Upgrades";
-        }
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Quests, activate any ability";
         }
-        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Step: In Upgrades, click Prestige";
+        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Quests, click Quest Upgrades";
         }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Shear Shop, buy one Shear Upgrade";
         }
+        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Upgrades, click Prestige";
+        }
         if (!tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
             return "Step: Prestige once from /sheepmerge prestige";
-        }
-        if (!tutorialShearShopOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Bonus: In Upgrades, open Shear Shop to learn shear upgrades";
         }
         return "Step: Tutorial complete";
     }
@@ -1639,12 +1636,11 @@ public final class SheepMergeManager {
         player.sendMessage(hint("Tutorial steps:"));
         player.sendMessage(hint("1) Spawn 1 sheep, shear 3 sheep, then merge 1 pair."));
         player.sendMessage(hint("2) Open /sheepmerge upgrade and buy one regular upgrade."));
-        player.sendMessage(hint("3) Open Quests and Quest Upgrades from the upgrade flow."));
-        player.sendMessage(hint("4) Activate one quest ability."));
-        player.sendMessage(hint("5) Open Prestige."));
-        player.sendMessage(hint("6) Buy one Shear Shop upgrade."));
+        player.sendMessage(hint("3) Open Quests and activate one quest ability."));
+        player.sendMessage(hint("4) From Quests, open Quest Upgrades."));
+        player.sendMessage(hint("5) Buy one Shear Shop upgrade."));
+        player.sendMessage(hint("6) Open Prestige."));
         player.sendMessage(hint("7) Prestige once."));
-        player.sendMessage(hint("Bonus: Open Shear Shop to learn shear upgrades."));
         sendTutorialStatusFeed(player);
     }
 
@@ -1795,10 +1791,10 @@ public final class SheepMergeManager {
         OPEN_UPGRADES,
         BUY_REGULAR_UPGRADE,
         OPEN_QUESTS,
-        OPEN_QUEST_UPGRADES,
         USE_ABILITY,
-        OPEN_PRESTIGE,
+        OPEN_QUEST_UPGRADES,
         BUY_SHEAR_UPGRADE,
+        OPEN_PRESTIGE,
         PRESTIGE_ONCE,
         COMPLETE
     }
@@ -1827,17 +1823,17 @@ public final class SheepMergeManager {
         if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.OPEN_QUESTS;
         }
-        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
-            return TutorialStep.OPEN_QUEST_UPGRADES;
-        }
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.USE_ABILITY;
         }
-        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return TutorialStep.OPEN_PRESTIGE;
+        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
+            return TutorialStep.OPEN_QUEST_UPGRADES;
         }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.BUY_SHEAR_UPGRADE;
+        }
+        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+            return TutorialStep.OPEN_PRESTIGE;
         }
         if (!tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.PRESTIGE_ONCE;
