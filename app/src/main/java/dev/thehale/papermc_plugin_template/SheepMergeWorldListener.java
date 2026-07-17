@@ -49,15 +49,20 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.upgradeSheepBelowMinimumSpawnTier(player.getWorld());
             SheepMergeManager.enforceFarmLoadout(player);
             SheepMergeManager.applyFarmSaturation(player);
-            int extraEggs = SheepMergeManager.getStartEggsBonus(player);
-            if (extraEggs > 0) {
-                player.getInventory()
-                        .addItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.SHEEP_SPAWN_EGG, extraEggs));
-            }
             SheepMergeManager.showPointsScoreboard(player);
             SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
             SheepMergeManager.resetMergeReminder(player);
+            if (!SheepMergeManager.isFarmOwner(player, player.getWorld())) {
+                player.sendMessage(SheepMergeManager
+                        .hint("You are visiting another farm. Use /sheepmerge to return to your own farm."));
+                player.sendTitle(
+                        SheepMergeManager.color("&eVisiting a farm"),
+                        SheepMergeManager.color("&7Use /sheepmerge to return home"),
+                        10,
+                        50,
+                        10);
+            }
         } else if (SheepMergeManager.isSheepFarmWorld(event.getFrom())
                 && !SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             SheepMergeManager.saveData();

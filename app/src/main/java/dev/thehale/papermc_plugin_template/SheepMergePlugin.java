@@ -137,11 +137,11 @@ public class SheepMergePlugin extends JavaPlugin {
     }
 
     private void scheduleGameplayTips() {
-        long fiveMinutesTicks = 5L * 60L * 20L;
+        long oneMinuteTicks = 60L * 20L;
         getServer().getScheduler().runTaskTimer(this,
                 SheepMergeManager::broadcastRandomGameplayTip,
-                fiveMinutesTicks,
-                fiveMinutesTicks);
+                oneMinuteTicks,
+                oneMinuteTicks);
     }
 
     @Override

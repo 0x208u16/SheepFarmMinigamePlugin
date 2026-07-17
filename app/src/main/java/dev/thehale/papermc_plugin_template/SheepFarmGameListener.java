@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
@@ -68,10 +69,14 @@ public class SheepFarmGameListener implements Listener {
         SheepTier tier = SheepMergeManager.getSheepTier(sheep);
         SheepMergeManager.setNextEatTimestamp(sheep,
                 System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(sheep, tier) * 1000L);
-        SheepMergeManager.updateSheepName(sheep);
 
         int points = SheepMergeManager.calculateShearPoints(event.getPlayer(), tier);
         SheepMergeManager.addPoints(event.getPlayer(), points);
+
+        SheepMergeManager.tryTriggerShearWoolSave(event.getPlayer(), sheep);
+        SheepMergeManager.tryTriggerShearTierBoost(event.getPlayer(), sheep);
+        SheepMergeManager.updateSheepName(sheep);
+
         SheepMergeManager.recordQuestShear(event.getPlayer());
         SheepMergeManager.recordTutorialShear(event.getPlayer());
         SheepMergeManager.updatePointsScoreboard(event.getPlayer());
@@ -123,11 +128,12 @@ public class SheepFarmGameListener implements Listener {
         }
 
         ItemStack item = event.getItem();
-        if (item == null || item.getType() != Material.SHEEP_SPAWN_EGG) {
+        if (!SheepMergeManager.isSheepMergeEggItem(item)) {
             return;
         }
 
         Player player = event.getPlayer();
+        event.setCancelled(true);
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             return;
         }
@@ -142,12 +148,24 @@ public class SheepFarmGameListener implements Listener {
             if (SheepMergeManager.shouldNotifySpawnLimit(player)) {
                 player.sendMessage(SheepMergeManager.warning("Farm full. Use /sheepmerge upgrade or merge sheep."));
             }
-            event.setCancelled(true);
+            return;
+        }
+
+        Block clickedBlock = event.getClickedBlock();
+        BlockFace blockFace = event.getBlockFace();
+        if (clickedBlock == null || blockFace == null) {
+            return;
+        }
+
+        org.bukkit.Location spawnLocation = clickedBlock.getRelative(blockFace).getLocation().add(0.5D, 0.0D, 0.5D);
+        if (!SheepMergeManager.spawnSheepFromEgg(player, spawnLocation)) {
+            player.sendMessage(SheepMergeManager.warning("No eggs available. Wait for your egg timer."));
             return;
         }
 
         SheepMergeManager.recordQuestSpawn(player);
         SheepMergeManager.recordTutorialSpawn(player);
+        SheepMergeManager.updatePointsScoreboard(player);
 
     }
 
@@ -173,7 +191,7 @@ public class SheepFarmGameListener implements Listener {
         }
 
         ItemStack item = player.getInventory().getItemInMainHand();
-        if (item != null && item.getType() == Material.SHEEP_SPAWN_EGG) {
+        if (SheepMergeManager.isSheepMergeEggItem(item)) {
             event.setCancelled(true);
             return;
         }

@@ -197,6 +197,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             ownerWorld.setSpawnLocation(0, 101, 0);
             player.teleport(new Location(ownerWorld, 0.5, 101, 0.5));
             player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
+            player.sendMessage("Use /sheepmerge to return to your own farm.");
+            player.sendTitle(
+                    SheepMergeManager.color("&eVisiting " + owner.getName()),
+                    SheepMergeManager.color("&7Use /sheepmerge to return home"),
+                    10,
+                    60,
+                    10);
             return true;
         }
 
@@ -273,7 +280,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             if (SheepMergeManager.triggerComboFrenzyEvent()) {
                 player.sendMessage("Combo frenzy triggered.");
             } else {
-                player.sendMessage("A random event is already active or combo frenzy could not be started.");
+                player.sendMessage("A combo frenzy is already active or could not be started.");
             }
             return true;
         }
