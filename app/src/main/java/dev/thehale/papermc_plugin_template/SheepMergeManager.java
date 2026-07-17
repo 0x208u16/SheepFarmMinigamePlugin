@@ -93,8 +93,6 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> activeAutoMergeUntilByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutoMergeAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastAbilityAuraSoundTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextEggTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> eggCountByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> prestigeTitleReminderShownByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextPrestigeRefundTimestampByPlayer = new HashMap<>();
@@ -114,8 +112,6 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> sheepRescueNextCorrectionAtByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
-    private static final Map<UUID, Integer> savedLevels = new HashMap<>();
-    private static final Map<UUID, Float> savedExpProgress = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
@@ -284,6 +280,7 @@ public final class SheepMergeManager {
     private static final int FARM_EGG_ITEM_SLOT = 7;
 
     private static SheepMergePlugin plugin;
+    private static final SheepEggModule EGG_MODULE = new SheepEggModule();
     private static FileConfiguration dataConfig;
     private static File dataFile;
     private static FileConfiguration farmLayoutConfig;
@@ -1417,8 +1414,7 @@ public final class SheepMergeManager {
         shearWoolSaveLevelByPlayer.remove(player.getUniqueId());
         shearTierBoostLevelByPlayer.remove(player.getUniqueId());
         clearMergeReminder(player);
-        eggCountByPlayer.remove(player.getUniqueId());
-        nextEggTimestampByPlayer.remove(player.getUniqueId());
+        EGG_MODULE.clearRuntimeState(player.getUniqueId());
         clearComboRuntime(player);
 
         World world = player.getWorld();
@@ -1794,8 +1790,7 @@ public final class SheepMergeManager {
         activeJackpotShearsUntilByPlayer.remove(id);
         activeAutoMergeUntilByPlayer.remove(id);
         nextAutoMergeAtByPlayer.remove(id);
-        nextEggTimestampByPlayer.remove(id);
-        eggCountByPlayer.remove(id);
+        EGG_MODULE.clearRuntimeState(id);
         lastSpawnLimitWarningTimestampByPlayer.remove(id);
         comboScoreByPlayer.remove(id);
         comboLastUpdateTimestampByPlayer.remove(id);
@@ -3027,36 +3022,7 @@ public final class SheepMergeManager {
     }
 
     public static void tickEggDistribution(Player player) {
-        if (player == null || !isSheepFarmWorld(player.getWorld())) {
-            return;
-        }
-
-        ensureEggCountInitialized(player);
-        UUID playerId = player.getUniqueId();
-        long now = System.currentTimeMillis();
-        Long nextTimestamp = nextEggTimestampByPlayer.get(playerId);
-        if (nextTimestamp == null) {
-            nextEggTimestampByPlayer.put(playerId, now + getEggIntervalSeconds(player) * 1000L);
-            updateEggHud(player);
-            return;
-        }
-
-        long next = nextTimestamp;
-        if (now < next) {
-            updateEggHud(player);
-            return;
-        }
-
-        if (getEggCount(player) >= getEggCap(player)) {
-            nextEggTimestampByPlayer.put(playerId, now + 2000L);
-            updateEggHud(player);
-            return;
-        }
-
-        addEggs(player, 1);
-        showOverlay(player, action("+1 egg"));
-        nextEggTimestampByPlayer.put(playerId, now + getEggIntervalSeconds(player) * 1000L);
-        updateEggHud(player);
+        EGG_MODULE.tickEggDistribution(player);
     }
 
     public static int getStartEggsBonus(Player player) {
@@ -3070,48 +3036,12 @@ public final class SheepMergeManager {
         return BASE_EGG_CAP + getPrestigeEggCapLevel(player) * PRESTIGE_EGG_CAP_STEP;
     }
 
-    private static int getEggCount(Player player) {
-        if (player == null) {
-            return 0;
-        }
-        return Math.max(0, eggCountByPlayer.getOrDefault(player.getUniqueId(), 0));
-    }
-
-    private static void ensureEggCountInitialized(Player player) {
-        if (player == null) {
-            return;
-        }
-        UUID playerId = player.getUniqueId();
-        if (eggCountByPlayer.containsKey(playerId)) {
-            return;
-        }
-        int initialEggs = Math.min(getEggCap(player), Math.max(0, getStartEggsBonus(player)));
-        eggCountByPlayer.put(playerId, initialEggs);
-    }
-
     public static void addEggs(Player player, int amount) {
-        if (player == null || amount <= 0) {
-            return;
-        }
-        ensureEggCountInitialized(player);
-        UUID playerId = player.getUniqueId();
-        int capped = Math.min(getEggCap(player), getEggCount(player) + amount);
-        eggCountByPlayer.put(playerId, capped);
-        updateEggHud(player);
+        EGG_MODULE.addEggs(player, amount);
     }
 
     private static boolean tryConsumeEgg(Player player) {
-        if (player == null) {
-            return false;
-        }
-        ensureEggCountInitialized(player);
-        int current = getEggCount(player);
-        if (current <= 0) {
-            return false;
-        }
-        eggCountByPlayer.put(player.getUniqueId(), current - 1);
-        updateEggHud(player);
-        return true;
+        return EGG_MODULE.tryConsumeEgg(player);
     }
 
     public static boolean spawnSheepFromEgg(Player player, Location spawnLocation) {
@@ -3483,71 +3413,11 @@ public final class SheepMergeManager {
     }
 
     public static void resetEggTimer(Player player) {
-        if (player == null) {
-            return;
-        }
-        ensureEggCountInitialized(player);
-        nextEggTimestampByPlayer.put(player.getUniqueId(),
-                System.currentTimeMillis() + getEggIntervalSeconds(player) * 1000L);
-        updateEggHud(player);
+        EGG_MODULE.resetEggTimer(player);
     }
 
     public static void clearEggTimer(Player player) {
-        if (player == null) {
-            return;
-        }
-        nextEggTimestampByPlayer.remove(player.getUniqueId());
-        eggCountByPlayer.remove(player.getUniqueId());
-        restoreSavedExperience(player);
-    }
-
-    private static void updateEggHud(Player player) {
-        if (player == null || !isSheepFarmWorld(player.getWorld())) {
-            return;
-        }
-
-        saveExperienceStateIfNeeded(player);
-        int eggCount = getEggCount(player);
-        int eggCap = getEggCap(player);
-        player.setLevel(eggCount);
-
-        if (eggCount >= eggCap) {
-            player.setExp(1.0f);
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        long intervalMs = Math.max(1000L, getEggIntervalSeconds(player) * 1000L);
-        long next = nextEggTimestampByPlayer.getOrDefault(player.getUniqueId(), now + intervalMs);
-        long remainingMs = Math.max(0L, next - now);
-        float progress = 1.0f - Math.min(1.0f, remainingMs / (float) intervalMs);
-        player.setExp(Math.max(0.0f, Math.min(1.0f, progress)));
-    }
-
-    private static void saveExperienceStateIfNeeded(Player player) {
-        if (player == null) {
-            return;
-        }
-        UUID playerId = player.getUniqueId();
-        if (savedLevels.containsKey(playerId)) {
-            return;
-        }
-        savedLevels.put(playerId, player.getLevel());
-        savedExpProgress.put(playerId, player.getExp());
-    }
-
-    private static void restoreSavedExperience(Player player) {
-        if (player == null) {
-            return;
-        }
-        UUID playerId = player.getUniqueId();
-        Integer savedLevel = savedLevels.remove(playerId);
-        Float savedExp = savedExpProgress.remove(playerId);
-        if (savedLevel == null || savedExp == null) {
-            return;
-        }
-        player.setLevel(savedLevel);
-        player.setExp(savedExp);
+        EGG_MODULE.clearEggTimer(player);
     }
 
     public static void openUpgradeMenu(Player player) {
@@ -4618,8 +4488,7 @@ public final class SheepMergeManager {
         }
         savedInventories.clear();
         savedScoreboards.clear();
-        savedLevels.clear();
-        savedExpProgress.clear();
+        EGG_MODULE.clearSavedExperienceCache();
     }
 
     public static ItemStack getSheepMergeShears() {
