@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.io.File;
 import java.util.List;
+import java.util.Locale;
 
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
@@ -59,6 +60,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "clear");
     private static final List<String> LAYOUT_SUBCOMMANDS = List.of("help", "-help", "--help", "save", "load");
     private static final List<String> HELP_FLAGS = List.of("help", "-help", "--help");
+    private static final List<String> LEADERBOARD_COORDINATE_HINTS = List.of("<x>", "<y>", "<z>", "[world]", "[yaw]",
+            "[pitch]");
+    private static final List<String> AMOUNT_HINTS = List.of("<amount>", "0", "100");
+    private static final List<String> LEVEL_HINTS = List.of("<level>", "0", "1");
     private static final List<String> ADMIN_AMOUNT_PLAYER_SUBCOMMANDS = List.of(
             "givepoints",
             "setpoints",
@@ -461,7 +466,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("leaderboard") && args[1].equalsIgnoreCase("remove")) {
+        if (args.length >= 2 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))
+                && args[1].equalsIgnoreCase("remove")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
@@ -513,21 +519,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                         "Invalid coordinates. Usage: /sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]");
                 return true;
             }
-        }
-
-        if ((args.length == 2 || args.length == 3) && (args[0].equalsIgnoreCase("topdisplay")
-                || args[0].equalsIgnoreCase("leaderboard")) && args[1].equalsIgnoreCase("remove")) {
-            if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
-                return true;
-            }
-            boolean removed = SheepMergeManager.removeTopPointsDisplay();
-            if (removed) {
-                player.sendMessage("Leaderboard removed.");
-            } else {
-                player.sendMessage("No leaderboard display was found.");
-            }
-            return true;
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("storm")) {
@@ -762,6 +753,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length > 0) {
+            sendInvalidCommandMessage(player, args);
+            return true;
+        }
+
         if (!SheepMergeManager.hasUnlockedFarm(player)) {
             SheepMergeManager.startTutorial(player, false);
             return true;
@@ -810,13 +806,35 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("topdisplay")) {
             List<String> suggestions = new ArrayList<>(LEADERBOARD_SUBCOMMANDS);
             suggestions.addAll(HELP_FLAGS);
+            suggestions.addAll(LEADERBOARD_COORDINATE_HINTS);
             return filterSuggestions(suggestions, args[1]);
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("leaderboard")) {
             List<String> suggestions = new ArrayList<>(LEADERBOARD_SUBCOMMANDS);
             suggestions.addAll(HELP_FLAGS);
+            suggestions.addAll(LEADERBOARD_COORDINATE_HINTS);
             return filterSuggestions(suggestions, args[1]);
+        }
+
+        if (args.length == 3 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+            return filterSuggestions(appendHelpFlags(List.of("<y>", "remove"), args[2]), args[2]);
+        }
+
+        if (args.length == 4 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+            return filterSuggestions(appendHelpFlags(List.of("<z>", "remove"), args[3]), args[3]);
+        }
+
+        if (args.length == 5 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+            return filterSuggestions(appendHelpFlags(List.of("[world]", "remove"), args[4]), args[4]);
+        }
+
+        if (args.length == 6 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+            return filterSuggestions(appendHelpFlags(List.of("[yaw]", "remove"), args[5]), args[5]);
+        }
+
+        if (args.length == 7 && (args[0].equalsIgnoreCase("topdisplay") || args[0].equalsIgnoreCase("leaderboard"))) {
+            return filterSuggestions(appendHelpFlags(List.of("[pitch]", "remove"), args[6]), args[6]);
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("kick") && sender instanceof Player player) {
@@ -845,15 +863,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 2 && matchesSubcommand(ADMIN_AMOUNT_PLAYER_SUBCOMMANDS, args[0])) {
-            return filterSuggestions(HELP_FLAGS, args[1]);
+            List<String> suggestions = new ArrayList<>(HELP_FLAGS);
+            suggestions.addAll(AMOUNT_HINTS);
+            return filterSuggestions(suggestions, args[1]);
         }
 
         if (args.length == 3 && matchesSubcommand(ADMIN_AMOUNT_PLAYER_SUBCOMMANDS, args[0])) {
             return appendHelpFlags(onlinePlayerNameSuggestions(args[2]), args[2]);
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("leaderboard")) {
-            return filterSuggestions(appendHelpFlags(List.of("remove"), args[2]), args[2]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("setprestige")) {
+            List<String> suggestions = new ArrayList<>(HELP_FLAGS);
+            suggestions.addAll(LEVEL_HINTS);
+            return filterSuggestions(suggestions, args[1]);
         }
 
         return List.of();
@@ -882,6 +904,47 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         List<String> combined = new ArrayList<>(suggestions);
         combined.addAll(filterSuggestions(HELP_FLAGS, prefix));
         return combined;
+    }
+
+    private void sendInvalidCommandMessage(Player player, String[] args) {
+        if (player == null || args == null || args.length == 0) {
+            return;
+        }
+
+        String root = args[0] == null ? "" : args[0].toLowerCase(Locale.ROOT);
+        if (root.equals("leaderboard") || root.equals("topdisplay")) {
+            player.sendMessage(error(
+                    "Invalid leaderboard command. Use /sheepmerge leaderboard, /sheepmerge leaderboard remove, or /sheepmerge leaderboard <x> <y> <z> [world] [yaw] [pitch]."));
+            sendCommandHelp(player, "leaderboard");
+            return;
+        }
+
+        if (root.equals("layout") || root.equals("mapsave") || root.equals("mapload") || root.equals("world")) {
+            player.sendMessage(
+                    error("Invalid layout command. Use /sheepmerge layout save or /sheepmerge layout load."));
+            sendCommandHelp(player, "world");
+            return;
+        }
+
+        if (root.equals("visit")) {
+            player.sendMessage(error(
+                    "Invalid visit command. Use /sheepmerge visit <player> or /sheepmerge visit -toggle [player]."));
+            sendCommandHelp(player, "visit");
+            return;
+        }
+
+        if (root.equals("resetdata") || root.equals("stats") || root.equals("checkpoints")
+                || root.equals("checkquestpoints") || root.equals("checkprestige") || root.equals("givepoints")
+                || root.equals("setpoints") || root.equals("givequestpoints") || root.equals("setquestpoints")
+                || root.equals("setprestige")) {
+            player.sendMessage(error("Invalid admin command syntax for /sheepmerge " + root
+                    + ". Use /sheepmerge help -help for command hints."));
+            sendCommandHelp(player, root);
+            return;
+        }
+
+        player.sendMessage(error("Unknown SheepMerge command: /sheepmerge " + String.join(" ", args)));
+        player.sendMessage(ChatColor.GRAY + "Use /sheepmerge help or /sheepmerge -help for command hints.");
     }
 
     private boolean isCoordinate(String value) {
