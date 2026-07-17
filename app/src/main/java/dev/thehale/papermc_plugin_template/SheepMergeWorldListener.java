@@ -27,6 +27,9 @@ public class SheepMergeWorldListener implements Listener {
             }, 1L);
         }
         SheepMergeManager.restoreSavedStateOutsideFarm(player);
+        if (SheepMergeManager.hasUnlockedFarm(player) && SheepMergeManager.isTutorialWorld(player.getWorld())) {
+            SheepFarmWorldCommand.teleportToFarmWorld(player);
+        }
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             return;
         }

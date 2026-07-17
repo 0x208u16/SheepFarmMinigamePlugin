@@ -163,14 +163,28 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length >= 1 && args[0].equalsIgnoreCase("visit")) {
-            if (args.length == 2 && args[1].equalsIgnoreCase("toggle")) {
-                boolean nowOpen = SheepMergeManager.toggleFarmVisitable(player);
-                player.sendMessage("Your farm is now " + (nowOpen ? "open" : "closed") + " to visitors.");
+            if (args.length >= 2 && args[1].equalsIgnoreCase("-toggle")) {
+                Player target = player;
+                if (args.length >= 3) {
+                    if (!player.isOp()) {
+                        player.sendMessage("Only server operators can toggle another player's farm access.");
+                        return true;
+                    }
+                    target = resolveTargetPlayer(player, args, 2);
+                    if (target == null) {
+                        player.sendMessage("That player is not online.");
+                        return true;
+                    }
+                }
+
+                boolean nowOpen = SheepMergeManager.toggleFarmVisitable(target);
+                player.sendMessage(
+                        target.getName() + "'s farm is now " + (nowOpen ? "open" : "closed") + " to visitors.");
                 return true;
             }
 
             if (args.length < 2) {
-                player.sendMessage("Usage: /sheepmerge visit <player> or /sheepmerge visit toggle");
+                player.sendMessage("Usage: /sheepmerge visit <player> or /sheepmerge visit -toggle [player]");
                 return true;
             }
 

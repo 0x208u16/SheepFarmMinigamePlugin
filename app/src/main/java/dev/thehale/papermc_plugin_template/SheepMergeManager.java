@@ -326,7 +326,7 @@ public final class SheepMergeManager {
             "&7Quest upgrades boost ability &eDuration &7and &ePower&7 for stronger activations.",
             "&7Completing all three quests in a cycle triggers a bonus alert.",
             "&7Use &e/sheepmerge tutorial &7anytime if you want a guided refresher.",
-            "&7Your farm can be opened or closed with &e/sheepmerge visit toggle&7.",
+            "&7Your farm can be opened or closed with &e/sheepmerge visit -toggle&7.",
             "&7Visit another open farm with &e/sheepmerge visit <player>&7.",
             "&7If needed, remove visitors from your own farm using &e/sheepmerge kick <player>&7.",
             "&7Random &eSheep Storm &7events can happen and flood farms with sheep from above.",
@@ -607,8 +607,6 @@ public final class SheepMergeManager {
         tutorialAbilityUsedByPlayer.remove(playerId);
         tutorialShearUpgradedByPlayer.remove(playerId);
         tutorialRegularUpgradesBoughtByPlayer.remove(playerId);
-        tutorialShearTaskRewardGrantedByPlayer.remove(playerId);
-        tutorialPrestigePrepRewardGrantedByPlayer.remove(playerId);
         tutorialPrestigedOnceByPlayer.remove(playerId);
         tutorialShearShopOpenedByPlayer.remove(playerId);
         clearTutorialRuntimeState(playerId);
@@ -1620,6 +1618,12 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
+        if (!resetProgress && hasUnlockedFarm(player)) {
+            if (isTutorialWorld(player.getWorld())) {
+                SheepFarmWorldCommand.teleportToFarmWorld(player);
+            }
+            return;
+        }
         if (resetProgress) {
             resetTutorialProgress(playerId);
             saveData();
@@ -1632,6 +1636,8 @@ public final class SheepMergeManager {
             player.sendMessage(warning("Unable to open your tutorial world right now."));
             return;
         }
+
+        EGG_MODULE.addEggs(player, 10);
 
         player.sendTitle(color("&eSheepMerge Tutorial"), color("&7Learn the full game flow"), 10, 55, 10);
         player.sendMessage(hint("Tutorial steps:"));
