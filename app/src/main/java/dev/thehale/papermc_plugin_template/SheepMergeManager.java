@@ -1417,6 +1417,7 @@ public final class SheepMergeManager {
         shearWoolSaveLevelByPlayer.remove(player.getUniqueId());
         shearTierBoostLevelByPlayer.remove(player.getUniqueId());
         clearMergeReminder(player);
+        eggCountByPlayer.remove(player.getUniqueId());
         nextEggTimestampByPlayer.remove(player.getUniqueId());
         clearComboRuntime(player);
 
@@ -3435,11 +3436,20 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradePrestigeStartEggs(Player player) {
+        if (player == null) {
+            return false;
+        }
         int cost = getPrestigeStartEggsCost(player);
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
+        int oldBonus = getStartEggsBonus(player);
         prestigeStartEggsByPlayer.put(player.getUniqueId(), getPrestigeStartEggsLevel(player) + 1);
+        int newBonus = getStartEggsBonus(player);
+        int gainedEggs = Math.max(0, newBonus - oldBonus);
+        if (gainedEggs > 0) {
+            addEggs(player, gainedEggs);
+        }
         saveData();
         return true;
     }
