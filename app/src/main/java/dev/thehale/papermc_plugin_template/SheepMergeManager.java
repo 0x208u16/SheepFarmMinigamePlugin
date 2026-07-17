@@ -121,6 +121,12 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
+    private static final String TOP_POINTS_DISPLAY_WORLD_KEY = "topPointsDisplay.world";
+    private static final String TOP_POINTS_DISPLAY_X_KEY = "topPointsDisplay.x";
+    private static final String TOP_POINTS_DISPLAY_Y_KEY = "topPointsDisplay.y";
+    private static final String TOP_POINTS_DISPLAY_Z_KEY = "topPointsDisplay.z";
+    private static final String TOP_POINTS_DISPLAY_YAW_KEY = "topPointsDisplay.yaw";
+    private static final String TOP_POINTS_DISPLAY_PITCH_KEY = "topPointsDisplay.pitch";
     private static final Pattern OWNER_ID_PATTERN = Pattern.compile("^sheepfarm_([0-9a-fA-F]{32})$");
     private static final Pattern TUTORIAL_OWNER_ID_PATTERN = Pattern.compile("^sheeptutorial_([0-9a-fA-F]{32})$");
     private static final Random RANDOM = new Random();
@@ -217,7 +223,6 @@ public final class SheepMergeManager {
     private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
     private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 4_000L;
     private static final long TUTORIAL_STATUS_FEED_REPEAT_MS = 4_000L;
-    private static final long TUTORIAL_FAIL_TIMEOUT_MS = 5L * 60L * 1000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -325,7 +330,7 @@ public final class SheepMergeManager {
             "&7Spend quest points on abilities: &eLucky Burst, Wool Rush, Jackpot Shears, Auto Merge&7.",
             "&7Quest upgrades boost ability &eDuration &7and &ePower&7 for stronger activations.",
             "&7Completing all three quests in a cycle triggers a bonus alert.",
-            "&7Use &e/sheepmerge tutorial &7anytime if you want a guided refresher.",
+            "&7Follow the on-screen tutorial flow to learn the game once.",
             "&7Your farm can be opened or closed with &e/sheepmerge visit -toggle&7.",
             "&7Visit another open farm with &e/sheepmerge visit <player>&7.",
             "&7If needed, remove visitors from your own farm using &e/sheepmerge kick <player>&7.",
@@ -702,17 +707,8 @@ public final class SheepMergeManager {
 
         long now = System.currentTimeMillis();
         tickTutorialTaskTitle(player, now);
-        long startedAt = tutorialStartedAtByPlayer.getOrDefault(playerId, now);
         tutorialStartedAtByPlayer.putIfAbsent(playerId, now);
-        if (now - startedAt >= TUTORIAL_FAIL_TIMEOUT_MS && hasCompletedBasicTutorialTasks(player)) {
-            tutorialBypassedByPlayer.put(playerId, true);
-            clearTutorialRuntimeState(playerId);
-            player.sendTitle(color("&cTutorial Failed"), color("&7Use /sheepmerge tutorial to retry"), 10, 70, 10);
-            player.sendMessage(warning("You finished the basic tutorial, but ran out of time on the rest."));
-            player.sendMessage(hint("Use /sheepmerge to go to your farm. Use /sheepmerge tutorial to retry anytime."));
-            saveData();
-            return;
-        }
+        long startedAt = tutorialStartedAtByPlayer.getOrDefault(playerId, now);
         if (now - startedAt < TUTORIAL_REMINDER_DELAY_MS) {
             return;
         }
@@ -1595,11 +1591,11 @@ public final class SheepMergeManager {
         if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Quests, click Quest Upgrades";
         }
-        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Step: In Upgrades, click Prestige";
-        }
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Quests, activate any ability";
+        }
+        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+            return "Step: In Upgrades, click Prestige";
         }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Shear Shop, buy one Shear Upgrade";
@@ -1644,9 +1640,10 @@ public final class SheepMergeManager {
         player.sendMessage(hint("1) Spawn 1 sheep, shear 3 sheep, then merge 1 pair."));
         player.sendMessage(hint("2) Open /sheepmerge upgrade and buy one regular upgrade."));
         player.sendMessage(hint("3) Open Quests and Quest Upgrades from the upgrade flow."));
-        player.sendMessage(hint("4) Open Prestige and activate one quest ability."));
-        player.sendMessage(hint("5) Buy one Shear Shop upgrade."));
-        player.sendMessage(hint("6) Prestige once."));
+        player.sendMessage(hint("4) Activate one quest ability."));
+        player.sendMessage(hint("5) Open Prestige."));
+        player.sendMessage(hint("6) Buy one Shear Shop upgrade."));
+        player.sendMessage(hint("7) Prestige once."));
         player.sendMessage(hint("Bonus: Open Shear Shop to learn shear upgrades."));
         sendTutorialStatusFeed(player);
     }
@@ -1799,8 +1796,8 @@ public final class SheepMergeManager {
         BUY_REGULAR_UPGRADE,
         OPEN_QUESTS,
         OPEN_QUEST_UPGRADES,
-        OPEN_PRESTIGE,
         USE_ABILITY,
+        OPEN_PRESTIGE,
         BUY_SHEAR_UPGRADE,
         PRESTIGE_ONCE,
         COMPLETE
@@ -1833,11 +1830,11 @@ public final class SheepMergeManager {
         if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.OPEN_QUEST_UPGRADES;
         }
-        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return TutorialStep.OPEN_PRESTIGE;
-        }
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.USE_ABILITY;
+        }
+        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+            return TutorialStep.OPEN_PRESTIGE;
         }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.BUY_SHEAR_UPGRADE;
@@ -1889,13 +1886,6 @@ public final class SheepMergeManager {
                 + " | Sections " + getTutorialSectionCount(player) + "/" + TUTORIAL_MENU_SECTION_TARGET;
     }
 
-    private static boolean hasCompletedBasicTutorialTasks(Player player) {
-        return player != null
-                && getTutorialShearCount(player) >= TUTORIAL_SHEAR_TARGET
-                && getTutorialSpawnCount(player) >= TUTORIAL_SPAWN_TARGET
-                && getTutorialMergeCount(player) >= TUTORIAL_MERGE_TARGET;
-    }
-
     private static void checkTutorialCompletion(Player player) {
         if (player == null || hasUnlockedFarm(player)) {
             return;
@@ -1910,7 +1900,6 @@ public final class SheepMergeManager {
             migrateTutorialSheepToFarmWorld(playerId);
             player.sendTitle(color("&aTutorial Complete"), color("&7Run /sheepmerge to go to your farm"), 10, 60, 10);
             player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
-            player.sendMessage(hint("Use /sheepmerge tutorial anytime to replay."));
             saveData();
         }
     }
@@ -2162,7 +2151,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        boolean rescueActive = applySheepRescueMotionIfNeeded(sheep);
+        applySheepRescueMotionIfNeeded(sheep);
         SheepTier tier = getSheepTier(sheep);
         if (tier == SheepTier.RAINBOW) {
             applyRainbowColorAnimation(sheep, tier);
@@ -2538,23 +2527,20 @@ public final class SheepMergeManager {
         }
 
         Location location = player.getLocation().clone().add(0, 2.2, 0);
-        List<TextDisplay> displays = findTopPointsDisplays();
-        TextDisplay display = displays.isEmpty() ? null : displays.get(0);
-        if (display == null) {
-            display = player.getWorld().spawn(location, TextDisplay.class);
-            display.getPersistentDataContainer().set(getTopPointsDisplayKey(), PersistentDataType.BYTE, (byte) 1);
-        } else {
-            display.teleport(location);
-        }
-
-        // Keep a single marker entity around even if older duplicates already exist.
-        for (int index = 1; index < displays.size(); index++) {
-            displays.get(index).remove();
-        }
-
+        saveTopPointsDisplayLocation(location);
+        TextDisplay display = ensureTopPointsDisplay(location);
         configureTopPointsDisplay(display);
         refreshTopPointsDisplays();
         return true;
+    }
+
+    public static void restoreTopPointsDisplayIfPossible() {
+        Location savedLocation = getSavedTopPointsDisplayLocation();
+        if (savedLocation == null || savedLocation.getWorld() == null) {
+            return;
+        }
+        ensureTopPointsDisplay(savedLocation);
+        refreshTopPointsDisplays();
     }
 
     private static void refreshTopPointsDisplays() {
@@ -2576,6 +2562,27 @@ public final class SheepMergeManager {
         display.setLineWidth(260);
     }
 
+    private static TextDisplay ensureTopPointsDisplay(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return null;
+        }
+
+        List<TextDisplay> displays = findTopPointsDisplays();
+        TextDisplay display = displays.isEmpty() ? null : displays.get(0);
+        if (display == null) {
+            display = location.getWorld().spawn(location, TextDisplay.class);
+            display.getPersistentDataContainer().set(getTopPointsDisplayKey(), PersistentDataType.BYTE, (byte) 1);
+        } else {
+            display.teleport(location);
+        }
+
+        for (int index = 1; index < displays.size(); index++) {
+            displays.get(index).remove();
+        }
+
+        return display;
+    }
+
     private static List<TextDisplay> findTopPointsDisplays() {
         List<TextDisplay> displays = new ArrayList<>();
         if (plugin == null || plugin.getServer() == null) {
@@ -2591,6 +2598,42 @@ public final class SheepMergeManager {
             }
         }
         return displays;
+    }
+
+    private static void saveTopPointsDisplayLocation(Location location) {
+        if (plugin == null || location == null || location.getWorld() == null) {
+            return;
+        }
+        if (dataConfig == null) {
+            dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+        }
+        dataConfig.set(TOP_POINTS_DISPLAY_WORLD_KEY, location.getWorld().getName());
+        dataConfig.set(TOP_POINTS_DISPLAY_X_KEY, location.getX());
+        dataConfig.set(TOP_POINTS_DISPLAY_Y_KEY, location.getY());
+        dataConfig.set(TOP_POINTS_DISPLAY_Z_KEY, location.getZ());
+        dataConfig.set(TOP_POINTS_DISPLAY_YAW_KEY, location.getYaw());
+        dataConfig.set(TOP_POINTS_DISPLAY_PITCH_KEY, location.getPitch());
+        saveData();
+    }
+
+    private static Location getSavedTopPointsDisplayLocation() {
+        if (plugin == null || dataConfig == null) {
+            return null;
+        }
+        String worldName = dataConfig.getString(TOP_POINTS_DISPLAY_WORLD_KEY, null);
+        if (worldName == null || worldName.isBlank()) {
+            return null;
+        }
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            return null;
+        }
+        double x = dataConfig.getDouble(TOP_POINTS_DISPLAY_X_KEY, 0.0D);
+        double y = dataConfig.getDouble(TOP_POINTS_DISPLAY_Y_KEY, 0.0D);
+        double z = dataConfig.getDouble(TOP_POINTS_DISPLAY_Z_KEY, 0.0D);
+        float yaw = (float) dataConfig.getDouble(TOP_POINTS_DISPLAY_YAW_KEY, 0.0D);
+        float pitch = (float) dataConfig.getDouble(TOP_POINTS_DISPLAY_PITCH_KEY, 0.0D);
+        return new Location(world, x, y, z, yaw, pitch);
     }
 
     public static void addPoints(Player player, int points) {
@@ -4915,6 +4958,12 @@ public final class SheepMergeManager {
             dataConfig.set("comboMaxUpgrade", null);
             dataConfig.set("comboGainUpgrade", null);
             dataConfig.set("pendingInventory", null);
+            dataConfig.set(TOP_POINTS_DISPLAY_WORLD_KEY, null);
+            dataConfig.set(TOP_POINTS_DISPLAY_X_KEY, null);
+            dataConfig.set(TOP_POINTS_DISPLAY_Y_KEY, null);
+            dataConfig.set(TOP_POINTS_DISPLAY_Z_KEY, null);
+            dataConfig.set(TOP_POINTS_DISPLAY_YAW_KEY, null);
+            dataConfig.set(TOP_POINTS_DISPLAY_PITCH_KEY, null);
             for (Map.Entry<UUID, Integer> entry : pointsByPlayer.entrySet()) {
                 dataConfig.set("points." + entry.getKey().toString(), entry.getValue());
             }
@@ -5510,6 +5559,9 @@ public final class SheepMergeManager {
                     // Ignore invalid UUIDs.
                 }
             });
+        }
+        if (dataConfig.contains(TOP_POINTS_DISPLAY_WORLD_KEY)) {
+            restoreTopPointsDisplayIfPossible();
         }
     }
 

@@ -85,7 +85,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("tutorial")) {
-            SheepMergeManager.startTutorial(player, true);
+            if (SheepMergeManager.hasUnlockedFarm(player)) {
+                player.sendMessage("Tutorial has already been completed. Use /sheepmerge to return to your farm.");
+            } else {
+                SheepMergeManager.startTutorial(player, false);
+            }
             return true;
         }
 
@@ -595,7 +599,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private List<String> onlinePlayerNameSuggestions(String prefix) {
         return Bukkit.getOnlinePlayers().stream()
-                .map(Player::getName)
+                .map(player -> player == null ? null : player.getName())
                 .filter(name -> name != null && name.toLowerCase().startsWith(prefix.toLowerCase()))
                 .toList();
     }

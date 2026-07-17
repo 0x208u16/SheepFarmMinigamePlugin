@@ -1,11 +1,13 @@
 package dev.thehale.papermc_plugin_template;
 
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -40,6 +42,15 @@ public class SheepMergeWorldListener implements Listener {
         SheepMergeManager.updatePointsScoreboard(player);
         SheepMergeManager.resetEggTimer(player);
         SheepMergeManager.resetMergeReminder(player);
+    }
+
+    @EventHandler
+    public void onWorldLoad(WorldLoadEvent event) {
+        World world = event.getWorld();
+        if (world == null) {
+            return;
+        }
+        SheepMergeManager.restoreTopPointsDisplayIfPossible();
     }
 
     @EventHandler
