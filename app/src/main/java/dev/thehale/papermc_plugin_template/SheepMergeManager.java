@@ -111,7 +111,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> comboMaxUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> comboGainUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Long> pointsOverlayExpiresAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> stackedPointsOverlayByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> lastPointsOverlayByPlayer = new HashMap<>();
     private static final Map<UUID, BossBar> comboBossBarByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
@@ -227,7 +227,7 @@ public final class SheepMergeManager {
     private static final double SHEEP_RAIN_HORIZONTAL_PADDING = 1.5D;
     private static final long COMBO_FRENZY_EVENT_DURATION_MS = 60_000L;
     private static final double COMBO_FRENZY_MULTIPLIER = 10.0D;
-    private static final long POINTS_OVERLAY_STACK_DURATION_MS = 1_400L;
+    private static final long POINTS_OVERLAY_DISPLAY_DURATION_MS = 1_400L;
     private static final double BASE_COMBO_DECAY_PER_SECOND = 1.3D;
     private static final double COMBO_DECAY_HIGH_LEVEL_SCALING = 2.2D;
     private static final double COMBO_BASE_MAX_SCORE = 100.0D;
@@ -1243,7 +1243,7 @@ public final class SheepMergeManager {
 
     public static int getShearPointMultiplier(Player player) {
         int level = getShearShopLevel(player);
-        return 1 + (level / 10);
+        return level + 1;
     }
 
     public static int getShearUpgradeCost(Player player) {
@@ -1993,7 +1993,7 @@ public final class SheepMergeManager {
         comboDecayUpgradeByPlayer.remove(id);
         comboMaxUpgradeByPlayer.remove(id);
         comboGainUpgradeByPlayer.remove(id);
-        stackedPointsOverlayByPlayer.remove(id);
+        lastPointsOverlayByPlayer.remove(id);
         pointsOverlayExpiresAtByPlayer.remove(id);
         removeComboBossBar(id);
         carriedSheepByPlayer.remove(id);
@@ -2687,8 +2687,8 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        stackedPointsOverlayByPlayer.put(playerId, stackedPointsOverlayByPlayer.getOrDefault(playerId, 0) + points);
-        pointsOverlayExpiresAtByPlayer.put(playerId, System.currentTimeMillis() + POINTS_OVERLAY_STACK_DURATION_MS);
+        lastPointsOverlayByPlayer.put(playerId, points);
+        pointsOverlayExpiresAtByPlayer.put(playerId, System.currentTimeMillis() + POINTS_OVERLAY_DISPLAY_DURATION_MS);
     }
 
     public static void tickPointsGainOverlay(Player player) {
@@ -2696,20 +2696,20 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        Integer stacked = stackedPointsOverlayByPlayer.get(playerId);
-        if (stacked == null || stacked <= 0) {
+        Integer lastPoints = lastPointsOverlayByPlayer.get(playerId);
+        if (lastPoints == null || lastPoints <= 0) {
             return;
         }
 
         long now = System.currentTimeMillis();
         long expiresAt = pointsOverlayExpiresAtByPlayer.getOrDefault(playerId, 0L);
         if (expiresAt <= now) {
-            stackedPointsOverlayByPlayer.remove(playerId);
+            lastPointsOverlayByPlayer.remove(playerId);
             pointsOverlayExpiresAtByPlayer.remove(playerId);
             return;
         }
 
-        showOverlay(player, action("+" + stacked + " points" + color(" &7(stack total)")));
+        showOverlay(player, action("+" + lastPoints + " points"));
     }
 
     public static void showOverlay(Player player, String message) {
@@ -2770,7 +2770,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         comboScoreByPlayer.remove(playerId);
         comboLastUpdateTimestampByPlayer.remove(playerId);
-        stackedPointsOverlayByPlayer.remove(playerId);
+        lastPointsOverlayByPlayer.remove(playerId);
         pointsOverlayExpiresAtByPlayer.remove(playerId);
         lastAbilityAuraSoundTimestampByPlayer.remove(playerId);
         removeComboBossBar(playerId);
@@ -4036,7 +4036,8 @@ public final class SheepMergeManager {
                 "Higher Maximum Levels",
                 List.of(
                         "Level: " + getPrestigeHigherMaxLevel(player) + " / " + PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP,
-                        "Tier cap bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
+                        "Wool regen max bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
+                        "Spawn chance max bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
                         getPrestigeHigherMaxLevel(player) >= PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP
                                 ? "MAXED"
                                 : "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
@@ -4518,7 +4519,9 @@ public final class SheepMergeManager {
                 "Amplified Buff Power",
                 List.of(
                         "Level: " + getQuestUpgradePowerLevel(player),
-                        "Bonus: stronger temporary abilities",
+                        "Lucky Burst: +5% spawn chance per level",
+                        "Jackpot Shears: +1x shear points per level",
+                        "Quest ability costs: -1 per level",
                         "Cost: " + getQuestUpgradePowerCost(player) + " quest points",
                         "Click to upgrade")));
         inventory.setItem(QUEST_UPGRADE_BACK_SLOT, MenuItemFactory.create(
