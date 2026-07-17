@@ -292,9 +292,7 @@ public final class SheepMergeManager {
     private static long sheepRainEventEndsAtMs = 0L;
     private static long nextSheepRainSpawnAtMs = 0L;
     private static long comboFrenzyEventEndsAtMs = 0L;
-    private static long nextComboFrenzyMusicAtMs = 0L;
     private static BossBar sheepRainBossBar;
-    private static BossBar comboFrenzyBossBar;
     private static int lastGameplayTipIndex = -1;
     private static final List<String> GAMEPLAY_TIPS = List.of(
             "&7Use &e/sheepmerge &7to jump straight to your personal farm.",
@@ -327,7 +325,7 @@ public final class SheepMergeManager {
             "&7If needed, remove visitors from your own farm using &e/sheepmerge kick <player>&7.",
             "&7Random &eSheep Storm &7events can happen and flood farms with sheep from above.",
             "&7Random events roll independently each minute, so storms and combo frenzy can overlap.",
-            "&7Combo Frenzy shows a timer boss bar and shifts to intense note music near the end.",
+            "&7Combo Frenzy timer appears on your combo boss bar so you can pace merge windows.",
             "&7Rainbow sheep are legendary. Keep merging to push your tier progression.");
 
     private SheepMergeManager() {
@@ -823,8 +821,7 @@ public final class SheepMergeManager {
         }
 
         if (comboFrenzyEventEndsAtMs > now) {
-            updateComboFrenzyBossBar(now);
-            tickComboFrenzyMusic(now);
+            // Frenzy countdown is rendered through each player's combo boss bar.
         } else if (comboFrenzyEventEndsAtMs > 0L) {
             endComboFrenzyEvent();
         }
@@ -874,30 +871,17 @@ public final class SheepMergeManager {
 
     private static void startComboFrenzyEvent(long now) {
         comboFrenzyEventEndsAtMs = now + COMBO_FRENZY_EVENT_DURATION_MS;
-        nextComboFrenzyMusicAtMs = now;
-        if (comboFrenzyBossBar == null) {
-            comboFrenzyBossBar = Bukkit.createBossBar("Combo Frenzy", BarColor.YELLOW, BarStyle.SEGMENTED_10);
-        }
-        comboFrenzyBossBar.setVisible(true);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             if (!isSheepFarmWorld(online.getWorld())) {
-                comboFrenzyBossBar.removePlayer(online);
                 continue;
             }
-            comboFrenzyBossBar.addPlayer(online);
             online.sendMessage(action("Random Event: Combo Frenzy started (10x combo gain)."));
             playSound(online, Sound.ENTITY_PLAYER_LEVELUP, 0.9f, 1.6f);
         }
-        updateComboFrenzyBossBar(now);
     }
 
     private static void endComboFrenzyEvent() {
         comboFrenzyEventEndsAtMs = 0L;
-        nextComboFrenzyMusicAtMs = 0L;
-        if (comboFrenzyBossBar != null) {
-            comboFrenzyBossBar.removeAll();
-            comboFrenzyBossBar.setVisible(false);
-        }
         if (plugin == null) {
             return;
         }
@@ -1031,50 +1015,6 @@ public final class SheepMergeManager {
                 sheepRainBossBar.removePlayer(online);
             }
         }
-    }
-
-    private static void updateComboFrenzyBossBar(long now) {
-        if (comboFrenzyBossBar == null) {
-            return;
-        }
-
-        long remaining = Math.max(0L, comboFrenzyEventEndsAtMs - now);
-        double progress = Math.max(0.0D, Math.min(1.0D, remaining / (double) COMBO_FRENZY_EVENT_DURATION_MS));
-        comboFrenzyBossBar.setProgress(progress);
-        comboFrenzyBossBar.setTitle(color("&eCombo Frenzy &7- &c" + formatDuration(remaining) + " left"));
-
-        if (plugin == null) {
-            return;
-        }
-        for (Player online : plugin.getServer().getOnlinePlayers()) {
-            if (isSheepFarmWorld(online.getWorld())) {
-                comboFrenzyBossBar.addPlayer(online);
-            } else {
-                comboFrenzyBossBar.removePlayer(online);
-            }
-        }
-    }
-
-    private static void tickComboFrenzyMusic(long now) {
-        if (plugin == null || now < nextComboFrenzyMusicAtMs) {
-            return;
-        }
-
-        long remaining = Math.max(0L, comboFrenzyEventEndsAtMs - now);
-        boolean highIntensity = remaining <= 20_000L;
-        for (Player online : plugin.getServer().getOnlinePlayers()) {
-            if (!isSheepFarmWorld(online.getWorld())) {
-                continue;
-            }
-            if (highIntensity) {
-                playSound(online, Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 0.45f, 1.0f);
-                playSound(online, Sound.BLOCK_NOTE_BLOCK_BELL, 0.55f, 1.6f);
-            } else {
-                playSound(online, Sound.BLOCK_NOTE_BLOCK_BASS, 0.35f, 0.9f);
-                playSound(online, Sound.BLOCK_NOTE_BLOCK_BIT, 0.45f, 1.2f);
-            }
-        }
-        nextComboFrenzyMusicAtMs = now + (highIntensity ? 2_000L : 4_000L);
     }
 
     private static long getRandomSheepRainIntervalMs() {
@@ -2023,6 +1963,11 @@ public final class SheepMergeManager {
         long nextEat = getNextEatTimestamp(sheep);
         if (now >= nextEat && nextEat > 0L) {
             setNextEatTimestamp(sheep, 0L);
+            sheep.setSheared(false);
+            sheep.setGravity(true);
+            sheep.setAI(true);
+            updateSheepName(sheep);
+            return;
         }
         sheep.setSheared(true);
         sheep.setGravity(true);
@@ -2616,7 +2561,9 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        if (comboScore <= 0.0D) {
+        long now = System.currentTimeMillis();
+        boolean frenzyActive = comboFrenzyEventEndsAtMs > now;
+        if (comboScore <= 0.0D && !frenzyActive) {
             removeComboBossBar(playerId);
             return;
         }
@@ -2628,11 +2575,22 @@ public final class SheepMergeManager {
         }
 
         double maxScore = getComboMaxScore(player);
-        double progress = Math.max(0.0D, Math.min(1.0D, comboScore / Math.max(1.0D, maxScore)));
+        double progress;
+        if (frenzyActive) {
+            long remaining = Math.max(0L, comboFrenzyEventEndsAtMs - now);
+            progress = Math.max(0.0D, Math.min(1.0D, remaining / (double) COMBO_FRENZY_EVENT_DURATION_MS));
+        } else {
+            progress = Math.max(0.0D, Math.min(1.0D, comboScore / Math.max(1.0D, maxScore)));
+        }
         bar.setProgress(progress);
-        bar.setTitle(color("&6Combo &f" + (int) Math.floor(comboScore)
+        String title = color("&6Combo &f" + (int) Math.floor(comboScore)
                 + "&7/&f" + (int) Math.floor(maxScore)
-                + " &7| &ePoints x" + formatComboMultiplier(getComboMultiplier(player, comboScore))));
+                + " &7| &ePoints x" + formatComboMultiplier(getComboMultiplier(player, comboScore)));
+        if (frenzyActive) {
+            long remaining = Math.max(0L, comboFrenzyEventEndsAtMs - now);
+            title += color(" &7| &cFrenzy " + formatDuration(remaining));
+        }
+        bar.setTitle(title);
         bar.setVisible(true);
         if (!bar.getPlayers().contains(player)) {
             bar.addPlayer(player);
