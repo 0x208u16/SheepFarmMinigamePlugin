@@ -50,8 +50,8 @@ public class SheepMergePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         log = getLogger();
-        SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         SheepMergeManager.initialize(this);
+        SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         setup();
         SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
         scheduleSheepEggDistribution();

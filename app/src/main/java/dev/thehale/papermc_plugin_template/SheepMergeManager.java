@@ -559,6 +559,13 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
+        return hasUnlockedFarm(playerId);
+    }
+
+    public static boolean hasUnlockedFarm(UUID playerId) {
+        if (playerId == null) {
+            return false;
+        }
         return tutorialCompletedByPlayer.getOrDefault(playerId, false)
                 || tutorialBypassedByPlayer.getOrDefault(playerId, false);
     }
@@ -1744,11 +1751,57 @@ public final class SheepMergeManager {
             UUID playerId = player.getUniqueId();
             tutorialCompletedByPlayer.put(playerId, true);
             clearTutorialRuntimeState(playerId);
+            migrateTutorialSheepToFarmWorld(playerId);
             player.sendTitle(color("&aTutorial Complete"), color("&7Run /sheepmerge to go to your farm"), 10, 60, 10);
             player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
             player.sendMessage(hint("Use /sheepmerge tutorial anytime to replay."));
             saveData();
         }
+    }
+
+    private static void migrateTutorialSheepToFarmWorld(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+
+        World tutorialWorld = Bukkit.getWorld(getTutorialWorldName(playerId));
+        if (tutorialWorld == null) {
+            return;
+        }
+
+        World farmWorld = SheepFarmWorldCommand.ensureFarmWorld(SheepFarmWorldCommand.getWorldName(playerId));
+        if (farmWorld == null) {
+            return;
+        }
+
+        for (Sheep tutorialSheep : tutorialWorld.getEntitiesByClass(Sheep.class)) {
+            if (tutorialSheep == null || !tutorialSheep.isValid()) {
+                continue;
+            }
+
+            Location spawnLocation = tutorialSheep.getLocation().clone();
+            spawnLocation.setWorld(farmWorld);
+
+            Sheep migratedSheep = farmWorld.spawn(spawnLocation, Sheep.class);
+            SheepTier tier = getSheepTier(tutorialSheep);
+            setSheepTier(migratedSheep, tier);
+            migratedSheep.setAdult();
+
+            if (tutorialSheep.isSheared()) {
+                migratedSheep.setSheared(true);
+                setNextEatTimestamp(migratedSheep, getNextEatTimestamp(tutorialSheep));
+                updateSheepName(migratedSheep);
+            }
+
+            UUID tutorialSheepId = tutorialSheep.getUniqueId();
+            tutorialSheep.remove();
+            clearSheepRescueState(tutorialSheepId);
+        }
+
+        refreshLiveSheepCount(tutorialWorld);
+        refreshLiveSheepCount(farmWorld);
+        tutorialWorld.save();
+        farmWorld.save();
     }
 
     public static boolean adminResetPlayer(Player player) {

@@ -36,7 +36,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
     }
 
     public static void scheduleDeleteWorldForPlayer(UUID playerId) {
-        if (playerId == null || SheepMergePlugin.instance == null) {
+        if (playerId == null || SheepMergePlugin.instance == null || !SheepMergeManager.hasUnlockedFarm(playerId)) {
             return;
         }
 
@@ -59,6 +59,10 @@ public class SheepFarmWorldCleanupListener implements Listener {
         for (File worldFolder : worldFolders) {
             String worldName = worldFolder.getName();
             if (!isTemporaryTutorialWorldName(worldName)) {
+                continue;
+            }
+            UUID ownerId = getTutorialOwnerId(worldName);
+            if (ownerId == null || !SheepMergeManager.hasUnlockedFarm(ownerId)) {
                 continue;
             }
             unloadWorld(worldName);
@@ -108,6 +112,26 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
     private static boolean isTemporaryTutorialWorldName(String worldName) {
         return worldName != null && worldName.startsWith("sheeptutorial_");
+    }
+
+    private static UUID getTutorialOwnerId(String worldName) {
+        if (!isTemporaryTutorialWorldName(worldName)) {
+            return null;
+        }
+        String rawId = worldName.substring("sheeptutorial_".length());
+        if (rawId.length() != 32) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder(rawId);
+        builder.insert(8, '-');
+        builder.insert(13, '-');
+        builder.insert(18, '-');
+        builder.insert(23, '-');
+        try {
+            return UUID.fromString(builder.toString());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private static void unloadWorld(String worldName) {
