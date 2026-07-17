@@ -2526,7 +2526,14 @@ public final class SheepMergeManager {
             return false;
         }
 
-        Location location = player.getLocation().clone().add(0, 2.2, 0);
+        return spawnOrMoveTopPointsDisplay(player.getLocation().clone().add(0, 2.2, 0));
+    }
+
+    public static boolean spawnOrMoveTopPointsDisplay(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+
         saveTopPointsDisplayLocation(location);
         TextDisplay display = ensureTopPointsDisplay(location);
         configureTopPointsDisplay(display);

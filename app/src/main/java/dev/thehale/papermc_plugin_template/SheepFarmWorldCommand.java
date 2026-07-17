@@ -22,6 +22,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "help",
             "-help",
+            "--help",
             "upgrade",
             "prestige",
             "shop",
@@ -46,7 +47,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "mapload",
             "world");
 
-    private static final List<String> WORLD_SUBCOMMANDS = List.of("save", "load");
+    private static final List<String> WORLD_SUBCOMMANDS = List.of("help", "-help", "--help", "save", "load");
+    private static final List<String> TOPDISPLAY_SUBCOMMANDS = List.of("help", "-help", "--help", "remove");
     private static final List<String> ADMIN_AMOUNT_PLAYER_SUBCOMMANDS = List.of(
             "givepoints",
             "setpoints",
@@ -70,7 +72,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 || value.equalsIgnoreCase("--help"));
     }
 
-    private void sendCommandHelp(Player player) {
+    private void sendCommandHelp(Player player, String topic) {
         if (player == null) {
             return;
         }
@@ -115,6 +117,71 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": admin set quest points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge setprestige <level> [player]")
                 + ": admin set prestige level");
+
+        if (topic == null || topic.isBlank()) {
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("visit")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Visit hints:");
+            player.sendMessage(
+                    ChatColor.GRAY + "- " + label("/sheepmerge visit <player>") + ": visit another open farm");
+            player.sendMessage(
+                    ChatColor.GRAY + "- " + label("/sheepmerge visit -toggle") + ": toggle your farm visit access");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit -toggle <player>")
+                    + ": operator toggle for another player");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("topdisplay")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Leaderboard hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge topdisplay")
+                    + ": move the leaderboard display to your position");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge topdisplay <x> <y> <z> [world] [yaw] [pitch]")
+                    + ": move the leaderboard to explicit coordinates");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge topdisplay remove")
+                    + ": remove the leaderboard display and clear the saved location");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("world")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "World hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world save")
+                    + ": save the current farm layout and apply it to all farm worlds");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world load")
+                    + ": load the saved farm layout into all farm worlds");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("resetdata")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Reset hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata")
+                    + ": reset your own data");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata <player>")
+                    + ": reset a specific online player");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("stats") || topic.equalsIgnoreCase("checkpoints")
+                || topic.equalsIgnoreCase("checkquestpoints") || topic.equalsIgnoreCase("checkprestige")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Admin stat check hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge " + topic)
+                    + ": inspect your own stats if you are checking yourself");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge " + topic + " <player>")
+                    + ": inspect another online player");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("givepoints") || topic.equalsIgnoreCase("setpoints")
+                || topic.equalsIgnoreCase("givequestpoints") || topic.equalsIgnoreCase("setquestpoints")
+                || topic.equalsIgnoreCase("setprestige")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Admin value hints:");
+            String amountLabel = topic.equalsIgnoreCase("setprestige") ? "<level>" : "<amount>";
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge " + topic + " " + amountLabel)
+                    + ": affect your own account if you are the target");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge " + topic + " " + amountLabel + " [player]")
+                    + ": affect a specific online player");
+        }
     }
 
     @Override
@@ -124,9 +191,18 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        String helpTopic = null;
         for (String arg : args) {
             if (isHelpFlag(arg)) {
-                sendCommandHelp(player);
+                continue;
+            }
+            if (helpTopic == null) {
+                helpTopic = arg;
+            }
+        }
+        for (String arg : args) {
+            if (isHelpFlag(arg)) {
+                sendCommandHelp(player, helpTopic);
                 return true;
             }
         }
@@ -338,6 +414,50 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Unable to create top points display right now.");
             }
             return true;
+        }
+
+        if (args.length >= 4 && args[0].equalsIgnoreCase("topdisplay")
+                && isCoordinate(args[1]) && isCoordinate(args[2]) && isCoordinate(args[3])) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+
+            World targetWorld = player.getWorld();
+            int extraArgIndex = 4;
+            if (args.length >= 5) {
+                World byName = Bukkit.getWorld(args[4]);
+                if (byName != null) {
+                    targetWorld = byName;
+                    extraArgIndex = 5;
+                }
+            }
+
+            try {
+                double x = Double.parseDouble(args[1]);
+                double y = Double.parseDouble(args[2]);
+                double z = Double.parseDouble(args[3]);
+                Location location = new Location(targetWorld, x, y, z);
+                if (args.length > extraArgIndex) {
+                    location.setYaw(Float.parseFloat(args[extraArgIndex]));
+                }
+                if (args.length > extraArgIndex + 1) {
+                    location.setPitch(Float.parseFloat(args[extraArgIndex + 1]));
+                }
+
+                boolean createdOrMoved = SheepMergeManager.spawnOrMoveTopPointsDisplay(location);
+                if (createdOrMoved) {
+                    player.sendMessage("Top points display moved to coordinates " + x + ", " + y + ", " + z
+                            + " in " + targetWorld.getName() + ".");
+                } else {
+                    player.sendMessage("Unable to create top points display right now.");
+                }
+                return true;
+            } catch (NumberFormatException exception) {
+                player.sendMessage(
+                        "Invalid coordinates. Usage: /sheepmerge topdisplay <x> <y> <z> [world] [yaw] [pitch]");
+                return true;
+            }
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("topdisplay") && args[1].equalsIgnoreCase("remove")) {
@@ -616,13 +736,20 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && args[0].equalsIgnoreCase("visit")) {
             List<String> visitOptions = new ArrayList<>();
-            visitOptions.add("toggle");
+            visitOptions.add("help");
+            visitOptions.add("-help");
+            visitOptions.add("--help");
+            visitOptions.add("-toggle");
             for (Player online : Bukkit.getOnlinePlayers()) {
                 if (online.getName() != null) {
                     visitOptions.add(online.getName());
                 }
             }
             return filterSuggestions(visitOptions, args[1]);
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("topdisplay")) {
+            return filterSuggestions(TOPDISPLAY_SUBCOMMANDS, args[1]);
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("kick") && sender instanceof Player player) {
@@ -678,6 +805,18 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 .map(player -> player == null ? null : player.getName())
                 .filter(name -> name != null && name.toLowerCase().startsWith(prefix.toLowerCase()))
                 .toList();
+    }
+
+    private boolean isCoordinate(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        try {
+            Double.parseDouble(value);
+            return true;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     private List<String> filterSuggestions(List<String> suggestions, String prefix) {
