@@ -1954,13 +1954,19 @@ public final class SheepMergeManager {
         boolean rescueActive = applySheepRescueMotionIfNeeded(sheep);
         applyRainbowColorAnimation(sheep, getSheepTier(sheep));
 
+        long now = System.currentTimeMillis();
+        long nextEat = getNextEatTimestamp(sheep);
+
         if (!sheep.isSheared()) {
+            if (nextEat > now) {
+                sheep.setSheared(true);
+            } else if (nextEat > 0L) {
+                setNextEatTimestamp(sheep, 0L);
+            }
             updateSheepName(sheep);
             return;
         }
 
-        long now = System.currentTimeMillis();
-        long nextEat = getNextEatTimestamp(sheep);
         if (now >= nextEat && nextEat > 0L) {
             promptSheepToEatGrass(sheep);
             return;

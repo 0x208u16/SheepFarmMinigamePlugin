@@ -16,6 +16,7 @@ import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.SheepRegrowWoolEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerKickEvent;
@@ -103,6 +104,25 @@ public class SheepFarmGameListener implements Listener {
         }
 
         event.setCancelled(true);
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onSheepRegrowWool(SheepRegrowWoolEvent event) {
+        Sheep sheep = event.getEntity();
+        if (!SheepMergeManager.isSheepFarmWorld(sheep.getWorld())) {
+            return;
+        }
+
+        long nextEatAt = SheepMergeManager.getNextEatTimestamp(sheep);
+        if (nextEatAt <= 0L) {
+            return;
+        }
+
+        if (System.currentTimeMillis() < nextEatAt) {
+            event.setCancelled(true);
+            sheep.setSheared(true);
+            SheepMergeManager.updateSheepName(sheep);
+        }
     }
 
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = false)
