@@ -219,9 +219,9 @@ public final class SheepMergeManager {
     private static final int SHEAR_TIER_BOOST_BASE_COST = 45;
     private static final int SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL = 5;
     private static final int SHEAR_TIER_BOOST_CHANCE_PER_LEVEL = 1;
-    private static final int SHEAR_WOOL_SAVE_CHANCE_CAP = 90;
+    private static final int SHEAR_WOOL_SAVE_CHANCE_CAP = 50;
     private static final int SHEAR_TIER_BOOST_CHANCE_CAP = 75;
-    private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = 18;
+    private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = SHEAR_WOOL_SAVE_CHANCE_CAP / SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL;
     private static final int SHEAR_TIER_BOOST_MAX_LEVEL = 25;
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
     private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
