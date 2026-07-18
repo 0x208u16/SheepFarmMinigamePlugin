@@ -398,8 +398,14 @@ public final class SheepMergeManager {
     }
 
     public static boolean hasSavedFarmLayout() {
-        return farmLayoutConfig != null
-                && farmLayoutConfig.isConfigurationSection("blocks")
+        if (farmLayoutConfig == null) {
+            return false;
+        }
+        if (farmLayoutConfig.isConfigurationSection("chunks")
+                && !farmLayoutConfig.getConfigurationSection("chunks").getKeys(false).isEmpty()) {
+            return true;
+        }
+        return farmLayoutConfig.isConfigurationSection("blocks")
                 && !farmLayoutConfig.getConfigurationSection("blocks").getKeys(false).isEmpty();
     }
 
@@ -418,12 +424,34 @@ public final class SheepMergeManager {
         if (farmLayoutConfig == null) {
             farmLayoutConfig = new YamlConfiguration();
         }
+        farmLayoutConfig.set("version", 2);
+        farmLayoutConfig.set("world.minY", sourceWorld.getMinHeight());
+        farmLayoutConfig.set("world.maxY", sourceWorld.getMaxHeight());
+        farmLayoutConfig.set("world.name", sourceWorld.getName());
+        farmLayoutConfig.set("world.savedAt", System.currentTimeMillis());
+        farmLayoutConfig.set("chunks", null);
         farmLayoutConfig.set("blocks", null);
-        for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
-            for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
-                for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
-                    farmLayoutConfig.set("blocks." + keyFor(x, y, z),
-                            sourceWorld.getBlockAt(x, y, z).getBlockData().getAsString());
+
+        int minY = sourceWorld.getMinHeight();
+        int maxY = sourceWorld.getMaxHeight();
+        for (org.bukkit.Chunk chunk : sourceWorld.getLoadedChunks()) {
+            int chunkX = chunk.getX();
+            int chunkZ = chunk.getZ();
+            String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
+            farmLayoutConfig.set(chunkPath + ".x", chunkX);
+            farmLayoutConfig.set(chunkPath + ".z", chunkZ);
+
+            int blockIndex = 0;
+            for (int y = minY; y < maxY; y++) {
+                for (int localX = 0; localX < 16; localX++) {
+                    for (int localZ = 0; localZ < 16; localZ++) {
+                        int worldX = (chunkX << 4) + localX;
+                        int worldZ = (chunkZ << 4) + localZ;
+                        String blockPath = chunkPath + ".blocks." + blockIndex;
+                        farmLayoutConfig.set(blockPath,
+                                sourceWorld.getBlockAt(worldX, y, worldZ).getBlockData().getAsString());
+                        blockIndex++;
+                    }
                 }
             }
         }
@@ -457,6 +485,11 @@ public final class SheepMergeManager {
     }
 
     private static void applySavedFarmLayout(World world) {
+        if (farmLayoutConfig != null && farmLayoutConfig.isConfigurationSection("chunks")) {
+            applySavedChunkLayout(world);
+            return;
+        }
+
         for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
                 for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
@@ -465,6 +498,49 @@ public final class SheepMergeManager {
                             ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
                             : parseBlockData(serialized);
                     world.getBlockAt(x, y, z).setBlockData(data, true);
+                }
+            }
+        }
+    }
+
+    private static void applySavedChunkLayout(World world) {
+        if (world == null || farmLayoutConfig == null || !farmLayoutConfig.isConfigurationSection("chunks")) {
+            return;
+        }
+
+        org.bukkit.configuration.ConfigurationSection chunksSection = farmLayoutConfig
+                .getConfigurationSection("chunks");
+        if (chunksSection == null || chunksSection.getKeys(false).isEmpty()) {
+            return;
+        }
+
+        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
+        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
+        if (minY >= maxY) {
+            return;
+        }
+
+        for (String chunkKey : chunksSection.getKeys(false)) {
+            String chunkPath = "chunks." + chunkKey;
+            int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
+            int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
+            if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                continue;
+            }
+
+            int blockIndex = 0;
+            for (int y = minY; y < maxY; y++) {
+                for (int localX = 0; localX < 16; localX++) {
+                    for (int localZ = 0; localZ < 16; localZ++) {
+                        int worldX = (chunkX << 4) + localX;
+                        int worldZ = (chunkZ << 4) + localZ;
+                        String serialized = farmLayoutConfig.getString(chunkPath + ".blocks." + blockIndex);
+                        BlockData data = (serialized == null || serialized.isBlank())
+                                ? Bukkit.createBlockData(Material.AIR)
+                                : parseBlockData(serialized);
+                        world.getBlockAt(worldX, y, worldZ).setBlockData(data, true);
+                        blockIndex++;
+                    }
                 }
             }
         }
@@ -665,6 +741,10 @@ public final class SheepMergeManager {
 
     private static String keyFor(int x, int y, int z) {
         return x + "," + y + "," + z;
+    }
+
+    private static String chunkKeyFor(int chunkX, int chunkZ) {
+        return chunkX + "," + chunkZ;
     }
 
     private static void loadFarmLayout() {
