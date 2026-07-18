@@ -234,8 +234,8 @@ public final class SheepMergeManager {
     private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
     private static final long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
     private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
-    private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 4_000L;
-    private static final long TUTORIAL_STATUS_FEED_REPEAT_MS = 4_000L;
+    private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 12_000L;
+    private static final long TUTORIAL_STATUS_FEED_REPEAT_MS = 12_000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -1868,14 +1868,14 @@ public final class SheepMergeManager {
             return "Step: Enter your tutorial world";
         }
         if (getTutorialSpawnCount(player) < TUTORIAL_SPAWN_TARGET) {
-            return "Step: Spawn sheep with eggs (" + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET + ")";
+            return "Step: Spawn sheep (" + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET + ")";
         }
         if (getTutorialShearCount(player) < TUTORIAL_SHEAR_TARGET) {
-            return "Step: Shear sheep with shears (" + getTutorialShearCount(player) + "/" + TUTORIAL_SHEAR_TARGET
+            return "Step: Shear sheep (" + getTutorialShearCount(player) + "/" + TUTORIAL_SHEAR_TARGET
                     + ")";
         }
         if (getTutorialMergeCount(player) < TUTORIAL_MERGE_TARGET) {
-            return "Step: Merge same-tier sheep <While looking at a close by sheep: SHIFT + RIGHT CLICK> ("
+            return "Step: Merge same-tier sheep (sneak + right click) ("
                     + getTutorialMergeCount(player) + "/" + TUTORIAL_MERGE_TARGET + ")";
         }
 
@@ -1884,19 +1884,19 @@ public final class SheepMergeManager {
             return "Step: Run /sheepmerge upgrade";
         }
         if (!tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
-            return "Step: Buy one regular upgrade in /sheepmerge upgrade";
+            return "Step: Buy any regular upgrade";
         }
         if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Upgrades, click Quests";
         }
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
-            return "Step: In Quests, activate any ability";
+            return "Step: Activate any quest ability";
         }
         if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Quests, click Quest Upgrades";
         }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
-            return "Step: In Shear Shop, buy one Shear Upgrade";
+            return "Step: Buy one Shear Shop upgrade";
         }
         if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
             return "Step: In Upgrades, click Prestige";
@@ -1928,14 +1928,11 @@ public final class SheepMergeManager {
         EGG_MODULE.addEggs(player, 10);
 
         player.sendTitle(color("&eSheepMerge Tutorial"), color("&7Learn the full game flow"), 10, 55, 10);
-        player.sendMessage(hint("Tutorial steps:"));
-        player.sendMessage(hint("1) Spawn 3 sheep, shear 3 sheep, then merge 1 pair."));
-        player.sendMessage(hint("2) Open /sheepmerge upgrade and buy one regular upgrade."));
-        player.sendMessage(hint("3) Open Quests and activate one quest ability."));
-        player.sendMessage(hint("4) From Quests, open Quest Upgrades."));
-        player.sendMessage(hint("5) Buy one Shear Shop upgrade."));
-        player.sendMessage(hint("6) Open Prestige."));
-        player.sendMessage(hint("7) Prestige once."));
+        player.sendMessage(hint("Tutorial checklist:"));
+        player.sendMessage(hint("Spawn 3, Shear 3, Merge 1."));
+        player.sendMessage(
+                hint("Then: Upgrades -> Quests (use ability + open Quest Upgrades) -> Shear Shop -> Prestige."));
+        player.sendMessage(hint("Use /sheepmerge status anytime for the current task."));
         sendTutorialStatusFeed(player);
     }
 
@@ -2149,13 +2146,13 @@ public final class SheepMergeManager {
 
     private static String getCurrentTutorialTaskLabel(TutorialStep step) {
         return switch (step) {
-            case SPAWN -> "Spawn sheep with eggs";
-            case SHEAR -> "Shear sheep with shears";
+            case SPAWN -> "Spawn sheep";
+            case SHEAR -> "Shear sheep";
             case MERGE -> "Merge same-tier sheep";
             case OPEN_UPGRADES -> "Run /sheepmerge upgrade";
-            case BUY_REGULAR_UPGRADE -> "Buy one regular upgrade in /sheepmerge upgrade";
+            case BUY_REGULAR_UPGRADE -> "Buy one regular upgrade";
             case OPEN_QUESTS -> "In Upgrades, click Quests";
-            case USE_ABILITY -> "In Quests, activate any ability";
+            case USE_ABILITY -> "Activate any quest ability";
             case OPEN_QUEST_UPGRADES -> "In Quests, click Quest Upgrades";
             case BUY_SHEAR_UPGRADE -> "Buy one Shear Shop upgrade";
             case OPEN_PRESTIGE -> "In Upgrades, click Prestige";
@@ -2220,7 +2217,6 @@ public final class SheepMergeManager {
         player.sendMessage(warning("Current tutorial task: " + currentTask));
         showOverlay(player, warning("Current task: " + currentTask));
         player.sendTitle(color("&6Tutorial Focus"), color("&e" + currentTask), 0, 40, 8);
-        playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.25f);
     }
 
     private static void sendTutorialStatusFeed(Player player) {
@@ -2242,15 +2238,14 @@ public final class SheepMergeManager {
         lastTutorialStatusFeedTimestampByPlayer.put(playerId, now);
         lastTutorialProgressFeedLineByPlayer.put(playerId, progressLine);
         lastTutorialStepFeedLineByPlayer.put(playerId, stepLine);
-        player.sendMessage(hint(progressLine));
-        player.sendMessage(hint(stepLine));
+        player.sendMessage(hint(stepLine + " | " + progressLine));
     }
 
     public static String getTutorialProgressLine(Player player) {
-        return "Tutorial tasks: Shear " + getTutorialShearCount(player) + "/" + TUTORIAL_SHEAR_TARGET
-                + ", Spawn " + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET
-                + ", Merge " + getTutorialMergeCount(player) + "/" + TUTORIAL_MERGE_TARGET
-                + " | Sections " + getTutorialSectionCount(player) + "/" + TUTORIAL_MENU_SECTION_TARGET;
+        return "S " + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET
+                + "  H " + getTutorialShearCount(player) + "/" + TUTORIAL_SHEAR_TARGET
+                + "  M " + getTutorialMergeCount(player) + "/" + TUTORIAL_MERGE_TARGET
+                + "  UI " + getTutorialSectionCount(player) + "/" + TUTORIAL_MENU_SECTION_TARGET;
     }
 
     private static void checkTutorialCompletion(Player player) {
@@ -2761,13 +2756,13 @@ public final class SheepMergeManager {
         if (tier == SheepTier.RAINBOW) {
             int mergedCount = getRainbowMergedCount(sheep);
             if (mergedCount > 1) {
-                name += ChatColor.GRAY + " " + formatSheepMergedCount(mergedCount);
+                name += ChatColor.WHITE + " " + formatSheepMergedCount(mergedCount);
             }
         }
         if (sheep.isSheared()) {
             long remainingSeconds = Math.max(0L,
                     (getNextEatTimestamp(sheep) - System.currentTimeMillis() + 999L) / 1000L);
-            name += ChatColor.GRAY + " - " + remainingSeconds + "s";
+            name += ChatColor.YELLOW + " [" + remainingSeconds + "s]";
         }
         sheep.setCustomName(name);
         sheep.setCustomNameVisible(true);
@@ -4313,6 +4308,15 @@ public final class SheepMergeManager {
         markTutorialUpgradeOpened(player);
 
         Inventory inventory = Bukkit.createInventory(null, 27, UPGRADE_MENU_TITLE);
+        inventory.setItem(4, MenuItemFactory.create(
+                Material.BOOK,
+                "Upgrade Guide",
+                List.of(
+                        "Safe order:",
+                        "1) Sheep Limit / Egg Speed",
+                        "2) Wool Regen",
+                        "3) Higher Tier Chance",
+                        "Tip: keep some points for utility unlocks")));
         int limitLevel = getLimitUpgradeLevel(player);
         int currentLimit = getPlayerLimit(player);
         boolean limitMaxed = currentLimit >= MAX_SHEEP_LIMIT;
@@ -4323,7 +4327,8 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + limitLevel + " / " + ((MAX_SHEEP_LIMIT - BASE_SHEEP_LIMIT) / LIMIT_UPGRADE_STEP),
                         "Current limit: " + currentLimit + " / " + MAX_SHEEP_LIMIT,
-                        "Increase by: +" + getLimitUpgradeStep(),
+                        "Next: " + currentLimit + " -> "
+                                + Math.min(MAX_SHEEP_LIMIT, currentLimit + getLimitUpgradeStep()),
                         limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " points",
                         limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
@@ -4335,6 +4340,8 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + eggLevel + " / " + getEggSpeedMaxLevel(player),
                         "Egg interval: " + getEggIntervalSeconds(player) + "s",
+                        "Next: " + getEggIntervalSeconds(player) + "s -> "
+                                + Math.max(MIN_EGG_INTERVAL_SECONDS, getEggIntervalSeconds(player) - 1) + "s",
                         eggLevel >= getEggSpeedMaxLevel(player) ? "MAXED"
                                 : "Cost: " + formatPoints(eggCost) + " points",
                         "Click to purchase")));
@@ -4346,7 +4353,7 @@ public final class SheepMergeManager {
                 "Faster Wool Regen",
                 List.of(
                         "Level: " + woolLevel,
-                        "Effect: -15% cooldown per level",
+                        "Effect: -15% wool cooldown per level",
                         "Cost: " + formatPoints(woolCost) + " points",
                         "Click to purchase")));
 
@@ -4358,6 +4365,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + chanceLevel + " / " + getHigherTierChanceMaxLevel(player),
                         "Chance: " + getHigherTierChancePercent(player) + "%",
+                        "Best after economy feels stable",
                         chanceLevel >= getHigherTierChanceMaxLevel(player) ? "MAXED"
                                 : "Cost: " + formatPoints(chanceCost) + " points",
                         "Click to purchase")));
@@ -5067,6 +5075,7 @@ public final class SheepMergeManager {
                 }
             }
             case QUEST_OPEN_UPGRADES_SLOT -> {
+                markTutorialQuestUpgradesOpened(player);
                 openQuestUpgradesMenu(player);
                 return;
             }
@@ -5087,6 +5096,13 @@ public final class SheepMergeManager {
         }
         markTutorialQuestUpgradesOpened(player);
         Inventory inventory = Bukkit.createInventory(null, 27, QUEST_UPGRADES_MENU_TITLE);
+        inventory.setItem(4, MenuItemFactory.create(
+                Material.BOOK,
+                "Tutorial Tip",
+                List.of(
+                        "Opening this menu completes",
+                        "the 'Quest Upgrades' tutorial step.",
+                        "You do NOT need to buy here.")));
         inventory.setItem(QUEST_UPGRADE_DURATION_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Extended Buff Duration",
@@ -5116,6 +5132,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
+        markTutorialQuestUpgradesOpened(player);
         switch (slot) {
             case QUEST_UPGRADE_DURATION_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.COMPLETE,
