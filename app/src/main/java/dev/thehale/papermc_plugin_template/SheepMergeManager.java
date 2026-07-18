@@ -337,8 +337,6 @@ public final class SheepMergeManager {
             "&7Quest board objectives reset over time. Completing quests awards quest points.",
             "&7Spend quest points on abilities: &eLucky Burst, Wool Rush, Jackpot Shears, Auto Merge, Auto Shear&7.",
             "&7Quest upgrades boost ability &eDuration &7and &ePower&7 for stronger activations.",
-            "&7Completing all three quests in a cycle triggers a bonus alert.",
-            "&7Follow the on-screen tutorial flow to learn the game once.",
             "&7Your farm can be opened or closed with &e/sheepmerge visit -toggle&7.",
             "&7Visit another open farm with &e/sheepmerge visit <player>&7.",
             "&7If needed, remove visitors from your own farm using &e/sheepmerge kick <player>&7.",
@@ -1545,11 +1543,11 @@ public final class SheepMergeManager {
     }
 
     public static int getPrestigeCost(Player player) {
-        return getDoubledUpgradeCost(500, getPrestigeLevel(player));
+        return getPrestigeUpgradeCost(500, getPrestigeLevel(player));
     }
 
     private static int getPrestigeCostForLevel(int level) {
-        return getDoubledUpgradeCost(500, Math.max(0, level));
+        return getPrestigeUpgradeCost(500, Math.max(0, level));
     }
 
     private static int getAffordablePrestigeLevels(Player player) {
@@ -3726,6 +3724,16 @@ public final class SheepMergeManager {
         }
         long total = (long) prestigeLevel * (prestigeLevel + 1L) / 2L;
         return total >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) total;
+    }
+
+    private static int getPrestigeUpgradeCost(int baseCost, int level) {
+        if (baseCost <= 0) {
+            return 0;
+        }
+        int normalizedLevel = Math.max(0, level);
+        double scaled = baseCost * Math.pow(1.5D, normalizedLevel);
+        long rounded = Math.max(1L, Math.round(scaled));
+        return rounded >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rounded;
     }
 
     private static void resetPrestigeUpgrades(UUID playerId, boolean clearRefundCooldown) {
