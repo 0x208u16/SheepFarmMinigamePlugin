@@ -58,6 +58,14 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
+        if (SheepMergeManager.blockTutorialAction(
+                event.getPlayer(),
+                SheepMergeManager.TutorialAction.SHEAR_SHEEP,
+                "shear sheep")) {
+            event.setCancelled(true);
+            return;
+        }
+
         if (event.getPlayer().isSneaking()) {
             // Sneak-right-click is used for pickup, so do not shear in that case.
             event.setCancelled(true);
@@ -144,6 +152,13 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
+        if (SheepMergeManager.blockTutorialAction(
+                player,
+                SheepMergeManager.TutorialAction.SPAWN_SHEEP,
+                "spawn sheep")) {
+            return;
+        }
+
         if (SheepMergeManager.isWorldAtLimit(player.getWorld())) {
             if (SheepMergeManager.shouldNotifySpawnLimit(player)) {
                 player.sendMessage(SheepMergeManager.warning("Farm full. Use /sheepmerge upgrade or merge sheep."));
@@ -188,6 +203,14 @@ public class SheepFarmGameListener implements Listener {
         if (!SheepMergeManager.isFarmOwner(player, targetSheep.getWorld())) {
             event.setCancelled(true);
             player.sendMessage(SheepMergeManager.warning("Visitors cannot merge sheep here."));
+            return;
+        }
+
+        if (SheepMergeManager.blockTutorialAction(
+                player,
+                SheepMergeManager.TutorialAction.MERGE_SHEEP,
+                "merge sheep")) {
+            event.setCancelled(true);
             return;
         }
 

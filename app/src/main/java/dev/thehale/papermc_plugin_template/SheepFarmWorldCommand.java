@@ -223,6 +223,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
         }
 
+        if (shouldBlockTutorialCommand(player, args)) {
+            return true;
+        }
+
         if (args.length == 1 && args[0].equalsIgnoreCase("upgrade")) {
             SheepMergeManager.openUpgradeMenu(player);
             return true;
@@ -951,6 +955,38 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
         }
         return matches;
+    }
+
+    private boolean shouldBlockTutorialCommand(Player player, String[] args) {
+        if (!SheepMergeManager.shouldRestrictTutorialActions(player)) {
+            return false;
+        }
+        if (args == null || args.length == 0) {
+            return SheepMergeManager.blockTutorialAction(
+                    player,
+                    SheepMergeManager.TutorialAction.OTHER_COMMAND,
+                    "use that command");
+        }
+
+        String root = args[0].toLowerCase(Locale.ROOT);
+        return switch (root) {
+            case "upgrade" -> SheepMergeManager.blockTutorialAction(
+                    player,
+                    SheepMergeManager.TutorialAction.OPEN_UPGRADE_COMMAND,
+                    "open upgrades now");
+            case "shop" -> SheepMergeManager.blockTutorialAction(
+                    player,
+                    SheepMergeManager.TutorialAction.OPEN_SHOP_COMMAND,
+                    "open the shear shop now");
+            case "prestige" -> SheepMergeManager.blockTutorialAction(
+                    player,
+                    SheepMergeManager.TutorialAction.OPEN_PRESTIGE_COMMAND,
+                    "open prestige now");
+            default -> SheepMergeManager.blockTutorialAction(
+                    player,
+                    SheepMergeManager.TutorialAction.OTHER_COMMAND,
+                    "use that command");
+        };
     }
 
     private Player resolveTargetPlayer(Player sender, String[] args, int playerArgIndex) {

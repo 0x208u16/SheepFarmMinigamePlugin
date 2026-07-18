@@ -2096,6 +2096,16 @@ public final class SheepMergeManager {
         COMPLETE
     }
 
+    public enum TutorialAction {
+        SPAWN_SHEEP,
+        SHEAR_SHEEP,
+        MERGE_SHEEP,
+        OPEN_UPGRADE_COMMAND,
+        OPEN_SHOP_COMMAND,
+        OPEN_PRESTIGE_COMMAND,
+        OTHER_COMMAND
+    }
+
     private static TutorialStep getCurrentTutorialStep(Player player) {
         if (player == null) {
             return TutorialStep.COMPLETE;
@@ -2136,6 +2146,62 @@ public final class SheepMergeManager {
             return TutorialStep.PRESTIGE_ONCE;
         }
         return TutorialStep.COMPLETE;
+    }
+
+    public static boolean shouldRestrictTutorialActions(Player player) {
+        return player != null && isTutorialInProgress(player) && isInTutorialWorld(player);
+    }
+
+    private static String getCurrentTutorialTaskLabel(TutorialStep step) {
+        return switch (step) {
+            case SPAWN -> "Spawn sheep with eggs";
+            case SHEAR -> "Shear sheep with shears";
+            case MERGE -> "Merge same-tier sheep";
+            case OPEN_UPGRADES -> "Run /sheepmerge upgrade";
+            case BUY_REGULAR_UPGRADE -> "Buy one regular upgrade in /sheepmerge upgrade";
+            case OPEN_QUESTS -> "In Upgrades, click Quests";
+            case USE_ABILITY -> "In Quests, activate any ability";
+            case OPEN_QUEST_UPGRADES -> "In Quests, click Quest Upgrades";
+            case BUY_SHEAR_UPGRADE -> "Buy one Shear Shop upgrade";
+            case OPEN_PRESTIGE -> "In Upgrades, click Prestige";
+            case PRESTIGE_ONCE -> "Prestige once from /sheepmerge prestige";
+            case COMPLETE -> "Tutorial complete";
+        };
+    }
+
+    private static boolean isTutorialActionAllowed(TutorialStep step, TutorialAction action) {
+        if (step == TutorialStep.COMPLETE) {
+            return true;
+        }
+        return switch (action) {
+            case SPAWN_SHEEP -> step == TutorialStep.SPAWN;
+            case SHEAR_SHEEP -> step == TutorialStep.SHEAR;
+            case MERGE_SHEEP -> step == TutorialStep.MERGE;
+            case OPEN_UPGRADE_COMMAND -> step == TutorialStep.OPEN_UPGRADES
+                    || step == TutorialStep.BUY_REGULAR_UPGRADE
+                    || step == TutorialStep.OPEN_QUESTS
+                    || step == TutorialStep.USE_ABILITY
+                    || step == TutorialStep.OPEN_QUEST_UPGRADES
+                    || step == TutorialStep.BUY_SHEAR_UPGRADE
+                    || step == TutorialStep.OPEN_PRESTIGE
+                    || step == TutorialStep.PRESTIGE_ONCE;
+            case OPEN_SHOP_COMMAND -> step == TutorialStep.BUY_SHEAR_UPGRADE;
+            case OPEN_PRESTIGE_COMMAND -> step == TutorialStep.OPEN_PRESTIGE || step == TutorialStep.PRESTIGE_ONCE;
+            case OTHER_COMMAND -> false;
+        };
+    }
+
+    public static boolean blockTutorialAction(Player player, TutorialAction action, String attemptedAction) {
+        if (!shouldRestrictTutorialActions(player)) {
+            return false;
+        }
+        TutorialStep step = getCurrentTutorialStep(player);
+        if (isTutorialActionAllowed(step, action)) {
+            return false;
+        }
+        player.sendMessage(warning("You cannot " + attemptedAction + " right now."));
+        player.sendMessage(hint("Current tutorial task: " + getCurrentTutorialTaskLabel(step)));
+        return true;
     }
 
     private static boolean blockTutorialMenuPurchase(Player player, TutorialStep requiredStep, String requiredAction) {
@@ -2191,8 +2257,15 @@ public final class SheepMergeManager {
             tutorialCompletedByPlayer.put(playerId, true);
             clearTutorialRuntimeState(playerId);
             migrateTutorialSheepToFarmWorld(playerId);
-            player.sendTitle(color("&aTutorial Complete"), color("&7Run /sheepmerge to go to your farm"), 10, 60, 10);
-            player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
+            boolean teleported = SheepFarmWorldCommand.teleportToFarmWorld(player);
+            if (teleported) {
+                player.sendTitle(color("&aTutorial Complete"), color("&7Welcome to your sheep farm"), 10, 60, 10);
+                player.sendMessage(action("Tutorial complete! You were sent to your sheep farm."));
+            } else {
+                player.sendTitle(color("&aTutorial Complete"), color("&7Run /sheepmerge to go to your farm"), 10, 60,
+                        10);
+                player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
+            }
             saveData();
         }
     }
