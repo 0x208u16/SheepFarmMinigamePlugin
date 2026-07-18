@@ -143,12 +143,16 @@ public final class SheepMergeManager {
     private static final int BASE_EGG_INTERVAL_SECONDS = 10;
     private static final int MIN_EGG_INTERVAL_SECONDS = 2;
     private static final int EGG_SPEED_MAX_LEVEL = BASE_EGG_INTERVAL_SECONDS - MIN_EGG_INTERVAL_SECONDS;
+    private static final int EGG_SPEED_BASE_MAX_LEVEL = Math.max(1, EGG_SPEED_MAX_LEVEL / 2);
     private static final int EGG_SPEED_UPGRADE_BASE_COST = 8;
     private static final int WOOL_REGEN_UPGRADE_BASE_COST = 13;
     private static final int WOOL_REGEN_MAX_LEVEL = 8;
+    private static final int WOOL_REGEN_BASE_MAX_LEVEL = Math.max(1, WOOL_REGEN_MAX_LEVEL / 2);
     private static final int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 15;
     private static final int HIGHER_TIER_CHANCE_MAX_LEVEL = 10;
+    private static final int HIGHER_TIER_CHANCE_BASE_MAX_LEVEL = Math.max(1, HIGHER_TIER_CHANCE_MAX_LEVEL / 2);
     private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 10;
+    private static final int PRESTIGE_CAP_BONUS_PER_LEVEL = 2;
     private static final int HIGHER_TIER_CHANCE_BASE_CAP_PERCENT = 50;
     private static final int QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT = 50;
     private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
@@ -3696,17 +3700,22 @@ public final class SheepMergeManager {
     }
 
     public static int getEggSpeedMaxLevel(Player player) {
-        // Egg speed reaches its real stat cap once MIN_EGG_INTERVAL_SECONDS is reached.
-        return EGG_SPEED_MAX_LEVEL;
+        long computed = (long) EGG_SPEED_BASE_MAX_LEVEL
+                + (long) getPrestigeHigherMaxLevel(player) * PRESTIGE_CAP_BONUS_PER_LEVEL;
+        return computed >= EGG_SPEED_MAX_LEVEL ? EGG_SPEED_MAX_LEVEL : (int) computed;
     }
 
     public static int getWoolRegenMaxLevel(Player player) {
-        long computed = (long) WOOL_REGEN_MAX_LEVEL + (long) getPrestigeHigherMaxLevel(player) * 2L;
+        long computed = (long) WOOL_REGEN_BASE_MAX_LEVEL
+                + (long) getPrestigeHigherMaxLevel(player) * PRESTIGE_CAP_BONUS_PER_LEVEL;
         return computed >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) computed;
     }
 
     public static int getHigherTierChanceMaxLevel(Player player) {
-        return Math.min(HIGHER_TIER_CHANCE_MAX_LEVEL, HIGHER_TIER_CHANCE_HARD_MAX_LEVEL);
+        long computed = (long) HIGHER_TIER_CHANCE_BASE_MAX_LEVEL
+                + (long) getPrestigeHigherMaxLevel(player) * PRESTIGE_CAP_BONUS_PER_LEVEL;
+        long softCapped = Math.min(computed, HIGHER_TIER_CHANCE_MAX_LEVEL);
+        return (int) Math.min(softCapped, HIGHER_TIER_CHANCE_HARD_MAX_LEVEL);
     }
 
     public static int getWoolRegenLevel(Player player) {
@@ -4333,40 +4342,65 @@ public final class SheepMergeManager {
                         limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
         int eggLevel = getEggSpeedLevel(player);
+        int eggMaxLevel = getEggSpeedMaxLevel(player);
+        int eggCurrentSeconds = getEggIntervalSeconds(player);
+        int eggNextLevel = Math.min(eggMaxLevel, eggLevel + 1);
+        int eggNextSeconds = Math.max(MIN_EGG_INTERVAL_SECONDS, BASE_EGG_INTERVAL_SECONDS - eggNextLevel);
         int eggCost = getEggSpeedUpgradeCost(player);
         inventory.setItem(EGG_SPEED_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Faster Egg Spawn",
                 List.of(
-                        "Level: " + eggLevel + " / " + getEggSpeedMaxLevel(player),
-                        "Egg interval: " + getEggIntervalSeconds(player) + "s",
-                        "Next: " + getEggIntervalSeconds(player) + "s -> "
-                                + Math.max(MIN_EGG_INTERVAL_SECONDS, getEggIntervalSeconds(player) - 1) + "s",
-                        eggLevel >= getEggSpeedMaxLevel(player) ? "MAXED"
+                        "Level: " + eggLevel + " / " + eggMaxLevel,
+                        "Current: " + eggCurrentSeconds + "s per egg",
+                        eggLevel >= eggMaxLevel
+                                ? "Next: MAXED"
+                                : "Next: " + eggCurrentSeconds + "s -> " + eggNextSeconds + "s",
+                        eggLevel >= eggMaxLevel ? "MAXED"
                                 : "Cost: " + formatPoints(eggCost) + " points",
                         "Click to purchase")));
 
-        int woolLevel = woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        int woolLevel = getWoolRegenLevel(player);
+        int woolMaxLevel = getWoolRegenMaxLevel(player);
+        int woolCurrentCooldownPercent = getWoolCooldownPercentAtLevel(woolLevel);
+        int woolCurrentReductionPercent = getWoolCooldownReductionPercentAtLevel(woolLevel);
+        int woolNextLevel = Math.min(woolMaxLevel, woolLevel + 1);
+        int woolNextCooldownPercent = getWoolCooldownPercentAtLevel(woolNextLevel);
+        int woolNextReductionPercent = getWoolCooldownReductionPercentAtLevel(woolNextLevel);
         int woolCost = getWoolRegenUpgradeCost(player);
         inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.createEnchanted(
                 Material.WHITE_WOOL,
                 "Faster Wool Regen",
                 List.of(
-                        "Level: " + woolLevel,
-                        "Effect: -15% wool cooldown per level",
-                        "Cost: " + formatPoints(woolCost) + " points",
+                        "Level: " + woolLevel + " / " + woolMaxLevel,
+                        "Current: " + woolCurrentCooldownPercent + "% cooldown (" + woolCurrentReductionPercent
+                                + "% faster)",
+                        woolLevel >= woolMaxLevel
+                                ? "Next: MAXED"
+                                : "Next: " + woolCurrentCooldownPercent + "% -> " + woolNextCooldownPercent
+                                        + "% cooldown (" + woolNextReductionPercent + "% faster)",
+                        woolLevel >= woolMaxLevel
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(woolCost) + " points",
                         "Click to purchase")));
 
-        int chanceLevel = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        int chanceLevel = getHigherTierChanceLevel(player);
+        int chanceMaxLevel = getHigherTierChanceMaxLevel(player);
+        int chanceCurrentPercent = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT, chanceLevel * 5);
+        int chanceNextLevel = Math.min(chanceMaxLevel, chanceLevel + 1);
+        int chanceNextPercent = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT, chanceNextLevel * 5);
         int chanceCost = getHigherTierChanceUpgradeCost(player);
         inventory.setItem(HIGHER_TIER_CHANCE_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.GOLDEN_APPLE,
                 "Higher Tier Spawn Chance",
                 List.of(
-                        "Level: " + chanceLevel + " / " + getHigherTierChanceMaxLevel(player),
-                        "Chance: " + getHigherTierChancePercent(player) + "%",
-                        "Best after economy feels stable",
-                        chanceLevel >= getHigherTierChanceMaxLevel(player) ? "MAXED"
+                        "Level: " + chanceLevel + " / " + chanceMaxLevel,
+                        "Current: " + chanceCurrentPercent + "% bonus chance",
+                        chanceLevel >= chanceMaxLevel
+                                ? "Next: MAXED"
+                                : "Next: " + chanceCurrentPercent + "% -> " + chanceNextPercent + "%",
+                        "Hard cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
+                        chanceLevel >= chanceMaxLevel ? "MAXED"
                                 : "Cost: " + formatPoints(chanceCost) + " points",
                         "Click to purchase")));
 
@@ -4565,9 +4599,24 @@ public final class SheepMergeManager {
                 "Higher Maximum Levels",
                 List.of(
                         "Level: " + getPrestigeHigherMaxLevel(player),
-                        "Wool regen max bonus: +" + formatPoints(
-                                Math.min((long) Integer.MAX_VALUE, (long) getPrestigeHigherMaxLevel(player) * 2L)),
-                        "Spawn chance upgrade cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
+                        "Current caps: Egg " + getEggSpeedMaxLevel(player)
+                                + ", Wool " + getWoolRegenMaxLevel(player)
+                                + ", Chance " + getHigherTierChanceMaxLevel(player),
+                        "Next caps: Egg " + Math.min(
+                                EGG_SPEED_MAX_LEVEL,
+                                EGG_SPEED_BASE_MAX_LEVEL
+                                        + (getPrestigeHigherMaxLevel(player) + 1) * PRESTIGE_CAP_BONUS_PER_LEVEL)
+                                + ", Wool " + (WOOL_REGEN_BASE_MAX_LEVEL
+                                        + (getPrestigeHigherMaxLevel(player) + 1) * PRESTIGE_CAP_BONUS_PER_LEVEL)
+                                + ", Chance " + Math.min(
+                                        HIGHER_TIER_CHANCE_HARD_MAX_LEVEL,
+                                        Math.min(HIGHER_TIER_CHANCE_MAX_LEVEL,
+                                                HIGHER_TIER_CHANCE_BASE_MAX_LEVEL
+                                                        + (getPrestigeHigherMaxLevel(player) + 1)
+                                                                * PRESTIGE_CAP_BONUS_PER_LEVEL)),
+                        "Base caps: Egg " + EGG_SPEED_BASE_MAX_LEVEL
+                                + ", Wool " + WOOL_REGEN_BASE_MAX_LEVEL
+                                + ", Chance " + HIGHER_TIER_CHANCE_BASE_MAX_LEVEL,
                         "Cost: " + formatPoints(getPrestigeHigherMaxLevelCost(player)) + " prestige points",
                         "Click to purchase")));
 
@@ -5116,7 +5165,6 @@ public final class SheepMergeManager {
                 "Amplified Buff Power",
                 List.of(
                         "Level: " + getQuestUpgradePowerLevel(player),
-                        "Lucky Burst: fixed +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Jackpot Shears: +1x shear points per level",
                         "Quest ability costs: -1 per level",
                         "Cost: " + formatPoints(getQuestUpgradePowerCost(player)) + " quest points",
@@ -5306,8 +5354,8 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
-        int currentLevel = woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
-        if (currentLevel >= Integer.MAX_VALUE) {
+        int currentLevel = getWoolRegenLevel(player);
+        if (currentLevel >= getWoolRegenMaxLevel(player)) {
             return false;
         }
         int cost = getWoolRegenUpgradeCost(player);
@@ -5342,6 +5390,15 @@ public final class SheepMergeManager {
             return 0;
         }
         return woolRegenLevelByPlayer.getOrDefault(ownerId, 0);
+    }
+
+    private static int getWoolCooldownPercentAtLevel(int level) {
+        int normalizedLevel = Math.max(0, level);
+        return (int) Math.round(Math.pow(0.85D, normalizedLevel) * 100.0D);
+    }
+
+    private static int getWoolCooldownReductionPercentAtLevel(int level) {
+        return Math.max(0, 100 - getWoolCooldownPercentAtLevel(level));
     }
 
     private static int getDoubledUpgradeCost(int baseCost, int level) {
