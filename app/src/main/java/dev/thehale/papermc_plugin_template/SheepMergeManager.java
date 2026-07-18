@@ -441,19 +441,44 @@ public final class SheepMergeManager {
             farmLayoutConfig.set(chunkPath + ".x", chunkX);
             farmLayoutConfig.set(chunkPath + ".z", chunkZ);
 
-            int blockIndex = 0;
+            List<String> palette = new ArrayList<>();
+            Map<String, Integer> paletteIndices = new HashMap<>();
+            StringBuilder encodedRuns = new StringBuilder();
+            int previousPaletteIndex = -1;
+            int runLength = 0;
+
             for (int y = minY; y < maxY; y++) {
                 for (int localX = 0; localX < 16; localX++) {
                     for (int localZ = 0; localZ < 16; localZ++) {
                         int worldX = (chunkX << 4) + localX;
                         int worldZ = (chunkZ << 4) + localZ;
-                        String blockPath = chunkPath + ".blocks." + blockIndex;
-                        farmLayoutConfig.set(blockPath,
-                                sourceWorld.getBlockAt(worldX, y, worldZ).getBlockData().getAsString());
-                        blockIndex++;
+                        String serializedBlockData = sourceWorld.getBlockAt(worldX, y, worldZ)
+                                .getBlockData()
+                                .getAsString();
+
+                        Integer paletteIndex = paletteIndices.get(serializedBlockData);
+                        if (paletteIndex == null) {
+                            paletteIndex = palette.size();
+                            palette.add(serializedBlockData);
+                            paletteIndices.put(serializedBlockData, paletteIndex);
+                        }
+
+                        if (paletteIndex == previousPaletteIndex) {
+                            runLength++;
+                        } else {
+                            appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
+                            previousPaletteIndex = paletteIndex;
+                            runLength = 1;
+                        }
                     }
                 }
             }
+
+            appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
+            farmLayoutConfig.set(chunkPath + ".format", "rle-v1");
+            farmLayoutConfig.set(chunkPath + ".palette", palette);
+            farmLayoutConfig.set(chunkPath + ".data", encodedRuns.toString());
+            farmLayoutConfig.set(chunkPath + ".height", maxY - minY);
         }
         return saveFarmLayout();
     }
@@ -525,6 +550,47 @@ public final class SheepMergeManager {
             int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
             int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                continue;
+            }
+
+            List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
+            String encodedRuns = farmLayoutConfig.getString(chunkPath + ".data", "");
+            if (!palette.isEmpty() && encodedRuns != null && !encodedRuns.isBlank()) {
+                int totalBlocks = (maxY - minY) * 16 * 16;
+                int blockIndex = 0;
+                String[] tokens = encodedRuns.split(";");
+                for (String token : tokens) {
+                    if (token == null || token.isBlank() || blockIndex >= totalBlocks) {
+                        continue;
+                    }
+
+                    int separator = token.indexOf('*');
+                    String paletteIndexRaw = separator >= 0 ? token.substring(0, separator) : token;
+                    String runLengthRaw = separator >= 0 ? token.substring(separator + 1) : "1";
+
+                    int paletteIndex = parseChunkEncodedNumber(paletteIndexRaw, -1);
+                    int runLength = parseChunkEncodedNumber(runLengthRaw, 1);
+                    if (paletteIndex < 0 || paletteIndex >= palette.size() || runLength <= 0) {
+                        continue;
+                    }
+
+                    String serialized = palette.get(paletteIndex);
+                    BlockData data = (serialized == null || serialized.isBlank())
+                            ? Bukkit.createBlockData(Material.AIR)
+                            : parseBlockData(serialized);
+
+                    for (int i = 0; i < runLength && blockIndex < totalBlocks; i++) {
+                        int yOffset = blockIndex / (16 * 16);
+                        int withinLayer = blockIndex % (16 * 16);
+                        int localX = withinLayer / 16;
+                        int localZ = withinLayer % 16;
+                        int worldX = (chunkX << 4) + localX;
+                        int worldZ = (chunkZ << 4) + localZ;
+                        int y = minY + yOffset;
+                        world.getBlockAt(worldX, y, worldZ).setBlockData(data, true);
+                        blockIndex++;
+                    }
+                }
                 continue;
             }
 
@@ -745,6 +811,30 @@ public final class SheepMergeManager {
 
     private static String chunkKeyFor(int chunkX, int chunkZ) {
         return chunkX + "," + chunkZ;
+    }
+
+    private static void appendChunkRun(StringBuilder encodedRuns, int paletteIndex, int runLength) {
+        if (encodedRuns == null || paletteIndex < 0 || runLength <= 0) {
+            return;
+        }
+        if (encodedRuns.length() > 0) {
+            encodedRuns.append(';');
+        }
+        encodedRuns.append(Integer.toString(paletteIndex, 36));
+        if (runLength > 1) {
+            encodedRuns.append('*').append(Integer.toString(runLength, 36));
+        }
+    }
+
+    private static int parseChunkEncodedNumber(String rawValue, int fallback) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(rawValue, 36);
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     private static void loadFarmLayout() {
