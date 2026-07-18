@@ -259,7 +259,7 @@ public final class SheepMergeManager {
     private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
     private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
-    private static final int TUTORIAL_SPAWN_TARGET = 1;
+    private static final int TUTORIAL_SPAWN_TARGET = 3;
     private static final int TUTORIAL_MERGE_TARGET = 1;
     private static final int TUTORIAL_MENU_SECTION_TARGET = 8;
     private static final int TUTORIAL_SHEAR_TASK_REWARD_POINTS = 100;
@@ -1930,7 +1930,7 @@ public final class SheepMergeManager {
 
         player.sendTitle(color("&eSheepMerge Tutorial"), color("&7Learn the full game flow"), 10, 55, 10);
         player.sendMessage(hint("Tutorial steps:"));
-        player.sendMessage(hint("1) Spawn 1 sheep, shear 3 sheep, then merge 1 pair."));
+        player.sendMessage(hint("1) Spawn 3 sheep, shear 3 sheep, then merge 1 pair."));
         player.sendMessage(hint("2) Open /sheepmerge upgrade and buy one regular upgrade."));
         player.sendMessage(hint("3) Open Quests and activate one quest ability."));
         player.sendMessage(hint("4) From Quests, open Quest Upgrades."));
