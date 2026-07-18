@@ -56,6 +56,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> prestigeStartEggsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeEggCapByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeBaseSpawnTierByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> prestigeQuestRewardByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> highestAnnouncedTierByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearShopLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearWoolSaveLevelByPlayer = new HashMap<>();
@@ -153,6 +154,7 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
     private static final int PRESTIGE_BASE_SPAWN_TIER_BASE_COST = 10;
+    private static final int PRESTIGE_QUEST_REWARD_BASE_COST = 4;
     private static final int QUEST_SHEARS_TARGET = 20;
     private static final int QUEST_SPAWNS_TARGET = 12;
     private static final int QUEST_MERGES_TARGET = 8;
@@ -179,8 +181,10 @@ public final class SheepMergeManager {
     private static final int QUEST_UPGRADE_POWER_BASE_COST = 15;
     private static final int BASE_EGG_CAP = 10;
     private static final int PRESTIGE_EGG_CAP_STEP = 10;
-    private static final int PRESTIGE_MAX_LEVEL = 50;
+    private static final int PRESTIGE_MAX_LEVEL = Integer.MAX_VALUE;
     private static final int PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP = 8;
+    private static final int PRESTIGE_QUEST_REWARD_MAX_LEVEL = 10;
+    private static final double PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL = 0.25D;
     private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
@@ -278,6 +282,7 @@ public final class SheepMergeManager {
     public static final int PRESTIGE_START_EGGS_SLOT = 16;
     public static final int PRESTIGE_EGG_CAP_SLOT = 18;
     public static final int PRESTIGE_BASE_SPAWN_TIER_SLOT = 20;
+    public static final int PRESTIGE_QUEST_REWARD_SLOT = 22;
     public static final int PRESTIGE_REFUND_SLOT = 24;
     public static final int PRESTIGE_BACK_TO_UPGRADES_SLOT = 26;
     public static final int QUEST_ABILITY_LUCKY_BURST_SLOT = 10;
@@ -635,6 +640,22 @@ public final class SheepMergeManager {
         return PRESTIGE_MAX_LEVEL;
     }
 
+    public static String formatPoints(long points) {
+        boolean negative = points < 0L;
+        long value = negative ? (points == Long.MIN_VALUE ? Long.MAX_VALUE : -points) : points;
+        String[] suffixes = { "", "K", "M", "B", "T", "Q", "Qi", "Sx", "Sp", "Oc", "No", "Dc" };
+        int suffixIndex = 0;
+        while (value >= 1000L && suffixIndex < suffixes.length - 1) {
+            value /= 1000L;
+            suffixIndex++;
+            while (value >= 10000L && suffixIndex < suffixes.length - 1) {
+                value /= 1000L;
+                suffixIndex++;
+            }
+        }
+        return (negative ? "-" : "") + value + suffixes[suffixIndex];
+    }
+
     public static int getQuestPoints(Player player) {
         return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 10);
     }
@@ -644,7 +665,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        questPointsByPlayer.put(playerId, getQuestPoints(player) + amount);
+        questPointsByPlayer.put(playerId, addSaturated(getQuestPoints(player), amount));
         saveData();
     }
 
@@ -784,8 +805,9 @@ public final class SheepMergeManager {
             return;
         }
         completed.put(playerId, true);
-        addQuestPoints(player, reward);
-        player.sendMessage(action(completionText + ": +" + reward + " quest points"));
+        int boostedReward = Math.max(1, (int) Math.round(reward * getPrestigeQuestRewardMultiplier(player)));
+        addQuestPoints(player, boostedReward);
+        player.sendMessage(action(completionText + ": +" + formatPoints(boostedReward) + " quest points"));
         playSound(player, rewardSound, 1.0f, 1.1f);
         player.getWorld().spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
                 player.getLocation().add(0, 1.0, 0), 14, 0.35, 0.4, 0.35, 0.02);
@@ -1495,9 +1517,6 @@ public final class SheepMergeManager {
             return 0;
         }
         int current = getPrestigeLevel(player);
-        if (current >= PRESTIGE_MAX_LEVEL) {
-            return 0;
-        }
 
         int affordableLevels = getAffordablePrestigeLevels(player);
         if (affordableLevels <= 0) {
@@ -1512,7 +1531,7 @@ public final class SheepMergeManager {
         int nextPrestige = current + affordableLevels;
         int gainedPrestigePoints = getPrestigePointsRewardForNextLevels(current, affordableLevels);
         prestigeLevelByPlayer.put(player.getUniqueId(), nextPrestige);
-        prestigePointsByPlayer.put(player.getUniqueId(), getPrestigePoints(player) + gainedPrestigePoints);
+        prestigePointsByPlayer.put(player.getUniqueId(), addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
 
         // Reset regular progression purchased with normal points.
@@ -1558,7 +1577,7 @@ public final class SheepMergeManager {
         int points = getPlayerPoints(player);
         int gained = 0;
 
-        while (level < PRESTIGE_MAX_LEVEL) {
+        while (level < Integer.MAX_VALUE) {
             int cost = getPrestigeCostForLevel(level);
             if (points < cost) {
                 break;
@@ -1580,12 +1599,15 @@ public final class SheepMergeManager {
     }
 
     private static int getPrestigePointsRewardForNextLevels(int currentLevel, int levelsToBuy) {
-        int reward = 0;
+        long reward = 0L;
         int cappedLevels = Math.max(0, levelsToBuy);
         for (int i = 1; i <= cappedLevels; i++) {
-            reward += (currentLevel + i);
+            reward += currentLevel + (long) i;
+            if (reward >= Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
+            }
         }
-        return reward;
+        return (int) reward;
     }
 
     public static int getUnlockedTierCap(World world) {
@@ -1708,12 +1730,6 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        if (!resetProgress && hasUnlockedFarm(player)) {
-            if (isTutorialWorld(player.getWorld())) {
-                SheepFarmWorldCommand.teleportToFarmWorld(player);
-            }
-            return;
-        }
         if (resetProgress) {
             resetTutorialProgress(playerId);
             saveData();
@@ -1850,7 +1866,8 @@ public final class SheepMergeManager {
         }
         tutorialShearTaskRewardGrantedByPlayer.put(playerId, true);
         addPoints(player, TUTORIAL_SHEAR_TASK_REWARD_POINTS);
-        player.sendMessage(action("Tutorial reward: +" + TUTORIAL_SHEAR_TASK_REWARD_POINTS + " points for shearing."));
+        player.sendMessage(action(
+                "Tutorial reward: +" + formatPoints(TUTORIAL_SHEAR_TASK_REWARD_POINTS) + " points for shearing."));
     }
 
     private static void maybeGrantTutorialPrestigePrepReward(Player player) {
@@ -2138,7 +2155,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID id = player.getUniqueId();
-        pointsByPlayer.put(id, Math.max(0, pointsByPlayer.getOrDefault(id, 0) + amount));
+        pointsByPlayer.put(id, addSaturated(pointsByPlayer.getOrDefault(id, 0), amount));
         refreshTopPointsDisplays();
         saveData();
     }
@@ -2157,7 +2174,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID id = player.getUniqueId();
-        questPointsByPlayer.put(id, Math.max(0, questPointsByPlayer.getOrDefault(id, 0) + amount));
+        questPointsByPlayer.put(id, addSaturated(questPointsByPlayer.getOrDefault(id, 0), amount));
         saveData();
     }
 
@@ -2170,7 +2187,7 @@ public final class SheepMergeManager {
     }
 
     public static boolean adminSetPrestigeLevel(Player player, int targetLevel) {
-        if (player == null || targetLevel < 0 || targetLevel > PRESTIGE_MAX_LEVEL) {
+        if (player == null || targetLevel < 0) {
             return false;
         }
 
@@ -2643,7 +2660,7 @@ public final class SheepMergeManager {
                     if (name == null || name.isBlank()) {
                         name = entry.getKey().toString().substring(0, 8);
                     }
-                    builder.append("\n").append(name).append(": ").append(entry.getValue());
+                    builder.append("\n").append(name).append(": ").append(formatPoints(entry.getValue()));
                 });
         if (builder.toString().equals("Top Sheep Merge Points")) {
             builder.append("\nNo scores yet");
@@ -2811,7 +2828,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        pointsByPlayer.put(playerId, pointsByPlayer.getOrDefault(playerId, 0) + points);
+        pointsByPlayer.put(playerId, addSaturated(pointsByPlayer.getOrDefault(playerId, 0), points));
         refreshTopPointsDisplays();
         queuePointsGainOverlay(player, points);
         saveData();
@@ -2845,7 +2862,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        showOverlay(player, action("+" + lastPoints + " points"));
+        showOverlay(player, action("+" + formatPoints(lastPoints) + " points"));
     }
 
     public static void showOverlay(Player player, String message) {
@@ -2923,11 +2940,6 @@ public final class SheepMergeManager {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
             return;
         }
-        if (getPrestigeLevel(player) >= PRESTIGE_MAX_LEVEL) {
-            clearPrestigeReminder(player);
-            return;
-        }
-
         int prestigeCost = getPrestigeCost(player);
         if (getPlayerPoints(player) < prestigeCost) {
             clearPrestigeReminder(player);
@@ -3564,6 +3576,10 @@ public final class SheepMergeManager {
         return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
 
+    public static int getPrestigeQuestRewardLevel(Player player) {
+        return player == null ? 0 : prestigeQuestRewardByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
     public static int getPrestigeEggCapLevel(Player player) {
         return player == null ? 0 : prestigeEggCapByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
@@ -3607,6 +3623,14 @@ public final class SheepMergeManager {
 
     public static int getPrestigeBaseSpawnTierCost(Player player) {
         return getDoubledUpgradeCost(PRESTIGE_BASE_SPAWN_TIER_BASE_COST, getBaseSpawnTierLevel(player));
+    }
+
+    public static int getPrestigeQuestRewardCost(Player player) {
+        return getDoubledUpgradeCost(PRESTIGE_QUEST_REWARD_BASE_COST, getPrestigeQuestRewardLevel(player));
+    }
+
+    private static double getPrestigeQuestRewardMultiplier(Player player) {
+        return 1.0D + getPrestigeQuestRewardLevel(player) * PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL;
     }
 
     public static int getQuestUpgradeDurationLevel(Player player) {
@@ -3736,6 +3760,11 @@ public final class SheepMergeManager {
         return rounded >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rounded;
     }
 
+    private static int addSaturated(int current, int delta) {
+        long total = (long) current + Math.max(0L, delta);
+        return total >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) total;
+    }
+
     private static void resetPrestigeUpgrades(UUID playerId, boolean clearRefundCooldown) {
         if (playerId == null) {
             return;
@@ -3745,6 +3774,7 @@ public final class SheepMergeManager {
         prestigeStartEggsByPlayer.remove(playerId);
         prestigeEggCapByPlayer.remove(playerId);
         prestigeBaseSpawnTierByPlayer.remove(playerId);
+        prestigeQuestRewardByPlayer.remove(playerId);
         comboMaxUpgradeByPlayer.remove(playerId);
         Double comboScore = comboScoreByPlayer.get(playerId);
         if (comboScore != null) {
@@ -3765,6 +3795,7 @@ public final class SheepMergeManager {
         total += getSpentCostForLevel(PRESTIGE_START_EGGS_BASE_COST, getPrestigeStartEggsLevel(player));
         total += getSpentCostForLevel(PRESTIGE_EGG_CAP_BASE_COST, getPrestigeEggCapLevel(player));
         total += getSpentCostForLevel(PRESTIGE_BASE_SPAWN_TIER_BASE_COST, getBaseSpawnTierLevel(player));
+        total += getSpentCostForLevel(PRESTIGE_QUEST_REWARD_BASE_COST, getPrestigeQuestRewardLevel(player));
         total += getSpentCostForLevel(COMBO_MAX_BASE_PRESTIGE_COST, getComboMaxUpgradeLevel(player));
         return Math.max(0, total);
     }
@@ -3785,7 +3816,7 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        prestigePointsByPlayer.put(playerId, getPrestigePoints(player) + refund);
+        prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), refund));
         resetPrestigeUpgrades(playerId, false);
         nextPrestigeRefundTimestampByPlayer.put(playerId, now + PRESTIGE_REFUND_COOLDOWN_MS);
         saveData();
@@ -3914,6 +3945,23 @@ public final class SheepMergeManager {
         return true;
     }
 
+    private static boolean upgradePrestigeQuestReward(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int currentLevel = getPrestigeQuestRewardLevel(player);
+        if (currentLevel >= PRESTIGE_QUEST_REWARD_MAX_LEVEL) {
+            return false;
+        }
+        int cost = getPrestigeQuestRewardCost(player);
+        if (!trySpendPrestigePoints(player, cost)) {
+            return false;
+        }
+        prestigeQuestRewardByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        saveData();
+        return true;
+    }
+
     public static void resetEggTimer(Player player) {
         EGG_MODULE.resetEggTimer(player);
     }
@@ -3940,7 +3988,7 @@ public final class SheepMergeManager {
                         "Level: " + limitLevel + " / " + ((MAX_SHEEP_LIMIT - BASE_SHEEP_LIMIT) / LIMIT_UPGRADE_STEP),
                         "Current limit: " + currentLimit + " / " + MAX_SHEEP_LIMIT,
                         "Increase by: +" + getLimitUpgradeStep(),
-                        limitMaxed ? "MAXED" : "Cost: " + limitCost + " points",
+                        limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " points",
                         limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
         int eggLevel = getEggSpeedLevel(player);
@@ -3951,7 +3999,8 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + eggLevel + " / " + getEggSpeedMaxLevel(player),
                         "Egg interval: " + getEggIntervalSeconds(player) + "s",
-                        eggLevel >= getEggSpeedMaxLevel(player) ? "MAXED" : "Cost: " + eggCost + " points",
+                        eggLevel >= getEggSpeedMaxLevel(player) ? "MAXED"
+                                : "Cost: " + formatPoints(eggCost) + " points",
                         "Click to purchase")));
 
         int woolLevel = woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
@@ -3962,7 +4011,8 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + woolLevel + " / " + getWoolRegenMaxLevel(player),
                         "Effect: -15% cooldown per level",
-                        woolLevel >= getWoolRegenMaxLevel(player) ? "MAXED" : "Cost: " + woolCost + " points",
+                        woolLevel >= getWoolRegenMaxLevel(player) ? "MAXED"
+                                : "Cost: " + formatPoints(woolCost) + " points",
                         "Click to purchase")));
 
         int chanceLevel = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
@@ -3974,7 +4024,7 @@ public final class SheepMergeManager {
                         "Level: " + chanceLevel + " / " + getHigherTierChanceMaxLevel(player),
                         "Chance: " + getHigherTierChancePercent(player) + "%",
                         chanceLevel >= getHigherTierChanceMaxLevel(player) ? "MAXED"
-                                : "Cost: " + chanceCost + " points",
+                                : "Cost: " + formatPoints(chanceCost) + " points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -3982,14 +4032,14 @@ public final class SheepMergeManager {
                 "Prestige Upgrades",
                 List.of(
                         "Prestige level: " + getPrestigeLevel(player),
-                        "Prestige points: " + getPrestigePoints(player),
+                        "Prestige points: " + formatPoints(getPrestigePoints(player)),
                         "Click to open")));
 
         inventory.setItem(QUEST_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.BOOK,
                 "Quests",
                 List.of(
-                        "Quest points: " + getQuestPoints(player),
+                        "Quest points: " + formatPoints(getQuestPoints(player)),
                         "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
                         "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
                                 + QUEST_SHEARS_TARGET,
@@ -4154,11 +4204,11 @@ public final class SheepMergeManager {
                                 ? "Buy now: +" + affordablePrestiges + " prestige level(s)"
                                 : "Buy now: +0 prestige level(s)",
                         affordablePrestiges > 0
-                                ? "Gain prestige points: +" + rewardForAffordable
+                                ? "Gain prestige points: +" + formatPoints(rewardForAffordable)
                                 : "Gain prestige points: +0",
-                        "Next prestige cost: " + getPrestigeCost(player) + " normal points",
+                        "Next prestige cost: " + formatPoints(getPrestigeCost(player)) + " normal points",
                         affordablePrestiges > 0
-                                ? "Total cost now: " + totalCostForAffordable + " normal points"
+                                ? "Total cost now: " + formatPoints(totalCostForAffordable) + " normal points"
                                 : "Need more points for next prestige",
                         "Resets normal-point upgrades",
                         "Click to prestige multiple")));
@@ -4169,7 +4219,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + getPrestigeDoublePointsChanceLevel(player),
                         "Chance: " + getDoublePointsChancePercent(player) + "%",
-                        "Cost: " + getPrestigeDoublePointsCost(player) + " prestige points",
+                        "Cost: " + formatPoints(getPrestigeDoublePointsCost(player)) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_HIGHER_MAX_LEVEL_SLOT, MenuItemFactory.create(
@@ -4181,7 +4231,7 @@ public final class SheepMergeManager {
                         "Spawn chance upgrade cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
                         getPrestigeHigherMaxLevel(player) >= PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP
                                 ? "MAXED"
-                                : "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
+                                : "Cost: " + formatPoints(getPrestigeHigherMaxLevelCost(player)) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_START_EGGS_SLOT, MenuItemFactory.create(
@@ -4190,7 +4240,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + getPrestigeStartEggsLevel(player),
                         "Extra starting eggs: +" + getStartEggsBonus(player),
-                        "Cost: " + getPrestigeStartEggsCost(player) + " prestige points",
+                        "Cost: " + formatPoints(getPrestigeStartEggsCost(player)) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_EGG_CAP_SLOT, MenuItemFactory.create(
@@ -4200,7 +4250,7 @@ public final class SheepMergeManager {
                         "Level: " + getPrestigeEggCapLevel(player),
                         "Egg cap: " + getEggCap(player),
                         "Adds: +" + PRESTIGE_EGG_CAP_STEP + " eggs per level",
-                        "Cost: " + getPrestigeEggCapCost(player) + " prestige points",
+                        "Cost: " + formatPoints(getPrestigeEggCapCost(player)) + " prestige points",
                         "Click to purchase")));
 
         int baseSpawnTierLevel = getBaseSpawnTierLevel(player);
@@ -4213,7 +4263,21 @@ public final class SheepMergeManager {
                         "Current base tier: " + baseSpawnTier.getDisplayName(),
                         baseSpawnTierLevel >= SheepTier.RAINBOW.getLevel()
                                 ? "MAXED"
-                                : "Cost: " + getPrestigeBaseSpawnTierCost(player) + " prestige points",
+                                : "Cost: " + formatPoints(getPrestigeBaseSpawnTierCost(player)) + " prestige points",
+                        "Click to purchase")));
+
+        int questRewardLevel = getPrestigeQuestRewardLevel(player);
+        inventory.setItem(PRESTIGE_QUEST_REWARD_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quest Reward Boost",
+                List.of(
+                        "Level: " + questRewardLevel + " / " + PRESTIGE_QUEST_REWARD_MAX_LEVEL,
+                        "Quest rewards: +"
+                                + (int) Math.round(questRewardLevel * PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL * 100)
+                                + "%",
+                        questRewardLevel >= PRESTIGE_QUEST_REWARD_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getPrestigeQuestRewardCost(player)) + " prestige points",
                         "Click to purchase")));
 
         long refundRemaining = getPrestigeRefundRemainingMs(player);
@@ -4222,7 +4286,7 @@ public final class SheepMergeManager {
                 Material.BARRIER,
                 "Refund Prestige Upgrades",
                 List.of(
-                        "Refund amount: " + refundAmount + " prestige points",
+                        "Refund amount: " + formatPoints(refundAmount) + " prestige points",
                         refundRemaining > 0L ? "Cooldown: " + formatDuration(refundRemaining) : "Cooldown: ready",
                         "Resets prestige shop upgrades",
                         "Click to refund")));
@@ -4320,6 +4384,25 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Not enough prestige points."));
                 }
             }
+            case PRESTIGE_QUEST_REWARD_SLOT -> {
+                if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
+                        "Prestige once from /sheepmerge prestige")) {
+                    break;
+                }
+                if (getPrestigeQuestRewardLevel(player) >= PRESTIGE_QUEST_REWARD_MAX_LEVEL) {
+                    player.sendMessage(warning("Quest reward boost maxed."));
+                    break;
+                }
+                if (upgradePrestigeQuestReward(player)) {
+                    playUpgradeSound(player);
+                    player.sendMessage(action("Quest rewards: +"
+                            + (int) Math.round(
+                                    getPrestigeQuestRewardLevel(player) * PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL * 100)
+                            + "%"));
+                } else {
+                    player.sendMessage(warning("Not enough prestige points."));
+                }
+            }
             case PRESTIGE_REFUND_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
                         "Prestige once from /sheepmerge prestige")) {
@@ -4337,7 +4420,7 @@ public final class SheepMergeManager {
                 }
                 if (tryRefundPrestigePoints(player)) {
                     playUpgradeSound(player);
-                    player.sendMessage(action("Refunded " + refundAmount + " prestige points."));
+                    player.sendMessage(action("Refunded " + formatPoints(refundAmount) + " prestige points."));
                 } else {
                     player.sendMessage(warning("Refund is not available right now."));
                 }
@@ -4372,7 +4455,7 @@ public final class SheepMergeManager {
                         "Decay speed: " + (int) Math.round(getComboDecayMultiplier(player) * 100) + "%",
                         decayLevel >= COMBO_DECAY_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + getComboDecayUpgradeCost(player) + " points",
+                                : "Cost: " + formatPoints(getComboDecayUpgradeCost(player)) + " points",
                         "Click to purchase")));
 
         inventory.setItem(COMBO_MAX_SLOT, MenuItemFactory.create(
@@ -4383,7 +4466,7 @@ public final class SheepMergeManager {
                         "Max score: " + (int) Math.floor(getComboMaxScore(player)),
                         maxLevel >= COMBO_MAX_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + getComboMaxUpgradePrestigeCost(player) + " prestige points",
+                                : "Cost: " + formatPoints(getComboMaxUpgradePrestigeCost(player)) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(COMBO_GAIN_SLOT, MenuItemFactory.create(
@@ -4394,7 +4477,7 @@ public final class SheepMergeManager {
                         "Combo gain boost: +" + (int) Math.round(gainLevel * COMBO_GAIN_PERCENT_PER_LEVEL) + "%",
                         gainLevel >= COMBO_GAIN_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + getComboGainUpgradeCost(player) + " points",
+                                : "Cost: " + formatPoints(getComboGainUpgradeCost(player)) + " points",
                         "Click to purchase")));
 
         inventory.setItem(COMBO_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
@@ -4465,23 +4548,23 @@ public final class SheepMergeManager {
                 Material.BOOK,
                 "Quest Board",
                 List.of(
-                        "Quest points: " + getQuestPoints(player),
+                        "Quest points: " + formatPoints(getQuestPoints(player)),
                         remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
                         (shearsComplete ? "DONE " : "TODO ")
                                 + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SHEARS_TARGET
-                                + " (" + QUEST_SHEARS_REWARD + " pts)",
+                                + " (" + formatPoints(QUEST_SHEARS_REWARD) + " pts)",
                         (spawnsComplete ? "DONE " : "TODO ")
                                 + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SPAWNS_TARGET
-                                + " (" + QUEST_SPAWNS_REWARD + " pts)",
+                                + " (" + formatPoints(QUEST_SPAWNS_REWARD) + " pts)",
                         (mergesComplete ? "DONE " : "TODO ")
                                 + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_MERGES_TARGET
-                                + " (" + QUEST_MERGES_REWARD + " pts)")));
+                                + " (" + formatPoints(QUEST_MERGES_REWARD) + " pts)")));
 
         inventory.setItem(QUEST_ABILITY_LUCKY_BURST_SLOT, MenuItemFactory.create(
                 Material.ENDER_EYE,
                 "Lucky Burst",
                 List.of(
-                        "Cost: " + getQuestLuckyBurstCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestLuckyBurstCost(player)) + " quest points",
                         "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_LUCKY_BURST_BASE_DURATION_MS)),
                         getAbilityMenuStatus(activeLuckyBurstUntilByPlayer, playerId),
@@ -4491,7 +4574,7 @@ public final class SheepMergeManager {
                 Material.WHITE_WOOL,
                 "Wool Rush",
                 List.of(
-                        "Cost: " + getQuestWoolRushCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestWoolRushCost(player)) + " quest points",
                         "Effect: Major wool regen speed boost",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
                         getAbilityMenuStatus(activeWoolRushUntilByPlayer, playerId),
@@ -4501,7 +4584,7 @@ public final class SheepMergeManager {
                 Material.GOLD_INGOT,
                 "Jackpot Shears",
                 List.of(
-                        "Cost: " + getQuestJackpotCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestJackpotCost(player)) + " quest points",
                         "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
                         "Duration: "
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
@@ -4512,7 +4595,7 @@ public final class SheepMergeManager {
                 Material.ANVIL,
                 "Auto Merge",
                 List.of(
-                        "Cost: " + getQuestAutoMergeCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestAutoMergeCost(player)) + " quest points",
                         "Effect: Auto-merges sheep once per second",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_AUTO_MERGE_BASE_DURATION_MS)),
                         getAbilityMenuStatus(activeAutoMergeUntilByPlayer, playerId),
@@ -4522,7 +4605,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Auto Shear",
                 List.of(
-                        "Cost: " + getQuestAutoShearCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestAutoShearCost(player)) + " quest points",
                         "Effect: Auto-shears one ready sheep per second",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS)),
                         getAbilityMenuStatus(activeAutoShearUntilByPlayer, playerId),
@@ -4540,7 +4623,7 @@ public final class SheepMergeManager {
                 Material.ARROW,
                 "Back To Upgrades",
                 List.of(
-                        "Quest points: " + getQuestPoints(player),
+                        "Quest points: " + formatPoints(getQuestPoints(player)),
                         remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
                         "Click to go back")));
         player.openInventory(inventory);
@@ -4685,7 +4768,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + getQuestUpgradeDurationLevel(player),
                         "Bonus: +30s ability duration per level",
-                        "Cost: " + getQuestUpgradeDurationCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestUpgradeDurationCost(player)) + " quest points",
                         "Click to upgrade")));
         inventory.setItem(QUEST_UPGRADE_POWER_SLOT, MenuItemFactory.create(
                 Material.BLAZE_POWDER,
@@ -4695,7 +4778,7 @@ public final class SheepMergeManager {
                         "Lucky Burst: fixed +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Jackpot Shears: +1x shear points per level",
                         "Quest ability costs: -1 per level",
-                        "Cost: " + getQuestUpgradePowerCost(player) + " quest points",
+                        "Cost: " + formatPoints(getQuestUpgradePowerCost(player)) + " quest points",
                         "Click to upgrade")));
         inventory.setItem(QUEST_UPGRADE_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -4757,7 +4840,7 @@ public final class SheepMergeManager {
                 "Shear Value",
                 List.of(
                         "Level: " + getShearShopLevel(player),
-                        "Cost: " + getShearUpgradeCost(player) + " points",
+                        "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
                         "Points: base x" + getShearPointMultiplier(player),
                         "Wool reward scales with level",
                         "Click to purchase")));
@@ -4769,7 +4852,7 @@ public final class SheepMergeManager {
                         "Chance: " + getShearWoolSaveChancePercent(player) + "%",
                         woolSaveLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + getShearWoolSaveUpgradeCost(player) + " points",
+                                : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " points",
                         "Chance for sheep to keep wool when sheared")));
         inventory.setItem(SHOP_SHEAR_TIER_BOOST_SLOT, MenuItemFactory.create(
                 Material.GLOWSTONE_DUST,
@@ -4779,7 +4862,7 @@ public final class SheepMergeManager {
                         "Chance: " + getShearTierBoostChancePercent(player) + "%",
                         tierBoostLevel >= SHEAR_TIER_BOOST_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + getShearTierBoostUpgradeCost(player) + " points",
+                                : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " points",
                         "Chance for shearing to upgrade sheep by one tier")));
         inventory.setItem(SHOP_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -5071,9 +5154,9 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        objective.getScore("Points: " + getPlayerPoints(player)).setScore(15);
+        objective.getScore("Points: " + formatPoints(getPlayerPoints(player))).setScore(15);
         objective.getScore("Prestige Lv: " + getPrestigeLevel(player)).setScore(14);
-        objective.getScore("Prestige Pts: " + getPrestigePoints(player)).setScore(13);
+        objective.getScore("Prestige Pts: " + formatPoints(getPrestigePoints(player))).setScore(13);
         objective.getScore(" ").setScore(12);
         objective.getScore("Quest Reset: " + formatDuration(getQuestResetRemainingMs(player))).setScore(11);
         objective.getScore(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
@@ -5165,6 +5248,7 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeStartEggs", null);
             dataConfig.set("prestigeEggCap", null);
             dataConfig.set("prestigeBaseSpawnTier", null);
+            dataConfig.set("prestigeQuestReward", null);
             dataConfig.set("prestigeRefundCooldown", null);
             dataConfig.set("highestAnnouncedTier", null);
             dataConfig.set("prestigeExpandFarm", null);
@@ -5235,6 +5319,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : prestigeBaseSpawnTierByPlayer.entrySet()) {
                 dataConfig.set("prestigeBaseSpawnTier." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : prestigeQuestRewardByPlayer.entrySet()) {
+                dataConfig.set("prestigeQuestReward." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Long> entry : nextPrestigeRefundTimestampByPlayer.entrySet()) {
                 dataConfig.set("prestigeRefundCooldown." + entry.getKey().toString(), entry.getValue());
@@ -5465,6 +5552,16 @@ public final class SheepMergeManager {
                             uuid,
                             Math.min(SheepTier.RAINBOW.getLevel(),
                                     dataConfig.getInt("prestigeBaseSpawnTier." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("prestigeQuestReward")) {
+            dataConfig.getConfigurationSection("prestigeQuestReward").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    prestigeQuestRewardByPlayer.put(uuid, dataConfig.getInt("prestigeQuestReward." + key, 0));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }

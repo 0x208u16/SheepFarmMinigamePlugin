@@ -51,7 +51,14 @@ public enum SheepTier {
     }
 
     public int getPointsOnShear() {
-        return 1 << level;
+        long points = 1L;
+        for (int i = 0; i < level; i++) {
+            points *= 3L;
+            if (points >= Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
+            }
+        }
+        return (int) points;
     }
 
     public boolean hasNext() {

@@ -279,7 +279,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(adminHeader("Stat Check")
                     + " " + label("Player") + ": " + value(target.getName())
                     + ChatColor.DARK_GRAY + " | "
-                    + label("Points") + ": " + value(String.valueOf(SheepMergeManager.getPlayerPoints(target))));
+                    + label("Points") + ": "
+                    + value(SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target))));
             return true;
         }
 
@@ -296,7 +297,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(adminHeader("Stat Check")
                     + " " + label("Player") + ": " + value(target.getName())
                     + ChatColor.DARK_GRAY + " | "
-                    + label("Quest Points") + ": " + value(String.valueOf(SheepMergeManager.getQuestPoints(target))));
+                    + label("Quest Points") + ": "
+                    + value(SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target))));
             return true;
         }
 
@@ -316,7 +318,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
                     + ChatColor.DARK_GRAY + " | "
                     + label("Prestige Points") + ": "
-                    + value(String.valueOf(SheepMergeManager.getPrestigePoints(target))));
+                    + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target))));
             return true;
         }
 
@@ -682,8 +684,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             int previous = SheepMergeManager.getPrestigeLevel(target);
             if (!SheepMergeManager.adminSetPrestigeLevel(target, level)) {
-                player.sendMessage(error("Invalid prestige level. Use a value between 0 and "
-                        + SheepMergeManager.getPrestigeMaxLevel() + "."));
+                player.sendMessage(error("Invalid prestige level. Use a value of 0 or higher (unlimited)."));
                 return true;
             }
             int updated = SheepMergeManager.getPrestigeLevel(target);
@@ -937,13 +938,15 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(adminHeader(title)
                 + " " + label("Player") + ": " + value(target.getName()));
         sender.sendMessage(ChatColor.GRAY + "- " + label("Points") + ": "
-                + value(String.valueOf(SheepMergeManager.getPlayerPoints(target)))
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)))
                 + ChatColor.DARK_GRAY + " | "
-                + label("Quest Points") + ": " + value(String.valueOf(SheepMergeManager.getQuestPoints(target)))
+                + label("Quest Points") + ": "
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target)))
                 + ChatColor.DARK_GRAY + " | "
                 + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
                 + ChatColor.DARK_GRAY + " | "
-                + label("Prestige Points") + ": " + value(String.valueOf(SheepMergeManager.getPrestigePoints(target))));
+                + label("Prestige Points") + ": "
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target))));
         sender.sendMessage(ChatColor.GRAY + "- " + label("Sheep Limit") + ": "
                 + value(String.valueOf(SheepMergeManager.getPlayerLimit(target)))
                 + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getLimitUpgradeLevel(target)))
@@ -973,17 +976,27 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private String statUpdateMessage(String importance, Player target, String statLabel, int fromValue, int toValue) {
         int delta = toValue - fromValue;
         ChatColor deltaColor = delta >= 0 ? ChatColor.GREEN : ChatColor.RED;
-        String signedDelta = (delta >= 0 ? "+" : "") + delta;
+        String formattedFrom = shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(fromValue)
+                : String.valueOf(fromValue);
+        String formattedTo = shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(toValue)
+                : String.valueOf(toValue);
+        String signedDelta = (delta >= 0 ? "+" : "")
+                + (shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(Math.abs((long) delta))
+                        : String.valueOf(Math.abs(delta)));
         return adminHeader(importance)
                 + " " + label("Player") + ": " + value(target.getName())
                 + ChatColor.DARK_GRAY + " | "
                 + label("Stat") + ": " + value(statLabel)
                 + ChatColor.DARK_GRAY + " | "
-                + label("From") + ": " + value(String.valueOf(fromValue))
+                + label("From") + ": " + value(formattedFrom)
                 + ChatColor.DARK_GRAY + " -> "
-                + label("To") + ": " + value(String.valueOf(toValue))
+                + label("To") + ": " + value(formattedTo)
                 + ChatColor.DARK_GRAY + " | "
                 + label("Change") + ": " + deltaColor + signedDelta;
+    }
+
+    private boolean shouldFormatPointStat(String statLabel) {
+        return "Points".equals(statLabel) || "Quest Points".equals(statLabel) || "Prestige Points".equals(statLabel);
     }
 
     private String adminHeader(String text) {
