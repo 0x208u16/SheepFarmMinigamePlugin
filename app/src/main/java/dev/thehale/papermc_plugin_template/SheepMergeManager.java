@@ -194,7 +194,9 @@ public final class SheepMergeManager {
     private static final String FARM_BUILD_WORLD_NAME = "sheepfarm_build";
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
-    private static final int FARM_RADIUS = 5;
+    private static final int FARM_MIN_XZ = -4;
+    private static final int FARM_MAX_XZ = 5;
+    private static final int FARM_RADIUS = Math.max(Math.abs(FARM_MIN_XZ), Math.abs(FARM_MAX_XZ));
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
@@ -515,9 +517,9 @@ public final class SheepMergeManager {
             return;
         }
 
-        for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
+        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
-                for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
+                for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
                     String serialized = farmLayoutConfig.getString("blocks." + keyFor(x, y, z));
                     BlockData data = (serialized == null || serialized.isBlank())
                             ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
@@ -613,9 +615,9 @@ public final class SheepMergeManager {
     }
 
     private static void applyDefaultFarmLayout(World world) {
-        for (int x = -FARM_RADIUS; x <= FARM_RADIUS; x++) {
+        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
-                for (int z = -FARM_RADIUS; z <= FARM_RADIUS; z++) {
+                for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
                     Material material = getDefaultFarmMaterialAt(x, y, z);
                     world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), true);
                 }
@@ -780,7 +782,8 @@ public final class SheepMergeManager {
         if (y == FARM_BASE_Y) {
             return Material.GRASS_BLOCK;
         }
-        if (y == FARM_BASE_Y + 1 && (Math.abs(x) == FARM_RADIUS || Math.abs(z) == FARM_RADIUS)) {
+        if (y == FARM_BASE_Y + 1
+                && (x == FARM_MIN_XZ || x == FARM_MAX_XZ || z == FARM_MIN_XZ || z == FARM_MAX_XZ)) {
             return Material.OAK_FENCE;
         }
         return Material.AIR;
@@ -1427,8 +1430,8 @@ public final class SheepMergeManager {
     }
 
     private static void spawnRainSheep(World world) {
-        double min = -FARM_RADIUS + SHEEP_RAIN_HORIZONTAL_PADDING;
-        double max = FARM_RADIUS - SHEEP_RAIN_HORIZONTAL_PADDING;
+        double min = FARM_MIN_XZ + SHEEP_RAIN_HORIZONTAL_PADDING;
+        double max = FARM_MAX_XZ - SHEEP_RAIN_HORIZONTAL_PADDING;
         double x = min + RANDOM.nextDouble() * Math.max(0.01D, max - min);
         double z = min + RANDOM.nextDouble() * Math.max(0.01D, max - min);
         double y = FARM_BASE_Y + SHEEP_RAIN_SPAWN_HEIGHT;
@@ -2899,11 +2902,12 @@ public final class SheepMergeManager {
         if (location == null) {
             return false;
         }
-        double centerX = FARM_CENTER_X;
-        double centerZ = FARM_CENTER_Z;
-        double halfWidth = FARM_RADIUS + 0.5D + edgeMargin;
-        return Math.abs(location.getX() - centerX) > halfWidth
-                || Math.abs(location.getZ() - centerZ) > halfWidth;
+        double minBound = FARM_MIN_XZ - 0.5D - edgeMargin;
+        double maxBound = FARM_MAX_XZ + 0.5D + edgeMargin;
+        return location.getX() < minBound
+                || location.getX() > maxBound
+                || location.getZ() < minBound
+                || location.getZ() > maxBound;
     }
 
     public static long getNextEatTimestamp(Sheep sheep) {
