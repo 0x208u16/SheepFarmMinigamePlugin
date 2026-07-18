@@ -145,7 +145,9 @@ public final class SheepMergeManager {
     private static final int WOOL_REGEN_MAX_LEVEL = 8;
     private static final int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 15;
     private static final int HIGHER_TIER_CHANCE_MAX_LEVEL = 10;
-    private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 20;
+    private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 10;
+    private static final int HIGHER_TIER_CHANCE_BASE_CAP_PERCENT = 50;
+    private static final int QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT = 50;
     private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
     private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
@@ -216,12 +218,11 @@ public final class SheepMergeManager {
     private static final int SHEAR_WOOL_SAVE_BASE_COST = 30;
     private static final int SHEAR_TIER_BOOST_BASE_COST = 45;
     private static final int SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL = 5;
-    private static final int SHEAR_TIER_BOOST_CHANCE_PER_LEVEL = 3;
+    private static final int SHEAR_TIER_BOOST_CHANCE_PER_LEVEL = 1;
     private static final int SHEAR_WOOL_SAVE_CHANCE_CAP = 90;
     private static final int SHEAR_TIER_BOOST_CHANCE_CAP = 75;
-    private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = SHEAR_WOOL_SAVE_CHANCE_CAP / SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL;
-    private static final int SHEAR_TIER_BOOST_MAX_LEVEL = SHEAR_TIER_BOOST_CHANCE_CAP
-            / SHEAR_TIER_BOOST_CHANCE_PER_LEVEL;
+    private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = 18;
+    private static final int SHEAR_TIER_BOOST_MAX_LEVEL = 25;
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
     private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
     private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
@@ -3430,8 +3431,7 @@ public final class SheepMergeManager {
     }
 
     public static int getHigherTierChanceMaxLevel(Player player) {
-        int boostedMax = HIGHER_TIER_CHANCE_MAX_LEVEL + getPrestigeHigherMaxLevel(player) * 2;
-        return Math.min(HIGHER_TIER_CHANCE_HARD_MAX_LEVEL, boostedMax);
+        return Math.min(HIGHER_TIER_CHANCE_MAX_LEVEL, HIGHER_TIER_CHANCE_HARD_MAX_LEVEL);
     }
 
     public static int getWoolRegenLevel(Player player) {
@@ -3452,9 +3452,10 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        int base = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0) * 5;
+        int base = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT,
+                higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0) * 5);
         if (isAbilityActive(activeLuckyBurstUntilByPlayer, player.getUniqueId())) {
-            base += 25 + getQuestUpgradePowerLevel(player) * 5;
+            base += QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT;
         }
         return Math.min(100, base);
     }
@@ -3464,10 +3465,10 @@ public final class SheepMergeManager {
         if (ownerId == null) {
             return 0;
         }
-        int base = higherTierChanceLevelByPlayer.getOrDefault(ownerId, 0) * 5;
+        int base = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT,
+                higherTierChanceLevelByPlayer.getOrDefault(ownerId, 0) * 5);
         if (isAbilityActive(activeLuckyBurstUntilByPlayer, ownerId)) {
-            int power = questUpgradePowerByPlayer.getOrDefault(ownerId, 0);
-            base += 25 + power * 5;
+            base += QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT;
         }
         return Math.min(100, base);
     }
@@ -4169,7 +4170,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + getPrestigeHigherMaxLevel(player) + " / " + PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP,
                         "Wool regen max bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
-                        "Spawn chance max bonus: +" + (getPrestigeHigherMaxLevel(player) * 2),
+                        "Spawn chance upgrade cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
                         getPrestigeHigherMaxLevel(player) >= PRESTIGE_HIGHER_MAX_LEVEL_HARD_CAP
                                 ? "MAXED"
                                 : "Cost: " + getPrestigeHigherMaxLevelCost(player) + " prestige points",
@@ -4473,7 +4474,7 @@ public final class SheepMergeManager {
                 "Lucky Burst",
                 List.of(
                         "Cost: " + getQuestLuckyBurstCost(player) + " quest points",
-                        "Effect: +" + (25 + getQuestUpgradePowerLevel(player) * 5) + "% spawn chance",
+                        "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_LUCKY_BURST_BASE_DURATION_MS)),
                         getAbilityMenuStatus(activeLuckyBurstUntilByPlayer, playerId),
                         "Click to activate")));
@@ -4683,7 +4684,7 @@ public final class SheepMergeManager {
                 "Amplified Buff Power",
                 List.of(
                         "Level: " + getQuestUpgradePowerLevel(player),
-                        "Lucky Burst: +5% spawn chance per level",
+                        "Lucky Burst: fixed +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Jackpot Shears: +1x shear points per level",
                         "Quest ability costs: -1 per level",
                         "Cost: " + getQuestUpgradePowerCost(player) + " quest points",
