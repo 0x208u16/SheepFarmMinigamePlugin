@@ -1177,10 +1177,19 @@ public final class SheepMergeManager {
 
         Sheep carriedSheep = getPickedUpSheep(player);
         UUID carriedId = carriedSheep == null ? null : carriedSheep.getUniqueId();
+        long now = System.currentTimeMillis();
         Sheep bestCandidate = null;
         int bestTierLevel = -1;
         for (Sheep sheep : player.getWorld().getEntitiesByClass(Sheep.class)) {
             if (sheep == null || !sheep.isValid() || sheep.isDead() || sheep.isSheared()) {
+                continue;
+            }
+            if (!sheep.isAdult()) {
+                continue;
+            }
+            if (getNextEatTimestamp(sheep) > now) {
+                sheep.setSheared(true);
+                updateSheepName(sheep);
                 continue;
             }
             if (carriedId != null && carriedId.equals(sheep.getUniqueId())) {
@@ -2547,6 +2556,16 @@ public final class SheepMergeManager {
 
     public static boolean shearSheepForPlayer(Player player, Sheep sheep) {
         if (player == null || sheep == null || sheep.getWorld() == null || !isSheepFarmWorld(sheep.getWorld())) {
+            return false;
+        }
+        if (!sheep.isAdult()) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        long nextEatAt = getNextEatTimestamp(sheep);
+        if (nextEatAt > now) {
+            sheep.setSheared(true);
+            updateSheepName(sheep);
             return false;
         }
         if (sheep.isSheared()) {

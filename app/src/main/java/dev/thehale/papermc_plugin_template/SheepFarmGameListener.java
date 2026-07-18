@@ -65,22 +65,7 @@ public class SheepFarmGameListener implements Listener {
         }
 
         event.setCancelled(true);
-        sheep.setSheared(true);
-        sheep.setAI(true);
-        SheepTier tier = SheepMergeManager.getSheepTier(sheep);
-        SheepMergeManager.setNextEatTimestamp(sheep,
-                System.currentTimeMillis() + SheepMergeManager.getEatCooldownSeconds(sheep, tier) * 1000L);
-
-        int points = SheepMergeManager.calculateShearPoints(event.getPlayer(), tier);
-        SheepMergeManager.addPoints(event.getPlayer(), points);
-
-        SheepMergeManager.tryTriggerShearWoolSave(event.getPlayer(), sheep);
-        SheepMergeManager.tryTriggerShearTierBoost(event.getPlayer(), sheep);
-        SheepMergeManager.updateSheepName(sheep);
-
-        SheepMergeManager.recordQuestShear(event.getPlayer());
-        SheepMergeManager.recordTutorialShear(event.getPlayer());
-        SheepMergeManager.updatePointsScoreboard(event.getPlayer());
+        SheepMergeManager.shearSheepForPlayer(event.getPlayer(), sheep);
     }
 
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = false)
