@@ -532,7 +532,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             player.getWorld().save();
-            player.sendMessage("Saved the shared farm build world.");
+            if (SheepMergeManager.saveSharedFarmLayoutFromWorld(player.getWorld())) {
+                player.sendMessage("Saved the shared farm build world and layout snapshot.");
+            } else {
+                player.sendMessage("Saved the shared farm build world, but layout snapshot save failed.");
+            }
             return true;
         }
 

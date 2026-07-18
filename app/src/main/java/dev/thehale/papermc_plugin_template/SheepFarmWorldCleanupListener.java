@@ -74,12 +74,18 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
     public static void cleanupFarmWorldsOnShutdown() {
         SheepMergeManager.saveBuildWorldIfIdle();
+        boolean capturedSnapshot = false;
         for (World world : Bukkit.getWorlds()) {
             if (!SheepMergeManager.isSheepFarmWorld(world)) {
                 continue;
             }
             SheepMergeManager.saveSheepSnapshotForWorld(world);
+            capturedSnapshot = true;
             unloadWorld(world.getName());
+        }
+
+        if (capturedSnapshot) {
+            SheepMergeManager.saveData();
         }
 
         File[] worldFolders = Bukkit.getWorldContainer().listFiles(File::isDirectory);
@@ -109,8 +115,13 @@ public class SheepFarmWorldCleanupListener implements Listener {
             return;
         }
         World loadedWorld = Bukkit.getWorld(worldName);
+        boolean snapshotCaptured = false;
         if (saveSheepState && loadedWorld != null && SheepMergeManager.isSheepFarmWorld(loadedWorld)) {
             SheepMergeManager.saveSheepSnapshotForWorld(loadedWorld);
+            snapshotCaptured = true;
+        }
+        if (snapshotCaptured) {
+            SheepMergeManager.saveData();
         }
         unloadWorld(worldName);
 
