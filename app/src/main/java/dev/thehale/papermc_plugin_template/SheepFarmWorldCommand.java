@@ -574,9 +574,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("Only server operators can use this command."));
                 return true;
             }
-            int amount;
+            long amount;
             try {
-                amount = Integer.parseInt(args[1]);
+                amount = Long.parseLong(args[1]);
             } catch (NumberFormatException exception) {
                 player.sendMessage(error("Invalid amount. Usage: /sheepmerge givepoints <amount> [player]"));
                 return true;
@@ -586,9 +586,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("That player is not online."));
                 return true;
             }
-            int previous = SheepMergeManager.getPlayerPoints(target);
+            long previous = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.adminGivePoints(target, amount);
-            int updated = SheepMergeManager.getPlayerPoints(target);
+            long updated = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.updatePointsScoreboard(target);
             player.sendMessage(statUpdateMessage(
                     "Points Updated",
@@ -604,9 +604,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("Only server operators can use this command."));
                 return true;
             }
-            int amount;
+            long amount;
             try {
-                amount = Integer.parseInt(args[1]);
+                amount = Long.parseLong(args[1]);
             } catch (NumberFormatException exception) {
                 player.sendMessage(error("Invalid amount. Usage: /sheepmerge setpoints <amount> [player]"));
                 return true;
@@ -616,9 +616,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("That player is not online."));
                 return true;
             }
-            int previous = SheepMergeManager.getPlayerPoints(target);
+            long previous = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.adminSetPoints(target, amount);
-            int updated = SheepMergeManager.getPlayerPoints(target);
+            long updated = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.updatePointsScoreboard(target);
             player.sendMessage(statUpdateMessage(
                     "Points Updated",
@@ -999,15 +999,15 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                         : ChatColor.RED + "closed"));
     }
 
-    private String statUpdateMessage(String importance, Player target, String statLabel, int fromValue, int toValue) {
-        int delta = toValue - fromValue;
+    private String statUpdateMessage(String importance, Player target, String statLabel, long fromValue, long toValue) {
+        long delta = toValue - fromValue;
         ChatColor deltaColor = delta >= 0 ? ChatColor.GREEN : ChatColor.RED;
         String formattedFrom = shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(fromValue)
                 : String.valueOf(fromValue);
         String formattedTo = shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(toValue)
                 : String.valueOf(toValue);
         String signedDelta = (delta >= 0 ? "+" : "")
-                + (shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(Math.abs((long) delta))
+                + (shouldFormatPointStat(statLabel) ? SheepMergeManager.formatPoints(Math.abs(delta))
                         : String.valueOf(Math.abs(delta)));
         return adminHeader(importance)
                 + " " + label("Player") + ": " + value(target.getName())

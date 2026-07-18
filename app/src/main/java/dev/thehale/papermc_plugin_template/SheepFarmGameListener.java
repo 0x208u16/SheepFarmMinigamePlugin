@@ -235,7 +235,43 @@ public class SheepFarmGameListener implements Listener {
         }
 
         if (!carriedTier.hasNext()) {
-            player.sendMessage(SheepMergeManager.warning("Top tier. No merge."));
+            if (carriedTier != SheepTier.RAINBOW) {
+                player.sendMessage(SheepMergeManager.warning("Top tier. No merge."));
+                return;
+            }
+
+            int pickedCount = SheepMergeManager.getRainbowMergedCount(pickedSheep);
+            int targetCount = SheepMergeManager.getRainbowMergedCount(targetSheep);
+            long totalCount = (long) pickedCount + targetCount;
+            int mergedCount = totalCount >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalCount;
+            long mergedWoolRegenMs = Math.max(
+                    SheepMergeManager.getRemainingWoolRegenMs(pickedSheep),
+                    SheepMergeManager.getRemainingWoolRegenMs(targetSheep));
+
+            World world = targetSheep.getWorld();
+            org.bukkit.Location spawnLocation = targetSheep.getLocation();
+            targetSheep.remove();
+            pickedSheep.remove();
+
+            Sheep mergedSheep = world.spawn(spawnLocation, Sheep.class);
+            SheepMergeManager.setSheepTier(mergedSheep, SheepTier.RAINBOW);
+            SheepMergeManager.setRainbowMergedCount(mergedSheep, mergedCount);
+            SheepMergeManager.initializeMergedSheepAfterMerge(mergedSheep, SheepTier.RAINBOW, mergedWoolRegenMs);
+
+            Vector velocity = player.getLocation().getDirection().multiply(0.4).setY(0.2);
+            mergedSheep.setVelocity(velocity);
+            world.spawnParticle(Particle.VILLAGER_HAPPY, spawnLocation.add(0, 0.5, 0), 15, 0.3, 0.3, 0.3, 0.05);
+
+            SheepMergeManager.recordSheepMerge(player, carriedTier, 0);
+            SheepMergeManager.recordQuestMerge(player);
+            SheepMergeManager.recordTutorialMerge(player);
+            SheepMergeManager.showOverlay(player, SheepMergeManager.action(
+                    carriedTier.getDisplayName() + " " + SheepMergeManager.formatSheepMergedCount(pickedCount)
+                            + " + " + carriedTier.getDisplayName() + " "
+                            + SheepMergeManager.formatSheepMergedCount(targetCount)
+                            + " -> " + carriedTier.getDisplayName() + " "
+                            + SheepMergeManager.formatSheepMergedCount(mergedCount)));
+            SheepMergeManager.clearPickedUpSheep(player);
             return;
         }
 
