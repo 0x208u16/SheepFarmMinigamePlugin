@@ -152,9 +152,7 @@ public class SheepMergePlugin extends JavaPlugin {
     public void onDisable() {
         SheepMergeManager.restoreAllPlayerStates();
         SheepMergeManager.saveData();
-        // Do not delete temp farm worlds here; Paper still saves worlds after plugin
-        // disable.
-        // Cleanup runs on startup and via player quit hooks.
+        SheepFarmWorldCleanupListener.cleanupFarmWorldsOnShutdown();
         log.info("Thanks for using " + NAME + "!");
     }
 }

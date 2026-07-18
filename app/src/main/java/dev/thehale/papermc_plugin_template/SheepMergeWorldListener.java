@@ -20,6 +20,15 @@ public class SheepMergeWorldListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        if (SheepMergeManager.isFarmBuildWorld(player.getWorld()) && !player.isOp()) {
+            World fallbackWorld = player.getServer().getWorlds().isEmpty() ? null
+                    : player.getServer().getWorlds().get(0);
+            if (fallbackWorld != null) {
+                player.teleport(fallbackWorld.getSpawnLocation().clone().add(0.5D, 0.0D, 0.5D));
+            }
+            player.sendMessage(SheepMergeManager.warning("Only operators may enter the farm build world."));
+            return;
+        }
         SheepMergeManager.restoreSavedStateOutsideFarm(player);
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             return;
@@ -45,10 +54,25 @@ public class SheepMergeWorldListener implements Listener {
     @EventHandler
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
+        if (SheepMergeManager.isFarmBuildWorld(player.getWorld()) && !player.isOp()) {
+            World fallbackWorld = player.getServer().getWorlds().isEmpty() ? null
+                    : player.getServer().getWorlds().get(0);
+            if (fallbackWorld != null) {
+                player.teleport(fallbackWorld.getSpawnLocation().clone().add(0.5D, 0.0D, 0.5D));
+            }
+            player.sendMessage(SheepMergeManager.warning("Only operators may enter the farm build world."));
+            return;
+        }
         boolean fromManagedWorld = SheepMergeManager.isSheepFarmWorld(event.getFrom());
         boolean toManagedWorld = SheepMergeManager.isSheepFarmWorld(player.getWorld());
         boolean fromTutorialWorld = SheepMergeManager.isTutorialWorld(event.getFrom());
         boolean toTutorialWorld = SheepMergeManager.isTutorialWorld(player.getWorld());
+
+        if (SheepMergeManager.isFarmBuildWorld(event.getFrom())
+                && !SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
+            player.getServer().getScheduler().runTaskLater(SheepMergePlugin.instance,
+                    SheepMergeManager::saveBuildWorldIfIdle, 1L);
+        }
 
         if (!fromManagedWorld && toManagedWorld) {
             SheepMergeManager.savePlayerInventory(player);

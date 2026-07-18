@@ -85,6 +85,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, String> lastTutorialProgressFeedLineByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialStepFeedLineByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
+    private static final Map<UUID, List<SheepSnapshot>> savedFarmSheepByPlayer = new HashMap<>();
+    private static final Map<UUID, List<SheepSnapshot>> savedTutorialSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questSpawnsByPlayer = new HashMap<>();
@@ -186,6 +188,7 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_QUEST_REWARD_MAX_LEVEL = 10;
     private static final double PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL = 0.25D;
     private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
+    private static final String FARM_BUILD_WORLD_NAME = "sheepfarm_build";
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
     private static final int FARM_RADIUS = 5;
@@ -318,6 +321,25 @@ public final class SheepMergeManager {
     private static long comboFrenzyEventEndsAtMs = 0L;
     private static BossBar sheepRainBossBar;
     private static int lastGameplayTipIndex = -1;
+
+    private static final class SheepSnapshot {
+        private final int tierLevel;
+        private final double x;
+        private final double y;
+        private final double z;
+        private final boolean sheared;
+        private final long nextEatAt;
+
+        private SheepSnapshot(int tierLevel, double x, double y, double z, boolean sheared, long nextEatAt) {
+            this.tierLevel = tierLevel;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.sheared = sheared;
+            this.nextEatAt = nextEatAt;
+        }
+    }
+
     private static final List<String> GAMEPLAY_TIPS = List.of(
             "&7Use &e/sheepmerge &7to jump straight to your personal farm.",
             "&7When visiting another farm, use &e/sheepmerge &7to return home instantly.",
@@ -376,8 +398,16 @@ public final class SheepMergeManager {
                 && !farmLayoutConfig.getConfigurationSection("blocks").getKeys(false).isEmpty();
     }
 
+    public static String getFarmBuildWorldName() {
+        return FARM_BUILD_WORLD_NAME;
+    }
+
+    public static boolean isFarmBuildWorld(World world) {
+        return world != null && FARM_BUILD_WORLD_NAME.equals(world.getName());
+    }
+
     public static boolean saveSharedFarmLayoutFromWorld(World sourceWorld) {
-        if (sourceWorld == null || !isSheepFarmWorld(sourceWorld)) {
+        if (sourceWorld == null || (!isSheepFarmWorld(sourceWorld) && !isFarmBuildWorld(sourceWorld))) {
             return false;
         }
         if (farmLayoutConfig == null) {
@@ -443,6 +473,154 @@ public final class SheepMergeManager {
                     world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), true);
                 }
             }
+        }
+    }
+
+    public static void saveSheepSnapshotForWorld(World world) {
+        if (world == null || !isSheepFarmWorld(world)) {
+            return;
+        }
+        UUID ownerId = getOwnerId(world);
+        if (ownerId == null) {
+            return;
+        }
+        getSavedSheepSnapshots(world).put(ownerId, captureSheepSnapshots(world));
+    }
+
+    public static void restoreSavedSheepForWorld(World world) {
+        if (world == null || !isSheepFarmWorld(world)) {
+            return;
+        }
+        UUID ownerId = getOwnerId(world);
+        if (ownerId == null) {
+            return;
+        }
+        List<SheepSnapshot> snapshots = getSavedSheepSnapshots(world).get(ownerId);
+        if (snapshots == null || snapshots.isEmpty()) {
+            refreshLiveSheepCount(world);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        for (SheepSnapshot snapshot : snapshots) {
+            if (snapshot == null) {
+                continue;
+            }
+            Sheep sheep = world.spawn(new Location(world, snapshot.x, snapshot.y, snapshot.z), Sheep.class);
+            SheepTier tier = SheepTier.byLevel(snapshot.tierLevel);
+            setSheepTier(sheep, tier);
+            sheep.setAdult();
+            if (snapshot.sheared && snapshot.nextEatAt > now) {
+                sheep.setSheared(true);
+                setNextEatTimestamp(sheep, snapshot.nextEatAt);
+            } else {
+                sheep.setSheared(false);
+                setNextEatTimestamp(sheep, 0L);
+            }
+            updateSheepName(sheep);
+        }
+        refreshLiveSheepCount(world);
+    }
+
+    public static void rebuildFarmWorld(World world) {
+        if (world == null || !isSheepFarmWorld(world)) {
+            return;
+        }
+        clearSheepEntities(world);
+        applyFarmLayout(world);
+        restoreSavedSheepForWorld(world);
+        world.save();
+    }
+
+    public static int commitFarmBuildWorldToLoadedFarms() {
+        if (plugin == null) {
+            return 0;
+        }
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (buildWorld == null || !isFarmBuildWorld(buildWorld) || !saveSharedFarmLayoutFromWorld(buildWorld)) {
+            return 0;
+        }
+
+        World fallbackWorld = plugin.getServer().getWorlds().isEmpty() ? null : plugin.getServer().getWorlds().get(0);
+        int updated = 0;
+        for (World world : plugin.getServer().getWorlds()) {
+            if (!isSheepFarmWorld(world)) {
+                continue;
+            }
+            teleportPlayersOutOfWorld(world, fallbackWorld);
+            saveSheepSnapshotForWorld(world);
+            rebuildFarmWorld(world);
+            updated++;
+        }
+        saveData();
+        return updated;
+    }
+
+    public static void saveBuildWorldIfIdle() {
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (buildWorld == null) {
+            return;
+        }
+        for (Player player : buildWorld.getPlayers()) {
+            if (player != null && player.isOp()) {
+                return;
+            }
+        }
+        buildWorld.save();
+    }
+
+    private static void clearSheepEntities(World world) {
+        if (world == null) {
+            return;
+        }
+        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+            if (sheep == null || !sheep.isValid()) {
+                continue;
+            }
+            UUID sheepId = sheep.getUniqueId();
+            sheep.remove();
+            clearSheepRescueState(sheepId);
+        }
+        refreshLiveSheepCount(world);
+    }
+
+    private static List<SheepSnapshot> captureSheepSnapshots(World world) {
+        List<SheepSnapshot> snapshots = new ArrayList<>();
+        if (world == null) {
+            return snapshots;
+        }
+        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+            if (sheep == null || !sheep.isValid() || sheep.isDead()) {
+                continue;
+            }
+            SheepTier tier = getSheepTier(sheep);
+            Location location = sheep.getLocation();
+            snapshots.add(new SheepSnapshot(
+                    tier == null ? SheepTier.WHITE.getLevel() : tier.getLevel(),
+                    location.getX(),
+                    location.getY(),
+                    location.getZ(),
+                    sheep.isSheared(),
+                    getNextEatTimestamp(sheep)));
+        }
+        return snapshots;
+    }
+
+    private static Map<UUID, List<SheepSnapshot>> getSavedSheepSnapshots(World world) {
+        return isTutorialWorld(world) ? savedTutorialSheepByPlayer : savedFarmSheepByPlayer;
+    }
+
+    private static void teleportPlayersOutOfWorld(World world, World fallbackWorld) {
+        if (world == null || fallbackWorld == null) {
+            return;
+        }
+        Location fallbackSpawn = fallbackWorld.getSpawnLocation().clone().add(0.5D, 0.0D, 0.5D);
+        for (Player online : world.getPlayers()) {
+            if (online == null) {
+                continue;
+            }
+            online.teleport(fallbackSpawn);
+            online.sendMessage(hint("Your farm is being refreshed. Use /sheepmerge to return once it finishes."));
         }
     }
 
@@ -611,6 +789,7 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return;
         }
+        savedTutorialSheepByPlayer.remove(playerId);
         tutorialCompletedByPlayer.remove(playerId);
         tutorialBypassedByPlayer.remove(playerId);
         tutorialShearsByPlayer.remove(playerId);
@@ -2019,40 +2198,15 @@ public final class SheepMergeManager {
         if (tutorialWorld == null) {
             return;
         }
-
-        World farmWorld = SheepFarmWorldCommand.ensureFarmWorld(SheepFarmWorldCommand.getWorldName(playerId));
-        if (farmWorld == null) {
-            return;
-        }
-
-        for (Sheep tutorialSheep : tutorialWorld.getEntitiesByClass(Sheep.class)) {
-            if (tutorialSheep == null || !tutorialSheep.isValid()) {
-                continue;
-            }
-
-            Location spawnLocation = tutorialSheep.getLocation().clone();
-            spawnLocation.setWorld(farmWorld);
-
-            Sheep migratedSheep = farmWorld.spawn(spawnLocation, Sheep.class);
-            SheepTier tier = getSheepTier(tutorialSheep);
-            setSheepTier(migratedSheep, tier);
-            migratedSheep.setAdult();
-
-            if (tutorialSheep.isSheared()) {
-                migratedSheep.setSheared(true);
-                setNextEatTimestamp(migratedSheep, getNextEatTimestamp(tutorialSheep));
-                updateSheepName(migratedSheep);
-            }
-
-            UUID tutorialSheepId = tutorialSheep.getUniqueId();
-            tutorialSheep.remove();
-            clearSheepRescueState(tutorialSheepId);
-        }
-
-        refreshLiveSheepCount(tutorialWorld);
-        refreshLiveSheepCount(farmWorld);
+        savedFarmSheepByPlayer.put(playerId, captureSheepSnapshots(tutorialWorld));
+        savedTutorialSheepByPlayer.remove(playerId);
+        World fallbackWorld = plugin == null || plugin.getServer().getWorlds().isEmpty()
+                ? null
+                : plugin.getServer().getWorlds().get(0);
+        teleportPlayersOutOfWorld(tutorialWorld, fallbackWorld);
+        clearSheepEntities(tutorialWorld);
         tutorialWorld.save();
-        farmWorld.save();
+        SheepFarmWorldCleanupListener.deleteWorldByName(getTutorialWorldName(playerId), false, false);
     }
 
     public static boolean adminResetPlayer(Player player) {
@@ -2060,6 +2214,8 @@ public final class SheepMergeManager {
             return false;
         }
         UUID id = player.getUniqueId();
+        savedFarmSheepByPlayer.remove(id);
+        savedTutorialSheepByPlayer.remove(id);
         pointsByPlayer.remove(id);
         refreshTopPointsDisplays();
         extraLimitByPlayer.remove(id);
@@ -2132,18 +2288,7 @@ public final class SheepMergeManager {
         if (world == null || !isSheepFarmWorld(world)) {
             return;
         }
-
-        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
-            if (sheep == null || !sheep.isValid()) {
-                continue;
-            }
-            UUID sheepId = sheep.getUniqueId();
-            sheep.remove();
-            clearSheepRescueState(sheepId);
-        }
-
-        applyFarmLayout(world);
-        refreshLiveSheepCount(world);
+        rebuildFarmWorld(world);
     }
 
     public static void adminGivePoints(Player player, int amount) {
@@ -3761,6 +3906,64 @@ public final class SheepMergeManager {
         return total >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) total;
     }
 
+    private static void saveSheepSnapshots(String basePath, Map<UUID, List<SheepSnapshot>> snapshotsByPlayer) {
+        if (dataConfig == null || basePath == null || snapshotsByPlayer == null) {
+            return;
+        }
+        for (Map.Entry<UUID, List<SheepSnapshot>> entry : snapshotsByPlayer.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+                continue;
+            }
+            for (int index = 0; index < entry.getValue().size(); index++) {
+                SheepSnapshot snapshot = entry.getValue().get(index);
+                if (snapshot == null) {
+                    continue;
+                }
+                String path = basePath + "." + entry.getKey() + "." + index;
+                dataConfig.set(path + ".tier", snapshot.tierLevel);
+                dataConfig.set(path + ".x", snapshot.x);
+                dataConfig.set(path + ".y", snapshot.y);
+                dataConfig.set(path + ".z", snapshot.z);
+                dataConfig.set(path + ".sheared", snapshot.sheared);
+                dataConfig.set(path + ".nextEatAt", snapshot.nextEatAt);
+            }
+        }
+    }
+
+    private static void loadSheepSnapshots(String basePath, Map<UUID, List<SheepSnapshot>> snapshotsByPlayer) {
+        if (dataConfig == null || basePath == null || snapshotsByPlayer == null
+                || !dataConfig.isConfigurationSection(basePath)) {
+            return;
+        }
+        org.bukkit.configuration.ConfigurationSection root = dataConfig.getConfigurationSection(basePath);
+        if (root == null) {
+            return;
+        }
+        root.getKeys(false).forEach(key -> {
+            try {
+                UUID uuid = UUID.fromString(key);
+                org.bukkit.configuration.ConfigurationSection playerSection = root.getConfigurationSection(key);
+                if (playerSection == null) {
+                    return;
+                }
+                List<SheepSnapshot> snapshots = new ArrayList<>();
+                playerSection.getKeys(false).stream().sorted().forEach(indexKey -> {
+                    String path = basePath + "." + key + "." + indexKey;
+                    snapshots.add(new SheepSnapshot(
+                            dataConfig.getInt(path + ".tier", SheepTier.WHITE.getLevel()),
+                            dataConfig.getDouble(path + ".x", 0.5D),
+                            dataConfig.getDouble(path + ".y", FARM_BASE_Y + 1.0D),
+                            dataConfig.getDouble(path + ".z", 0.5D),
+                            dataConfig.getBoolean(path + ".sheared", false),
+                            Math.max(0L, dataConfig.getLong(path + ".nextEatAt", 0L))));
+                });
+                snapshotsByPlayer.put(uuid, snapshots);
+            } catch (IllegalArgumentException ignored) {
+                // Ignore invalid UUIDs.
+            }
+        });
+    }
+
     private static void resetPrestigeUpgrades(UUID playerId, boolean clearRefundCooldown) {
         if (playerId == null) {
             return;
@@ -5273,6 +5476,8 @@ public final class SheepMergeManager {
             dataConfig.set("comboDecayUpgrade", null);
             dataConfig.set("comboMaxUpgrade", null);
             dataConfig.set("comboGainUpgrade", null);
+            dataConfig.set("farmSheep", null);
+            dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
             dataConfig.set(TOP_POINTS_DISPLAY_WORLD_KEY, null);
             dataConfig.set(TOP_POINTS_DISPLAY_X_KEY, null);
@@ -5406,6 +5611,8 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : comboGainUpgradeByPlayer.entrySet()) {
                 dataConfig.set("comboGainUpgrade." + entry.getKey().toString(), entry.getValue());
             }
+            saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
+            saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
             for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : savedInventories.entrySet()) {
                 String basePath = "pendingInventory." + entry.getKey();
                 InventoryDataUtils.Snapshot snapshot = entry.getValue();
@@ -5563,6 +5770,8 @@ public final class SheepMergeManager {
                 }
             });
         }
+        loadSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
+        loadSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
         if (dataConfig.isConfigurationSection("prestigeRefundCooldown")) {
             dataConfig.getConfigurationSection("prestigeRefundCooldown").getKeys(false).forEach(key -> {
                 try {

@@ -105,11 +105,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge layout save")
-                + ": save the current farm layout");
+                + ": open or save the shared farm build world");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge layout load")
-                + ": load the saved farm layout");
+                + ": commit the shared build world to loaded farm worlds");
         player.sendMessage(
-                ChatColor.GRAY + "- " + label("/sheepmerge world save|load") + ": save or load the farm layout");
+                ChatColor.GRAY + "- " + label("/sheepmerge world save|load") + ": manage the shared farm build world");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata [player]") + ": admin reset a player");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge stats [player]") + ": admin stats view");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge checkpoints [player]") + ": admin points check");
@@ -158,9 +158,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (topic.equalsIgnoreCase("world")) {
             player.sendMessage(ChatColor.DARK_AQUA + "World hints:");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world save")
-                    + ": save the current farm layout and apply it to all farm worlds");
+                    + ": open or save the shared farm build world");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world load")
-                    + ": load the saved farm layout into all farm worlds");
+                    + ": commit the shared build world into all loaded farm worlds");
             return;
         }
 
@@ -501,16 +501,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
             }
-            if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
-                player.sendMessage("Use this command while standing in a sheep farm world.");
+            if (!SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
+                World buildWorld = ensureFarmBuildWorld();
+                if (buildWorld == null) {
+                    player.sendMessage("Unable to open the farm build world right now.");
+                    return true;
+                }
+                buildWorld.setSpawnLocation(0, 101, 0);
+                player.teleport(new Location(buildWorld, 0.5, 101, 0.5));
+                player.sendMessage("Teleported to the shared farm build world.");
                 return true;
             }
-            if (!SheepMergeManager.saveSharedFarmLayoutFromWorld(player.getWorld())) {
-                player.sendMessage("Unable to save farm layout right now.");
-                return true;
-            }
-            int updated = SheepMergeManager.applySharedFarmLayoutToAllFarmWorlds();
-            player.sendMessage("Saved farm layout and applied it to " + updated + " farm world(s).");
+            player.getWorld().save();
+            player.sendMessage("Saved the shared farm build world.");
             return true;
         }
 
@@ -520,12 +523,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
             }
-            if (!SheepMergeManager.hasSavedFarmLayout()) {
-                player.sendMessage("No saved farm layout found yet. Use /sheepmerge layout save first.");
+            if (!SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
+                player.sendMessage("Use this command while standing in the shared farm build world.");
                 return true;
             }
-            int updated = SheepMergeManager.applySharedFarmLayoutToAllFarmWorlds();
-            player.sendMessage("Loaded saved farm layout into " + updated + " farm world(s).");
+            int updated = SheepMergeManager.commitFarmBuildWorldToLoadedFarms();
+            if (updated <= 0) {
+                player.sendMessage("Unable to commit the shared farm build world right now.");
+                return true;
+            }
+            player.sendMessage("Committed the shared farm build world into " + updated + " loaded farm world(s).");
             return true;
         }
 
@@ -1025,6 +1032,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return createFlatWorld(worldName);
     }
 
+    public static World ensureFarmBuildWorld() {
+        World world = Bukkit.getWorld(SheepMergeManager.getFarmBuildWorldName());
+        if (world != null) {
+            applyFarmWorldRules(world);
+            ensureWorldStorageFolders(world);
+            return world;
+        }
+        return createFlatWorld(SheepMergeManager.getFarmBuildWorldName());
+    }
+
     public static void applyFarmRulesToLoadedWorlds() {
         for (World world : Bukkit.getWorlds()) {
             applyFarmWorldRules(world);
@@ -1084,7 +1101,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         applyFarmWorldRules(world);
         ensureWorldStorageFolders(world);
-        SheepMergeManager.applyFarmLayout(world);
+        if (SheepMergeManager.isSheepFarmWorld(world)) {
+            SheepMergeManager.applyFarmLayout(world);
+            SheepMergeManager.restoreSavedSheepForWorld(world);
+        } else if (SheepMergeManager.isFarmBuildWorld(world)) {
+            SheepMergeManager.applyFarmLayout(world);
+        }
         return world;
     }
 
@@ -1104,7 +1126,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     }
 
     private static void applyFarmWorldRules(World world) {
-        if (world == null || !SheepMergeManager.isSheepFarmWorld(world)) {
+        if (world == null
+                || (!SheepMergeManager.isSheepFarmWorld(world) && !SheepMergeManager.isFarmBuildWorld(world))) {
             return;
         }
         world.setPVP(false);

@@ -19,10 +19,13 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public class SheepFarmWorldCleanupListener implements Listener {
 
-    private static final long WORLD_CLEANUP_DELAY_TICKS = 200L;
+    private static final long WORLD_CLEANUP_DELAY_TICKS = 5L * 60L * 20L;
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        if (SheepMergeManager.isFarmBuildWorld(event.getPlayer().getWorld())) {
+            scheduleBuildWorldSaveCheck();
+        }
         scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
     }
 
@@ -32,11 +35,14 @@ public class SheepFarmWorldCleanupListener implements Listener {
         if (reason != null && reason.toLowerCase().contains("another location")) {
             return;
         }
+        if (SheepMergeManager.isFarmBuildWorld(event.getPlayer().getWorld())) {
+            scheduleBuildWorldSaveCheck();
+        }
         scheduleDeleteWorldForPlayer(event.getPlayer().getUniqueId());
     }
 
     public static void scheduleDeleteWorldForPlayer(UUID playerId) {
-        if (playerId == null || SheepMergePlugin.instance == null || !SheepMergeManager.hasUnlockedFarm(playerId)) {
+        if (playerId == null || SheepMergePlugin.instance == null) {
             return;
         }
 
@@ -46,7 +52,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
                 return;
             }
 
-            deleteFarmWorldForPlayer(playerId, true);
+            deleteTransientWorldsForPlayer(playerId, true);
         }, WORLD_CLEANUP_DELAY_TICKS);
     }
 
@@ -58,11 +64,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
         for (File worldFolder : worldFolders) {
             String worldName = worldFolder.getName();
-            if (!isTemporaryTutorialWorldName(worldName)) {
-                continue;
-            }
-            UUID ownerId = getTutorialOwnerId(worldName);
-            if (ownerId == null || !SheepMergeManager.hasUnlockedFarm(ownerId)) {
+            if (!isTransientPlayerWorldName(worldName)) {
                 continue;
             }
             unloadWorld(worldName);
@@ -71,10 +73,12 @@ public class SheepFarmWorldCleanupListener implements Listener {
     }
 
     public static void cleanupFarmWorldsOnShutdown() {
+        SheepMergeManager.saveBuildWorldIfIdle();
         for (World world : Bukkit.getWorlds()) {
-            if (!SheepMergeManager.isTutorialWorld(world)) {
+            if (!SheepMergeManager.isSheepFarmWorld(world)) {
                 continue;
             }
+            SheepMergeManager.saveSheepSnapshotForWorld(world);
             unloadWorld(world.getName());
         }
 
@@ -85,19 +89,29 @@ public class SheepFarmWorldCleanupListener implements Listener {
 
         for (File worldFolder : worldFolders) {
             String worldName = worldFolder.getName();
-            if (!isTemporaryTutorialWorldName(worldName)) {
+            if (!isTransientPlayerWorldName(worldName)) {
                 continue;
             }
             deleteWorldFolder(worldName, worldFolder);
         }
     }
 
-    private static void deleteFarmWorldForPlayer(UUID playerId, boolean asyncDelete) {
-        String tutorialWorldName = SheepMergeManager.getTutorialWorldName(playerId);
-        deleteFarmWorld(tutorialWorldName, asyncDelete);
+    public static void deleteTransientWorldsForPlayer(UUID playerId, boolean asyncDelete) {
+        if (playerId == null) {
+            return;
+        }
+        deleteWorldByName(SheepFarmWorldCommand.getWorldName(playerId), asyncDelete, true);
+        deleteWorldByName(SheepMergeManager.getTutorialWorldName(playerId), asyncDelete, true);
     }
 
-    private static void deleteFarmWorld(String worldName, boolean asyncDelete) {
+    public static void deleteWorldByName(String worldName, boolean asyncDelete, boolean saveSheepState) {
+        if (worldName == null || worldName.isBlank() || SheepMergeManager.getFarmBuildWorldName().equals(worldName)) {
+            return;
+        }
+        World loadedWorld = Bukkit.getWorld(worldName);
+        if (saveSheepState && loadedWorld != null && SheepMergeManager.isSheepFarmWorld(loadedWorld)) {
+            SheepMergeManager.saveSheepSnapshotForWorld(loadedWorld);
+        }
         unloadWorld(worldName);
 
         File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
@@ -110,12 +124,15 @@ public class SheepFarmWorldCleanupListener implements Listener {
                 () -> deleteWorldFolder(worldName, worldFolder));
     }
 
-    private static boolean isTemporaryTutorialWorldName(String worldName) {
-        return worldName != null && worldName.startsWith("sheeptutorial_");
+    private static boolean isTransientPlayerWorldName(String worldName) {
+        if (worldName == null || SheepMergeManager.getFarmBuildWorldName().equals(worldName)) {
+            return false;
+        }
+        return worldName.startsWith("sheepfarm_") || worldName.startsWith("sheeptutorial_");
     }
 
     private static UUID getTutorialOwnerId(String worldName) {
-        if (!isTemporaryTutorialWorldName(worldName)) {
+        if (worldName == null || !worldName.startsWith("sheeptutorial_")) {
             return null;
         }
         String rawId = worldName.substring("sheeptutorial_".length());
@@ -139,6 +156,13 @@ public class SheepFarmWorldCleanupListener implements Listener {
         if (world != null) {
             Bukkit.unloadWorld(world, false);
         }
+    }
+
+    private static void scheduleBuildWorldSaveCheck() {
+        if (SheepMergePlugin.instance == null) {
+            return;
+        }
+        Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance, SheepMergeManager::saveBuildWorldIfIdle, 1L);
     }
 
     private static void deleteWorldFolder(String worldName, File worldFolder) {
