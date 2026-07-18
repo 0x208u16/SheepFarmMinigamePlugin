@@ -645,13 +645,9 @@ public final class SheepMergeManager {
         long value = negative ? (points == Long.MIN_VALUE ? Long.MAX_VALUE : -points) : points;
         String[] suffixes = { "", "K", "M", "B", "T", "Q", "Qi", "Sx", "Sp", "Oc", "No", "Dc" };
         int suffixIndex = 0;
-        while (value >= 1000L && suffixIndex < suffixes.length - 1) {
+        while (value >= 10000L && suffixIndex < suffixes.length - 1) {
             value /= 1000L;
             suffixIndex++;
-            while (value >= 10000L && suffixIndex < suffixes.length - 1) {
-                value /= 1000L;
-                suffixIndex++;
-            }
         }
         return (negative ? "-" : "") + value + suffixes[suffixIndex];
     }
