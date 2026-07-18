@@ -105,11 +105,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge layout save")
-                + ": open or save the shared farm build world");
+                + ": save the shared farm build world");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge layout load")
                 + ": commit the shared build world to loaded farm worlds");
         player.sendMessage(
-                ChatColor.GRAY + "- " + label("/sheepmerge world save|load") + ": manage the shared farm build world");
+                ChatColor.GRAY + "- " + label("/sheepmerge world") + ": travel to the shared farm build world");
+        player.sendMessage(
+                ChatColor.GRAY + "- " + label("/sheepmerge world save|load")
+                        + ": save or commit the shared farm build world");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata [player]") + ": admin reset a player");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge stats [player]") + ": admin stats view");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge checkpoints [player]") + ": admin points check");
@@ -157,8 +160,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (topic.equalsIgnoreCase("world")) {
             player.sendMessage(ChatColor.DARK_AQUA + "World hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world")
+                    + ": travel to the shared farm build world");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world save")
-                    + ": open or save the shared farm build world");
+                    + ": save the shared farm build world");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge world load")
                     + ": commit the shared build world into all loaded farm worlds");
             return;
@@ -495,6 +500,22 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length == 1 && args[0].equalsIgnoreCase("world")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
+                return true;
+            }
+            World buildWorld = ensureFarmBuildWorld();
+            if (buildWorld == null) {
+                player.sendMessage("Unable to open the farm build world right now.");
+                return true;
+            }
+            buildWorld.setSpawnLocation(0, 101, 0);
+            player.teleport(new Location(buildWorld, 0.5, 101, 0.5));
+            player.sendMessage("Teleported to the shared farm build world.");
+            return true;
+        }
+
         if ((args.length == 2 && args[0].equalsIgnoreCase("layout") && args[1].equalsIgnoreCase("save"))
                 || (args.length == 2 && args[0].equalsIgnoreCase("world") && args[1].equalsIgnoreCase("save"))) {
             if (!player.isOp()) {
@@ -502,14 +523,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             if (!SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
-                World buildWorld = ensureFarmBuildWorld();
-                if (buildWorld == null) {
-                    player.sendMessage("Unable to open the farm build world right now.");
-                    return true;
-                }
-                buildWorld.setSpawnLocation(0, 101, 0);
-                player.teleport(new Location(buildWorld, 0.5, 101, 0.5));
-                player.sendMessage("Teleported to the shared farm build world.");
+                player.sendMessage(
+                        "Use this command while standing in the shared farm build world. Use /sheepmerge world to travel there.");
                 return true;
             }
             player.getWorld().save();
@@ -734,6 +749,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             return filterSuggestions(ROOT_SUBCOMMANDS, args[0]);
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("world")) {
+            return filterSuggestions(WORLD_SUBCOMMANDS, "");
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("world")) {
