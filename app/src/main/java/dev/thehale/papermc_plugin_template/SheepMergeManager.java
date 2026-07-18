@@ -258,12 +258,11 @@ public final class SheepMergeManager {
     private static final int COMBO_MAX_BASE_PRESTIGE_COST = 3;
     private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
     private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
+    private static final long STARTING_PLAYER_POINTS = 1_000L;
     private static final int TUTORIAL_SHEAR_TARGET = 3;
     private static final int TUTORIAL_SPAWN_TARGET = 3;
     private static final int TUTORIAL_MERGE_TARGET = 1;
     private static final int TUTORIAL_MENU_SECTION_TARGET = 8;
-    private static final int TUTORIAL_SHEAR_TASK_REWARD_POINTS = 100;
-    private static final int TUTORIAL_PRESTIGE_PREP_REWARD_POINTS = 500;
     public static final String UPGRADE_MENU_TITLE = "Sheep Merge Upgrades";
     public static final String PRESTIGE_MENU_TITLE = "Prestige Upgrades";
     public static final String QUEST_MENU_TITLE = "Quest Abilities";
@@ -2048,9 +2047,7 @@ public final class SheepMergeManager {
             return;
         }
         tutorialShearTaskRewardGrantedByPlayer.put(playerId, true);
-        addPoints(player, TUTORIAL_SHEAR_TASK_REWARD_POINTS);
-        player.sendMessage(action(
-                "Tutorial reward: +" + formatPoints(TUTORIAL_SHEAR_TASK_REWARD_POINTS) + " points for shearing."));
+        player.sendMessage(action("Tutorial milestone reached: spawn/shear goals complete."));
     }
 
     private static void maybeGrantTutorialPrestigePrepReward(Player player) {
@@ -2076,9 +2073,7 @@ public final class SheepMergeManager {
         }
 
         tutorialPrestigePrepRewardGrantedByPlayer.put(playerId, true);
-        addPoints(player, TUTORIAL_PRESTIGE_PREP_REWARD_POINTS);
-        player.sendMessage(action(
-                "Tutorial reward: +" + TUTORIAL_PRESTIGE_PREP_REWARD_POINTS + " points for reaching prestige prep."));
+        player.sendMessage(action("Tutorial milestone reached: prestige prep complete."));
     }
 
     private enum TutorialStep {
@@ -2199,9 +2194,8 @@ public final class SheepMergeManager {
         if (isTutorialActionAllowed(step, action)) {
             return false;
         }
-        player.sendMessage(warning("You cannot " + attemptedAction + " right now."));
-        player.sendMessage(hint("Current tutorial task: " + getCurrentTutorialTaskLabel(step)));
-        return true;
+        notifyTutorialOffTask(player, attemptedAction, step);
+        return false;
     }
 
     private static boolean blockTutorialMenuPurchase(Player player, TutorialStep requiredStep, String requiredAction) {
@@ -2211,8 +2205,22 @@ public final class SheepMergeManager {
         if (getCurrentTutorialStep(player) == requiredStep) {
             return false;
         }
-        player.sendMessage(warning("Current tutorial task: " + requiredAction));
-        return true;
+        notifyTutorialOffTask(player, requiredAction, getCurrentTutorialStep(player));
+        return false;
+    }
+
+    private static void notifyTutorialOffTask(Player player, String attemptedAction, TutorialStep step) {
+        if (player == null) {
+            return;
+        }
+        String currentTask = getCurrentTutorialTaskLabel(step);
+        if (attemptedAction != null && !attemptedAction.isBlank()) {
+            player.sendMessage(warning("Off-task action: " + attemptedAction));
+        }
+        player.sendMessage(warning("Current tutorial task: " + currentTask));
+        showOverlay(player, warning("Current task: " + currentTask));
+        player.sendTitle(color("&6Tutorial Focus"), color("&e" + currentTask), 0, 40, 8);
+        playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.25f);
     }
 
     private static void sendTutorialStatusFeed(Player player) {
@@ -2377,7 +2385,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID id = player.getUniqueId();
-        pointsByPlayer.put(id, addSaturatedLong(pointsByPlayer.getOrDefault(id, 0L), amount));
+        pointsByPlayer.put(id, addSaturatedLong(getPlayerPoints(player), amount));
         refreshTopPointsDisplays();
         saveData();
     }
@@ -2788,7 +2796,10 @@ public final class SheepMergeManager {
     }
 
     public static long getPlayerPoints(Player player) {
-        return pointsByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        if (player == null) {
+            return 0L;
+        }
+        return pointsByPlayer.getOrDefault(player.getUniqueId(), STARTING_PLAYER_POINTS);
     }
 
     public static int calculateShearPoints(Player player, SheepTier tier) {
@@ -3086,7 +3097,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        pointsByPlayer.put(playerId, addSaturatedLong(pointsByPlayer.getOrDefault(playerId, 0L), points));
+        pointsByPlayer.put(playerId, addSaturatedLong(getPlayerPoints(player), points));
         refreshTopPointsDisplays();
         queuePointsGainOverlay(player, points);
         saveData();
@@ -3609,7 +3620,7 @@ public final class SheepMergeManager {
             return false;
         }
         UUID uuid = player.getUniqueId();
-        long current = pointsByPlayer.getOrDefault(uuid, 0L);
+        long current = getPlayerPoints(player);
         if (current < points) {
             return false;
         }
