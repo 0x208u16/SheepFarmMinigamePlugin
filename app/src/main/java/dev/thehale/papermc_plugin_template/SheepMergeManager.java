@@ -365,7 +365,7 @@ public final class SheepMergeManager {
     public static final int AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT = 23;
     public static final int AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT = 25;
     public static final int AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT = 20;
-    public static final int AUTOMATION_ENABLE_ALL_SLOT = 14;
+    public static final int AUTOMATION_ENABLE_ALL_SLOT = 13;
     public static final int AUTOMATION_DISABLE_ALL_SLOT = 22;
     public static final int AUTOMATION_BACK_TO_UPGRADES_SLOT = 26;
     private static final int FARM_EGG_ITEM_SLOT = 7;
