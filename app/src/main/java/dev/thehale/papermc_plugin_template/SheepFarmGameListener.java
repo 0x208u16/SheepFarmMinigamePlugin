@@ -263,13 +263,18 @@ public class SheepFarmGameListener implements Listener {
                 return;
             }
 
-            int pickedCount = SheepMergeManager.getRainbowMergedCount(pickedSheep);
-            int targetCount = SheepMergeManager.getRainbowMergedCount(targetSheep);
-            long totalCount = (long) pickedCount + targetCount;
-            int mergedCount = totalCount >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalCount;
-            long mergedWoolRegenMs = Math.max(
-                    SheepMergeManager.getRemainingWoolRegenMs(pickedSheep),
-                    SheepMergeManager.getRemainingWoolRegenMs(targetSheep));
+            int pickedRainbowTier = SheepMergeManager.getRainbowTier(pickedSheep);
+            int targetRainbowTier = SheepMergeManager.getRainbowTier(targetSheep);
+            if (pickedRainbowTier != targetRainbowTier) {
+                event.setCancelled(true);
+                player.sendMessage(SheepMergeManager.warning(
+                        "Rainbow sheep tiers must match to merge ("
+                                + SheepMergeManager.formatRainbowTier(pickedRainbowTier)
+                                + " vs " + SheepMergeManager.formatRainbowTier(targetRainbowTier) + ")."));
+                return;
+            }
+            int mergedRainbowTier = Math.max(1, pickedRainbowTier + 1);
+            long mergedWoolRegenMs = SheepMergeManager.getCombinedRemainingWoolRegenMs(pickedSheep, targetSheep);
 
             World world = targetSheep.getWorld();
             org.bukkit.Location spawnLocation = targetSheep.getLocation();
@@ -278,22 +283,26 @@ public class SheepFarmGameListener implements Listener {
 
             Sheep mergedSheep = world.spawn(spawnLocation, Sheep.class);
             SheepMergeManager.setSheepTier(mergedSheep, SheepTier.RAINBOW);
-            SheepMergeManager.setRainbowMergedCount(mergedSheep, mergedCount);
+            SheepMergeManager.setRainbowTier(mergedSheep, mergedRainbowTier);
             SheepMergeManager.initializeMergedSheepAfterMerge(mergedSheep, SheepTier.RAINBOW, mergedWoolRegenMs);
 
             Vector velocity = player.getLocation().getDirection().multiply(0.4).setY(0.2);
             mergedSheep.setVelocity(velocity);
             world.spawnParticle(Particle.VILLAGER_HAPPY, spawnLocation.add(0, 0.5, 0), 15, 0.3, 0.3, 0.3, 0.05);
 
+            if (pickedRainbowTier == 1 && SheepMergeManager.shouldAnnounceTierUnlock(player, SheepTier.RAINBOW)) {
+                SheepMergeManager.announceTierUnlock(player, SheepTier.RAINBOW);
+                SheepMergeManager.markTierUnlockAnnounced(player, SheepTier.RAINBOW);
+            }
             SheepMergeManager.recordSheepMerge(player, carriedTier, 0);
             SheepMergeManager.recordQuestMerge(player);
             SheepMergeManager.recordTutorialMerge(player);
             SheepMergeManager.showOverlay(player, SheepMergeManager.action(
-                    carriedTier.getDisplayName() + " " + SheepMergeManager.formatSheepMergedCount(pickedCount)
+                    carriedTier.getDisplayName() + " " + SheepMergeManager.formatRainbowTier(pickedRainbowTier)
                             + " + " + carriedTier.getDisplayName() + " "
-                            + SheepMergeManager.formatSheepMergedCount(targetCount)
+                            + SheepMergeManager.formatRainbowTier(targetRainbowTier)
                             + " -> " + carriedTier.getDisplayName() + " "
-                            + SheepMergeManager.formatSheepMergedCount(mergedCount)));
+                            + SheepMergeManager.formatRainbowTier(mergedRainbowTier)));
             SheepMergeManager.clearPickedUpSheep(player);
             return;
         }
