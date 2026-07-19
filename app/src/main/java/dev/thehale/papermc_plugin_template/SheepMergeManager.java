@@ -60,6 +60,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> prestigeBaseSpawnTierByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> prestigeQuestRewardByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> highestAnnouncedTierByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> highestAnnouncedRainbowTierByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearShopLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearWoolSaveLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> shearTierBoostLevelByPlayer = new HashMap<>();
@@ -404,35 +405,38 @@ public final class SheepMergeManager {
 
     private static final List<String> GAMEPLAY_TIPS = List.of(
             "&7Use &e/sheepmerge &7to jump straight to your personal farm.",
-            "&7When visiting another farm, use &e/sheepmerge &7to return home instantly.",
-            "&7Run &e/sheepmerge status &7to quickly check your core progression stats.",
-            "&7Open &e/sheepmerge upgrade &7to improve limit, egg speed, wool regen, and spawn chance.",
-            "&7Bigger &eSheep Limit &7means more sheep alive at once and more merge opportunities.",
-            "&7Faster &eEgg Speed &7means spawn eggs are generated more often.",
-            "&7Your egg count is shown in the XP level; XP bar fill shows time to next egg.",
-            "&7Use the egg item in hotbar slot 8 to spawn sheep.",
-            "&7Higher &eWool Regen &7levels regrow wool faster for more shearing.",
-            "&7Upgrade &eHigher-Tier Chance &7to roll better sheep from eggs more often.",
-            "&7Sneak-right-click a sheep to carry it, then right-click the same tier to merge.",
-            "&7Rainbow sheep can merge with rainbow sheep to build bigger stacked shears.",
-            "&7Shearing and merging are your main point engines, so keep both loops active.",
-            "&7Run &e/sheepmerge shop &7to upgrade your shears and improve shear value.",
-            "&7Shear Shop can unlock a chance to keep wool after shearing, so streaks feel smoother.",
-            "&7Shear Shop can also unlock a chance to upgrade sheep by one tier when shearing.",
-            "&7Run &e/sheepmerge prestige &7when ready to reset progress for permanent bonuses.",
+            "&7When visiting another farm, use &e/sheepmerge &7again to return home quickly.",
+            "&7Run &e/sheepmerge status &7to check points, prestige, quests, and combo progress.",
+            "&7Open &e/sheepmerge upgrade &7to boost limit, egg speed, wool regen, and tier chance.",
+            "&7Bigger &eSheep Limit &7means more sheep alive and more merge options at once.",
+            "&7Faster &eEgg Speed &7generates spawn eggs more often for steady farm growth.",
+            "&7Your egg count is your XP level; the XP bar shows time until the next egg.",
+            "&7Use the spawn egg in hotbar slot 8 to place sheep inside your farm.",
+            "&7Higher &eWool Regen &7cuts downtime so sheep become shear-ready faster.",
+            "&7Higher-Tier Chance improves egg rolls, but chance-based upgrades stop before Rainbow.",
+            "&7Sneak-right-click a sheep to carry it, then right-click a same-tier sheep to merge.",
+            "&7Rainbow sheep merge with rainbow sheep to increase &eRainbow Tier&7 infinitely.",
+            "&7Shearing and merging are your core point engines, so keep both loops active.",
+            "&7Run &e/sheepmerge shop &7to improve shearing value and quality-of-life procs.",
+            "&7Wool Keeper gives a chance to keep wool after shearing for smoother cycles.",
+            "&7Tier Booster gives a chance to upgrade sheep by one tier when shearing.",
+            "&7Run &e/sheepmerge prestige &7to reset normal progress for permanent bonuses.",
             "&7Prestige points buy long-term boosts like double points chance and bigger egg cap.",
-            "&7Use prestige upgrades to raise max levels, start with eggs, and improve base spawn tier.",
-            "&7Prestige refund lets you respec spent prestige points when the cooldown is over.",
-            "&7Quest board objectives reset over time. Completing quests awards quest points.",
-            "&7Spend quest points on abilities: &eLucky Burst, Wool Rush, Jackpot Shears, Auto Merge, Auto Shear&7.",
-            "&7Quest upgrades boost ability &eDuration &7and &ePower&7 for stronger activations.",
-            "&7Your farm can be opened or closed with &e/sheepmerge visit -toggle&7.",
+            "&7Higher Maximum Levels raises caps for several upgrade tracks.",
+            "&7Base Spawn Tier can directly unlock higher starting egg results, including Rainbow.",
+            "&7Prestige refund lets you respec spent prestige points after the cooldown.",
+            "&7Quest objectives reset over time, and completions grant quest points.",
+            "&7Quest abilities include Lucky Burst, Wool Rush, Jackpot Shears, Auto Merge, and Auto Shear.",
+            "&7Quest Upgrades improve ability duration and reduce ability point costs.",
+            "&7Automation points are earned over playtime and spent in &eAutomation Upgrades&7.",
+            "&7Automation tracks start disabled by default, so toggle each one on when ready.",
+            "&7Auto Spawn consumes eggs and can be upgraded down to instant spawn checks.",
+            "&7Open or close farm visits with &e/sheepmerge visit -toggle&7.",
             "&7Visit another open farm with &e/sheepmerge visit <player>&7.",
-            "&7If needed, remove visitors from your own farm using &e/sheepmerge kick <player>&7.",
-            "&7Random &eSheep Storm &7events can happen and flood farms with sheep from above.",
-            "&7Random events roll independently each minute, so storms and combo frenzy can overlap.",
-            "&7Combo Frenzy timer appears on your combo boss bar so you can pace merge windows.",
-            "&7Rainbow sheep are legendary. Keep merging to push your tier progression.");
+            "&7Remove visitors from your own farm with &e/sheepmerge kick <player>&7.",
+            "&7Random &eSheep Storm &7events can flood farms with sheep from above.",
+            "&7Combo Frenzy massively boosts combo gain for a short burst window.",
+            "&7Storm and Combo Frenzy roll independently, so both can overlap.");
 
     private SheepMergeManager() {
         throw new UnsupportedOperationException("Utility class");
@@ -1983,9 +1987,10 @@ public final class SheepMergeManager {
                     0.25D,
                     0.02D);
 
-            if (shouldAnnounceTierUnlock(player, mergedTier)) {
-                announceTierUnlock(player, mergedTier);
-                markTierUnlockAnnounced(player, mergedTier);
+            int mergedRainbowTier = mergedTier == SheepTier.RAINBOW ? getRainbowTier(mergedSheep) : 0;
+            if (shouldAnnounceTierUnlock(player, mergedTier, mergedRainbowTier)) {
+                announceTierUnlock(player, mergedTier, mergedRainbowTier);
+                markTierUnlockAnnounced(player, mergedTier, mergedRainbowTier);
             }
             recordSheepMerge(player, tier, woolReadyCount);
             recordQuestMerge(player);
@@ -3232,6 +3237,7 @@ public final class SheepMergeManager {
         prestigeBaseSpawnTierByPlayer.remove(id);
         nextPrestigeRefundTimestampByPlayer.remove(id);
         highestAnnouncedTierByPlayer.remove(id);
+        highestAnnouncedRainbowTierByPlayer.remove(id);
         lastPrestigeReminderTimestampByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
         shearWoolSaveLevelByPlayer.remove(id);
@@ -4350,11 +4356,15 @@ public final class SheepMergeManager {
     }
 
     public static void announceTierUnlock(Player player, SheepTier tier) {
+        announceTierUnlock(player, tier, tier == SheepTier.RAINBOW ? 1 : 0);
+    }
+
+    public static void announceTierUnlock(Player player, SheepTier tier, int rainbowTier) {
         if (player == null || tier == null) {
             return;
         }
 
-        String message = getTierUnlockMessage(player, tier);
+        String message = getTierUnlockMessage(player, tier, rainbowTier);
         if (plugin == null || plugin.getServer() == null) {
             player.sendMessage(message);
         } else {
@@ -4370,28 +4380,50 @@ public final class SheepMergeManager {
     }
 
     public static boolean shouldAnnounceTierUnlock(Player player, SheepTier tier) {
+        return shouldAnnounceTierUnlock(player, tier, tier == SheepTier.RAINBOW ? 1 : 0);
+    }
+
+    public static boolean shouldAnnounceTierUnlock(Player player, SheepTier tier, int rainbowTier) {
         if (player == null || tier == null) {
             return false;
         }
-        int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(player.getUniqueId(),
-                SheepTier.WHITE.getLevel());
-        return tier.getLevel() > highestAnnounced;
+        UUID playerId = player.getUniqueId();
+        int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(playerId, SheepTier.WHITE.getLevel());
+        if (tier.getLevel() > highestAnnounced) {
+            return true;
+        }
+        if (tier != SheepTier.RAINBOW) {
+            return false;
+        }
+        int normalizedRainbowTier = Math.max(1, rainbowTier);
+        int highestRainbowAnnounced = highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0);
+        return normalizedRainbowTier > highestRainbowAnnounced;
     }
 
     public static void markTierUnlockAnnounced(Player player, SheepTier tier) {
+        markTierUnlockAnnounced(player, tier, tier == SheepTier.RAINBOW ? 1 : 0);
+    }
+
+    public static void markTierUnlockAnnounced(Player player, SheepTier tier, int rainbowTier) {
         if (player == null || tier == null) {
             return;
         }
         UUID playerId = player.getUniqueId();
         int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(playerId, SheepTier.WHITE.getLevel());
-        if (tier.getLevel() <= highestAnnounced) {
-            return;
+        if (tier.getLevel() > highestAnnounced) {
+            highestAnnouncedTierByPlayer.put(playerId, tier.getLevel());
         }
-        highestAnnouncedTierByPlayer.put(playerId, tier.getLevel());
+        if (tier == SheepTier.RAINBOW) {
+            int normalizedRainbowTier = Math.max(1, rainbowTier);
+            int highestRainbowAnnounced = highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0);
+            if (normalizedRainbowTier > highestRainbowAnnounced) {
+                highestAnnouncedRainbowTierByPlayer.put(playerId, normalizedRainbowTier);
+            }
+        }
         saveData();
     }
 
-    private static String getTierUnlockMessage(Player player, SheepTier tier) {
+    private static String getTierUnlockMessage(Player player, SheepTier tier, int rainbowTier) {
         String playerName = player.getName() == null || player.getName().isBlank() ? "Someone" : player.getName();
         return switch (tier) {
             case ORANGE -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &6Orange Sheep&7!");
@@ -4409,8 +4441,16 @@ public final class SheepMergeManager {
             case GREEN -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &2Green Sheep&7!");
             case RED -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &cRed Sheep&7!");
             case BLACK -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &8Black Sheep&7!");
-            case RAINBOW -> color(
-                    "&8[&6SheepMerge&8] &e" + playerName + " &7unlocked &dRainbow Sheep&b! &7Legendary tier reached!");
+            case RAINBOW -> {
+                int normalizedRainbowTier = Math.max(1, rainbowTier);
+                if (normalizedRainbowTier <= 1) {
+                    yield color(
+                            "&8[&6SheepMerge&8] &e" + playerName
+                                    + " &7unlocked &dRainbow Sheep&b! &7Legendary tier reached!");
+                }
+                yield color("&8[&6SheepMerge&8] &e" + playerName
+                        + " &7unlocked &dRainbow Tier &fT" + formatPoints(normalizedRainbowTier) + "&7!");
+            }
             default -> color("&8[&6SheepMerge&8] &e" + playerName + " &7unlocked a new tier!");
         };
     }
@@ -4767,7 +4807,8 @@ public final class SheepMergeManager {
         int baseTierLevel = getBaseSpawnTierLevel(world);
         int chosen = Math.min(baseTierLevel, cap);
         int chance = getHigherTierChancePercent(world);
-        while (chosen < cap && RANDOM.nextInt(100) < chance) {
+        int maxChanceTier = Math.min(cap, SheepTier.RAINBOW.getLevel() - 1);
+        while (chosen < maxChanceTier && RANDOM.nextInt(100) < chance) {
             chosen++;
             chance = Math.max(5, chance / 2);
         }
@@ -6020,7 +6061,7 @@ public final class SheepMergeManager {
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
-                "Slow Auto Merge",
+                "Auto Merge",
                 List.of(
                         "Level: " + getAutomationSlowAutoMergeUpgradeLevel(player),
                         "Status: " + (isAutomationSlowAutoMergeEnabled(player) ? "ENABLED" : "DISABLED"),
@@ -6031,7 +6072,7 @@ public final class SheepMergeManager {
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
-                "Slow Auto Shear",
+                "Auto Shear",
                 List.of(
                         "Level: " + getAutomationSlowAutoShearUpgradeLevel(player),
                         "Status: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
@@ -6956,6 +6997,7 @@ public final class SheepMergeManager {
             dataConfig.set("prestigeQuestReward", null);
             dataConfig.set("prestigeRefundCooldown", null);
             dataConfig.set("highestAnnouncedTier", null);
+            dataConfig.set("highestAnnouncedRainbowTier", null);
             dataConfig.set("prestigeExpandFarm", null);
             dataConfig.set("shearShop", null);
             dataConfig.set("shearWoolSave", null);
@@ -7051,6 +7093,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : highestAnnouncedTierByPlayer.entrySet()) {
                 dataConfig.set("highestAnnouncedTier." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : highestAnnouncedRainbowTierByPlayer.entrySet()) {
+                dataConfig.set("highestAnnouncedRainbowTier." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Integer> entry : shearShopLevelByPlayer.entrySet()) {
                 dataConfig.set("shearShop." + entry.getKey().toString(), entry.getValue());
@@ -7370,6 +7415,17 @@ public final class SheepMergeManager {
                     highestAnnouncedTierByPlayer.put(
                             uuid,
                             Math.max(SheepTier.WHITE.getLevel(), Math.min(SheepTier.RAINBOW.getLevel(), loaded)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("highestAnnouncedRainbowTier")) {
+            dataConfig.getConfigurationSection("highestAnnouncedRainbowTier").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    int loaded = dataConfig.getInt("highestAnnouncedRainbowTier." + key, 0);
+                    highestAnnouncedRainbowTierByPlayer.put(uuid, Math.max(0, loaded));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
