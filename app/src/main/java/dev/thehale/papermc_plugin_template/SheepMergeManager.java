@@ -279,7 +279,9 @@ public final class SheepMergeManager {
     private static final int WOOL_REGEN_PERCENT_DISPLAY_DECIMALS = 6;
     private static final int WOOL_REGEN_FACTOR_DISPLAY_DECIMALS = 10;
     private static final double WOOL_REGEN_MAX_REDUCTION_PERCENT = 99.999999D;
-    private static final double WOOL_REGEN_PER_LEVEL_MULTIPLIER = 0.90D;
+    private static final double WOOL_REGEN_COOLDOWN_REDUCTION_PER_LEVEL_PERCENT = 25.0D;
+    private static final double WOOL_REGEN_PER_LEVEL_MULTIPLIER = 1.0D
+            - (WOOL_REGEN_COOLDOWN_REDUCTION_PER_LEVEL_PERCENT / 100.0D);
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -1148,6 +1150,10 @@ public final class SheepMergeManager {
 
     public static boolean isTutorialWorld(World world) {
         return world != null && world.getName().startsWith("sheeptutorial_");
+    }
+
+    private static boolean isOwnedSheepFarmWorld(World world) {
+        return world != null && world.getName().startsWith("sheepfarm_");
     }
 
     public static String getTutorialWorldName(UUID playerId) {
@@ -7411,6 +7417,7 @@ public final class SheepMergeManager {
         if (savedScoreboards.containsKey(player.getUniqueId())) {
             restorePlayerScoreboard(player);
         }
+        player.setPlayerListName(null);
         clearEggTimer(player);
     }
 
@@ -7484,13 +7491,20 @@ public final class SheepMergeManager {
             if (online == null) {
                 continue;
             }
-            if (isSheepFarmWorld(online.getWorld())) {
-                BigInteger points = getPlayerPointsBig(online).max(BigInteger.ZERO);
-                online.setPlayerListName(color("&e" + formatPoints(points) + " &7| &f" + online.getName()));
-            } else {
-                online.setPlayerListName(null);
-            }
+            updateTabListPointsVisibility(online);
         }
+    }
+
+    public static void updateTabListPointsVisibility(Player player) {
+        if (player == null) {
+            return;
+        }
+        if (!isOwnedSheepFarmWorld(player.getWorld())) {
+            player.setPlayerListName(null);
+            return;
+        }
+        BigInteger points = getPlayerPointsBig(player).max(BigInteger.ZERO);
+        player.setPlayerListName(color("&e" + formatPoints(points) + " &7| &f" + player.getName()));
     }
 
     public static void restorePlayerScoreboard(Player player) {

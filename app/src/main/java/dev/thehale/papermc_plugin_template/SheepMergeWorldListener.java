@@ -108,6 +108,7 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.saveData();
             SheepMergeManager.restorePlayerInventory(player);
             SheepMergeManager.restorePlayerScoreboard(player);
+            SheepMergeManager.updateTabListPointsVisibility(player);
             SheepMergeManager.clearEggTimer(player);
             SheepMergeManager.clearPickedUpSheep(player);
             SheepMergeManager.clearMergeReminder(player);
