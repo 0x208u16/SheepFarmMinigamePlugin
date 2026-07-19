@@ -84,6 +84,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastTutorialStatusFeedTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialProgressFeedLineByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialStepFeedLineByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastTutorialFocusNotificationTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastTutorialMergePointsReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
     private static final Map<UUID, List<SheepSnapshot>> savedFarmSheepByPlayer = new HashMap<>();
     private static final Map<UUID, List<SheepSnapshot>> savedTutorialSheepByPlayer = new HashMap<>();
@@ -242,6 +244,8 @@ public final class SheepMergeManager {
     private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
     private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 12_000L;
     private static final long TUTORIAL_STATUS_FEED_REPEAT_MS = 12_000L;
+    private static final long TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS = 5_000L;
+    private static final long TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS = 15_000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -967,6 +971,8 @@ public final class SheepMergeManager {
         lastTutorialStatusFeedTimestampByPlayer.remove(playerId);
         lastTutorialProgressFeedLineByPlayer.remove(playerId);
         lastTutorialStepFeedLineByPlayer.remove(playerId);
+        lastTutorialFocusNotificationTimestampByPlayer.remove(playerId);
+        lastTutorialMergePointsReminderTimestampByPlayer.remove(playerId);
     }
 
     private static void resetTutorialProgress(UUID playerId) {
@@ -1093,6 +1099,7 @@ public final class SheepMergeManager {
 
         long now = System.currentTimeMillis();
         tickTutorialTaskTitle(player, now);
+        maybeSendTutorialMergePointsReminder(player, now);
         tutorialStartedAtByPlayer.putIfAbsent(playerId, now);
         long startedAt = tutorialStartedAtByPlayer.getOrDefault(playerId, now);
         if (now - startedAt < TUTORIAL_REMINDER_DELAY_MS) {
@@ -2338,6 +2345,82 @@ public final class SheepMergeManager {
         };
     }
 
+    private static long getTutorialStepRequiredPoints(Player player, TutorialStep step) {
+        if (player == null || step == null) {
+            return -1L;
+        }
+        return switch (step) {
+            case BUY_REGULAR_UPGRADE -> getMinimumRegularUpgradeCost(player);
+            case BUY_SHEAR_UPGRADE -> getMinimumShearUpgradeCost(player);
+            case PRESTIGE_ONCE -> getPrestigeCost(player);
+            default -> -1L;
+        };
+    }
+
+    private static long getMinimumRegularUpgradeCost(Player player) {
+        if (player == null) {
+            return -1L;
+        }
+        long minimum = Long.MAX_VALUE;
+        if (getPlayerLimit(player) < MAX_SHEEP_LIMIT) {
+            minimum = Math.min(minimum, getUpgradeCost(player));
+        }
+        if (getEggSpeedLevel(player) < getEggSpeedMaxLevel(player)) {
+            minimum = Math.min(minimum, getEggSpeedUpgradeCost(player));
+        }
+        if (getWoolRegenLevel(player) < getWoolRegenMaxLevel(player)) {
+            minimum = Math.min(minimum, getWoolRegenUpgradeCost(player));
+        }
+        if (getHigherTierChanceLevel(player) < getHigherTierChanceMaxLevel(player)) {
+            minimum = Math.min(minimum, getHigherTierChanceUpgradeCost(player));
+        }
+        return minimum == Long.MAX_VALUE ? -1L : minimum;
+    }
+
+    private static long getMinimumShearUpgradeCost(Player player) {
+        if (player == null) {
+            return -1L;
+        }
+        long minimum = Long.MAX_VALUE;
+        minimum = Math.min(minimum, getShearUpgradeCost(player));
+        if (getShearWoolSaveLevel(player) < SHEAR_WOOL_SAVE_MAX_LEVEL) {
+            minimum = Math.min(minimum, getShearWoolSaveUpgradeCost(player));
+        }
+        if (getShearTierBoostLevel(player) < SHEAR_TIER_BOOST_MAX_LEVEL) {
+            minimum = Math.min(minimum, getShearTierBoostUpgradeCost(player));
+        }
+        return minimum == Long.MAX_VALUE ? -1L : minimum;
+    }
+
+    private static void maybeSendTutorialMergePointsReminder(Player player, long now) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        TutorialStep step = getCurrentTutorialStep(player);
+        long requiredPoints = getTutorialStepRequiredPoints(player, step);
+        if (requiredPoints <= 0L) {
+            return;
+        }
+
+        long currentPoints = getPlayerPoints(player);
+        if (currentPoints >= requiredPoints) {
+            return;
+        }
+
+        long lastReminder = lastTutorialMergePointsReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastReminder < TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS) {
+            return;
+        }
+
+        long missing = requiredPoints - currentPoints;
+        String taskLabel = getCurrentTutorialTaskLabel(step);
+        lastTutorialMergePointsReminderTimestampByPlayer.put(playerId, now);
+        player.sendMessage(warning("Current tutorial task needs " + formatPoints(requiredPoints)
+                + " points (" + formatPoints(missing) + " more)."));
+        player.sendMessage(hint("Merge sheep to earn points faster, then complete: " + taskLabel + "."));
+    }
+
     private static boolean isTutorialActionAllowed(TutorialStep step, TutorialAction action) {
         if (step == TutorialStep.COMPLETE) {
             return true;
@@ -2387,6 +2470,14 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long lastShownAt = lastTutorialFocusNotificationTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastShownAt < TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS) {
+            return;
+        }
+
+        lastTutorialFocusNotificationTimestampByPlayer.put(playerId, now);
         String currentTask = getCurrentTutorialTaskLabel(step);
         if (attemptedAction != null && !attemptedAction.isBlank()) {
             player.sendMessage(warning("Off-task action: " + attemptedAction));
