@@ -494,54 +494,58 @@ public final class SheepMergeManager {
         if (minY >= maxY) {
             return false;
         }
-        for (org.bukkit.Chunk chunk : sourceWorld.getLoadedChunks()) {
-            int chunkX = chunk.getX();
-            int chunkZ = chunk.getZ();
-            if (!isFarmChunk(chunkX, chunkZ)) {
-                continue;
-            }
-            String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
-            farmLayoutConfig.set(chunkPath + ".x", chunkX);
-            farmLayoutConfig.set(chunkPath + ".z", chunkZ);
+        int minChunkX = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxChunkX = Math.floorDiv(FARM_MAX_XZ, 16);
+        int minChunkZ = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxChunkZ = Math.floorDiv(FARM_MAX_XZ, 16);
 
-            List<String> palette = new ArrayList<>();
-            Map<String, Integer> paletteIndices = new HashMap<>();
-            StringBuilder encodedRuns = new StringBuilder();
-            int previousPaletteIndex = -1;
-            int runLength = 0;
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                sourceWorld.getChunkAt(chunkX, chunkZ);
 
-            for (int y = minY; y < maxY; y++) {
-                for (int localX = 0; localX < 16; localX++) {
-                    for (int localZ = 0; localZ < 16; localZ++) {
-                        int worldX = (chunkX << 4) + localX;
-                        int worldZ = (chunkZ << 4) + localZ;
-                        String serializedBlockData = sourceWorld.getBlockAt(worldX, y, worldZ)
-                                .getBlockData()
-                                .getAsString();
+                String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
+                farmLayoutConfig.set(chunkPath + ".x", chunkX);
+                farmLayoutConfig.set(chunkPath + ".z", chunkZ);
 
-                        Integer paletteIndex = paletteIndices.get(serializedBlockData);
-                        if (paletteIndex == null) {
-                            paletteIndex = palette.size();
-                            palette.add(serializedBlockData);
-                            paletteIndices.put(serializedBlockData, paletteIndex);
-                        }
+                List<String> palette = new ArrayList<>();
+                Map<String, Integer> paletteIndices = new HashMap<>();
+                StringBuilder encodedRuns = new StringBuilder();
+                int previousPaletteIndex = -1;
+                int runLength = 0;
 
-                        if (paletteIndex == previousPaletteIndex) {
-                            runLength++;
-                        } else {
-                            appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
-                            previousPaletteIndex = paletteIndex;
-                            runLength = 1;
+                for (int y = minY; y < maxY; y++) {
+                    for (int localX = 0; localX < 16; localX++) {
+                        for (int localZ = 0; localZ < 16; localZ++) {
+                            int worldX = (chunkX << 4) + localX;
+                            int worldZ = (chunkZ << 4) + localZ;
+                            String serializedBlockData = sourceWorld.getBlockAt(worldX, y, worldZ)
+                                    .getBlockData()
+                                    .getAsString();
+
+                            Integer paletteIndex = paletteIndices.get(serializedBlockData);
+                            if (paletteIndex == null) {
+                                paletteIndex = palette.size();
+                                palette.add(serializedBlockData);
+                                paletteIndices.put(serializedBlockData, paletteIndex);
+                            }
+
+                            if (paletteIndex == previousPaletteIndex) {
+                                runLength++;
+                            } else {
+                                appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
+                                previousPaletteIndex = paletteIndex;
+                                runLength = 1;
+                            }
                         }
                     }
                 }
-            }
 
-            appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
-            farmLayoutConfig.set(chunkPath + ".format", "rle-v1");
-            farmLayoutConfig.set(chunkPath + ".palette", palette);
-            farmLayoutConfig.set(chunkPath + ".data", encodedRuns.toString());
-            farmLayoutConfig.set(chunkPath + ".height", maxY - minY);
+                appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
+                farmLayoutConfig.set(chunkPath + ".format", "rle-v1");
+                farmLayoutConfig.set(chunkPath + ".palette", palette);
+                farmLayoutConfig.set(chunkPath + ".data", encodedRuns.toString());
+                farmLayoutConfig.set(chunkPath + ".height", maxY - minY);
+            }
         }
         return saveFarmLayout();
     }
