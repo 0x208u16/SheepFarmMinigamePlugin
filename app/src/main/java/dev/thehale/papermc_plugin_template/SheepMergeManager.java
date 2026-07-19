@@ -6793,8 +6793,6 @@ public final class SheepMergeManager {
         Scoreboard scoreboard = player.getServer().getScoreboardManager().getNewScoreboard();
         Objective objective = scoreboard.registerNewObjective("sheepmerge_points", "dummy", "Sheep Merge Points");
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-        Objective playerListObjective = scoreboard.registerNewObjective("sheepmerge_list_points", "dummy", "Points");
-        playerListObjective.setDisplaySlot(DisplaySlot.PLAYER_LIST);
         renderPointsScoreboard(player, scoreboard, objective);
         player.setScoreboard(scoreboard);
     }
@@ -6845,23 +6843,15 @@ public final class SheepMergeManager {
         objective.getScore(getAbilityScoreLine("Merge", activeAutoMergeUntilByPlayer, playerId)).setScore(2);
         objective.getScore(getAbilityScoreLine("Shear", activeAutoShearUntilByPlayer, playerId)).setScore(1);
 
-        Objective playerListObjective = scoreboard.getObjective("sheepmerge_list_points");
-        if (playerListObjective != null) {
-            for (Player online : Bukkit.getOnlinePlayers()) {
-                if (online == null) {
-                    continue;
-                }
-                if (isSheepFarmWorld(online.getWorld())) {
-                    BigInteger points = getPlayerPointsBig(online).max(BigInteger.ZERO);
-                    int listValue = points.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0
-                            ? Integer.MAX_VALUE
-                            : points.intValue();
-                    playerListObjective.getScore(online.getName()).setScore(listValue);
-                    online.setPlayerListName(color("&e" + formatPoints(points) + " &7| &f" + online.getName()));
-                } else {
-                    scoreboard.resetScores(online.getName());
-                    online.setPlayerListName(null);
-                }
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null) {
+                continue;
+            }
+            if (isSheepFarmWorld(online.getWorld())) {
+                BigInteger points = getPlayerPointsBig(online).max(BigInteger.ZERO);
+                online.setPlayerListName(color("&e" + formatPoints(points) + " &7| &f" + online.getName()));
+            } else {
+                online.setPlayerListName(null);
             }
         }
     }
