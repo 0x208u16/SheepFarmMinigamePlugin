@@ -365,6 +365,8 @@ public final class SheepMergeManager {
     public static final int AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT = 23;
     public static final int AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT = 25;
     public static final int AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT = 20;
+    public static final int AUTOMATION_ENABLE_ALL_SLOT = 18;
+    public static final int AUTOMATION_DISABLE_ALL_SLOT = 22;
     public static final int AUTOMATION_BACK_TO_UPGRADES_SLOT = 26;
     private static final int FARM_EGG_ITEM_SLOT = 7;
 
@@ -2267,6 +2269,68 @@ public final class SheepMergeManager {
         enabledMap.put(playerId, next);
         saveData();
         return next;
+    }
+
+    private static int getUnlockedAutomationCount(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int count = 0;
+        if (getAutomationAutoBuyUpgradeLevel(player) > 0) {
+            count++;
+        }
+        if (getAutomationAutoAbilityUpgradeLevel(player) > 0) {
+            count++;
+        }
+        if (getAutomationSlowAutoMergeUpgradeLevel(player) > 0) {
+            count++;
+        }
+        if (getAutomationSlowAutoShearUpgradeLevel(player) > 0) {
+            count++;
+        }
+        if (getAutomationAutoSpawnUpgradeLevel(player) > 0) {
+            count++;
+        }
+        return count;
+    }
+
+    private static int setAllAutomationsEnabled(Player player, boolean enabled) {
+        if (player == null) {
+            return 0;
+        }
+        UUID playerId = player.getUniqueId();
+        int changed = 0;
+
+        if (getAutomationAutoBuyUpgradeLevel(player) > 0
+                && automationAutoBuyEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
+            automationAutoBuyEnabledByPlayer.put(playerId, enabled);
+            changed++;
+        }
+        if (getAutomationAutoAbilityUpgradeLevel(player) > 0
+                && automationAutoAbilityEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
+            automationAutoAbilityEnabledByPlayer.put(playerId, enabled);
+            changed++;
+        }
+        if (getAutomationSlowAutoMergeUpgradeLevel(player) > 0
+                && automationSlowAutoMergeEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
+            automationSlowAutoMergeEnabledByPlayer.put(playerId, enabled);
+            changed++;
+        }
+        if (getAutomationSlowAutoShearUpgradeLevel(player) > 0
+                && automationSlowAutoShearEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
+            automationSlowAutoShearEnabledByPlayer.put(playerId, enabled);
+            changed++;
+        }
+        if (getAutomationAutoSpawnUpgradeLevel(player) > 0
+                && automationAutoSpawnEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
+            automationAutoSpawnEnabledByPlayer.put(playerId, enabled);
+            changed++;
+        }
+
+        if (changed > 0) {
+            saveData();
+        }
+        return changed;
     }
 
     private static BigInteger getComboDecayUpgradeCost(Player player) {
@@ -6128,6 +6192,23 @@ public final class SheepMergeManager {
                         "Current: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
                         getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
 
+        int unlockedAutomations = getUnlockedAutomationCount(player);
+        inventory.setItem(AUTOMATION_ENABLE_ALL_SLOT, MenuItemFactory.create(
+                Material.LIME_DYE,
+                "Enable All",
+                List.of(
+                        "Unlocked: " + unlockedAutomations + " / 5",
+                        unlockedAutomations > 0 ? "Click to enable unlocked automations"
+                                : "Unlock an automation first")));
+
+        inventory.setItem(AUTOMATION_DISABLE_ALL_SLOT, MenuItemFactory.create(
+                Material.GRAY_DYE,
+                "Disable All",
+                List.of(
+                        "Unlocked: " + unlockedAutomations + " / 5",
+                        unlockedAutomations > 0 ? "Click to disable unlocked automations"
+                                : "Unlock an automation first")));
+
         inventory.setItem(AUTOMATION_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
@@ -6223,6 +6304,26 @@ public final class SheepMergeManager {
                 }
                 boolean enabled = toggleAutomationEnabled(player, automationAutoSpawnEnabledByPlayer);
                 player.sendMessage(action("Auto Spawn " + (enabled ? "enabled" : "disabled") + "."));
+            }
+            case AUTOMATION_ENABLE_ALL_SLOT -> {
+                int unlocked = getUnlockedAutomationCount(player);
+                if (unlocked <= 0) {
+                    player.sendMessage(warning("Unlock at least one automation first."));
+                    break;
+                }
+                int changed = setAllAutomationsEnabled(player, true);
+                player.sendMessage(action(changed > 0 ? "Enabled all unlocked automations."
+                        : "All unlocked automations are already enabled."));
+            }
+            case AUTOMATION_DISABLE_ALL_SLOT -> {
+                int unlocked = getUnlockedAutomationCount(player);
+                if (unlocked <= 0) {
+                    player.sendMessage(warning("Unlock at least one automation first."));
+                    break;
+                }
+                int changed = setAllAutomationsEnabled(player, false);
+                player.sendMessage(action(changed > 0 ? "Disabled all unlocked automations."
+                        : "All unlocked automations are already disabled."));
             }
             default -> {
                 return;
@@ -6686,9 +6787,46 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        woolRegenLevelByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        int newLevel = currentLevel + 1;
+        woolRegenLevelByPlayer.put(player.getUniqueId(), newLevel);
+        applyWoolRegenReductionToActiveCooldowns(player, currentLevel, newLevel);
         saveData();
         return true;
+    }
+
+    private static void applyWoolRegenReductionToActiveCooldowns(Player player, int oldLevel, int newLevel) {
+        if (player == null || plugin == null || newLevel <= oldLevel) {
+            return;
+        }
+
+        double oldMultiplier = Math.pow(0.75D, Math.max(0, oldLevel));
+        double newMultiplier = Math.pow(0.75D, Math.max(0, newLevel));
+        if (oldMultiplier <= 0.0D || newMultiplier >= oldMultiplier) {
+            return;
+        }
+
+        double ratio = newMultiplier / oldMultiplier;
+        long now = System.currentTimeMillis();
+        UUID ownerId = player.getUniqueId();
+
+        for (World world : plugin.getServer().getWorlds()) {
+            if (!isSheepFarmWorld(world) || !ownerId.equals(getOwnerId(world))) {
+                continue;
+            }
+            for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+                if (sheep == null || !sheep.isValid() || sheep.isDead() || !sheep.isSheared()) {
+                    continue;
+                }
+                long nextEatAt = getNextEatTimestamp(sheep);
+                if (nextEatAt <= now) {
+                    continue;
+                }
+                long remaining = nextEatAt - now;
+                long reducedRemaining = Math.max(1L, (long) Math.ceil(remaining * ratio));
+                setNextEatTimestamp(sheep, now + reducedRemaining);
+                updateSheepName(sheep);
+            }
+        }
     }
 
     private static boolean upgradeHigherTierChance(Player player) {
