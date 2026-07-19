@@ -279,6 +279,7 @@ public final class SheepMergeManager {
     private static final int WOOL_REGEN_PERCENT_DISPLAY_DECIMALS = 6;
     private static final int WOOL_REGEN_FACTOR_DISPLAY_DECIMALS = 10;
     private static final double WOOL_REGEN_MAX_REDUCTION_PERCENT = 99.999999D;
+    private static final double WOOL_REGEN_PER_LEVEL_MULTIPLIER = 0.90D;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -3624,7 +3625,7 @@ public final class SheepMergeManager {
             return baseSeconds;
         }
         int regenLevel = getWoolRegenLevel(sheep.getWorld());
-        double multiplier = Math.pow(0.75, regenLevel);
+        double multiplier = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, regenLevel);
         UUID ownerId = getOwnerId(sheep.getWorld());
         if (isAbilityActive(activeWoolRushUntilByPlayer, ownerId)) {
             int power = ownerId == null ? 0 : questUpgradePowerByPlayer.getOrDefault(ownerId, 0);
@@ -7197,8 +7198,8 @@ public final class SheepMergeManager {
             return;
         }
 
-        double oldMultiplier = Math.pow(0.75D, Math.max(0, oldLevel));
-        double newMultiplier = Math.pow(0.75D, Math.max(0, newLevel));
+        double oldMultiplier = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, Math.max(0, oldLevel));
+        double newMultiplier = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, Math.max(0, newLevel));
         if (oldMultiplier <= 0.0D || newMultiplier >= oldMultiplier) {
             return;
         }
@@ -7261,7 +7262,7 @@ public final class SheepMergeManager {
     }
 
     private static double getWoolCooldownFactorAtLevel(int level) {
-        double factor = Math.pow(0.75D, Math.max(0, level));
+        double factor = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, Math.max(0, level));
         if (!Double.isFinite(factor) || factor <= 0.0D) {
             return (100.0D - WOOL_REGEN_MAX_REDUCTION_PERCENT) / 100.0D;
         }
