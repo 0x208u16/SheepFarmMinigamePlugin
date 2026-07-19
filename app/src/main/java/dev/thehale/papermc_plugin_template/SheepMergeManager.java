@@ -5768,8 +5768,8 @@ public final class SheepMergeManager {
                 "Faster Wool Regen",
                 List.of(
                         "Level: " + woolLevel + " / " + woolMaxLevel,
-                        "Current: " + woolCurrentCooldownPercent + "% cooldown (" + woolCurrentReductionPercent
-                                + "% faster, x" + woolCurrentFactor + ")",
+                        "Current: " + woolCurrentReductionPercent + "% reduced + " + "(duration * " + woolCurrentFactor
+                                + ")",
                         woolLevel >= woolMaxLevel
                                 ? "Next: MAXED"
                                 : "Next: " + woolCurrentCooldownPercent + "% -> " + woolNextCooldownPercent
