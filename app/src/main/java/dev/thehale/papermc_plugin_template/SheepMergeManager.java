@@ -2478,6 +2478,9 @@ public final class SheepMergeManager {
         if (level <= 0) {
             return AUTOMATION_AUTO_SPAWN_BASE_INTERVAL_MS;
         }
+        if (level >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL) {
+            return 0L;
+        }
         long reduced = AUTOMATION_AUTO_SPAWN_BASE_INTERVAL_MS
                 - (long) level * Math.max(1L, AUTOMATION_AUTO_SPAWN_INTERVAL_STEP_MS);
         return Math.max(Math.max(0L, AUTOMATION_AUTO_SPAWN_MIN_INTERVAL_MS), reduced);
