@@ -124,6 +124,10 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> automationAutoAbilityUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> automationSlowAutoMergeUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> automationSlowAutoShearUpgradeByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> automationAutoBuyEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> automationAutoAbilityEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> automationSlowAutoMergeEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> automationSlowAutoShearEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutomationPointAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutomationAutoBuyAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutomationAutoAbilityAtByPlayer = new HashMap<>();
@@ -347,6 +351,10 @@ public final class SheepMergeManager {
     public static final int AUTOMATION_AUTO_ABILITY_SLOT = 12;
     public static final int AUTOMATION_SLOW_AUTO_MERGE_SLOT = 14;
     public static final int AUTOMATION_SLOW_AUTO_SHEAR_SLOT = 16;
+    public static final int AUTOMATION_AUTO_BUY_TOGGLE_SLOT = 19;
+    public static final int AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT = 21;
+    public static final int AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT = 23;
+    public static final int AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT = 25;
     public static final int AUTOMATION_BACK_TO_UPGRADES_SLOT = 26;
     private static final int FARM_EGG_ITEM_SLOT = 7;
 
@@ -1390,11 +1398,17 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationSystems(Player player, UUID playerId, long now) {
-        tickAutomationPointGain(player, playerId, now);
         tickAutomationAutoBuy(player, playerId, now);
         tickAutomationAutoAbility(player, playerId, now);
         tickAutomationSlowMerge(player, playerId, now);
         tickAutomationSlowShear(player, playerId, now);
+    }
+
+    public static void tickAutomationPlaytimePoints(Player player) {
+        if (player == null) {
+            return;
+        }
+        tickAutomationPointGain(player, player.getUniqueId(), System.currentTimeMillis());
     }
 
     private static void tickAutomationPointGain(Player player, UUID playerId, long now) {
@@ -1415,7 +1429,8 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationAutoBuy(Player player, UUID playerId, long now) {
-        if (getAutomationAutoBuyUpgradeLevel(player) <= 0 || AUTOMATION_AUTO_BUY_INTERVAL_MS <= 0L) {
+        if (getAutomationAutoBuyUpgradeLevel(player) <= 0 || AUTOMATION_AUTO_BUY_INTERVAL_MS <= 0L
+                || !isAutomationAutoBuyEnabled(player)) {
             return;
         }
         long nextAt = nextAutomationAutoBuyAtByPlayer.getOrDefault(playerId, 0L);
@@ -1430,7 +1445,8 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationAutoAbility(Player player, UUID playerId, long now) {
-        if (getAutomationAutoAbilityUpgradeLevel(player) <= 0 || AUTOMATION_AUTO_ABILITY_INTERVAL_MS <= 0L) {
+        if (getAutomationAutoAbilityUpgradeLevel(player) <= 0 || AUTOMATION_AUTO_ABILITY_INTERVAL_MS <= 0L
+                || !isAutomationAutoAbilityEnabled(player)) {
             return;
         }
         long nextAt = nextAutomationAutoAbilityAtByPlayer.getOrDefault(playerId, 0L);
@@ -1445,7 +1461,8 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationSlowMerge(Player player, UUID playerId, long now) {
-        if (getAutomationSlowAutoMergeUpgradeLevel(player) <= 0 || AUTOMATION_SLOW_AUTO_MERGE_INTERVAL_MS <= 0L) {
+        if (getAutomationSlowAutoMergeUpgradeLevel(player) <= 0 || AUTOMATION_SLOW_AUTO_MERGE_INTERVAL_MS <= 0L
+                || !isAutomationSlowAutoMergeEnabled(player)) {
             return;
         }
         long nextAt = nextAutomationSlowMergeAtByPlayer.getOrDefault(playerId, 0L);
@@ -1460,7 +1477,8 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationSlowShear(Player player, UUID playerId, long now) {
-        if (getAutomationSlowAutoShearUpgradeLevel(player) <= 0 || AUTOMATION_SLOW_AUTO_SHEAR_INTERVAL_MS <= 0L) {
+        if (getAutomationSlowAutoShearUpgradeLevel(player) <= 0 || AUTOMATION_SLOW_AUTO_SHEAR_INTERVAL_MS <= 0L
+                || !isAutomationSlowAutoShearEnabled(player)) {
             return;
         }
         long nextAt = nextAutomationSlowShearAtByPlayer.getOrDefault(playerId, 0L);
@@ -2161,6 +2179,33 @@ public final class SheepMergeManager {
 
     public static int getAutomationSlowAutoShearUpgradeLevel(Player player) {
         return player == null ? 0 : automationSlowAutoShearUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static boolean isAutomationAutoBuyEnabled(Player player) {
+        return player != null && automationAutoBuyEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static boolean isAutomationAutoAbilityEnabled(Player player) {
+        return player != null && automationAutoAbilityEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static boolean isAutomationSlowAutoMergeEnabled(Player player) {
+        return player != null && automationSlowAutoMergeEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static boolean isAutomationSlowAutoShearEnabled(Player player) {
+        return player != null && automationSlowAutoShearEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    private static boolean toggleAutomationEnabled(Player player, Map<UUID, Boolean> enabledMap) {
+        if (player == null || enabledMap == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        boolean next = !enabledMap.getOrDefault(playerId, true);
+        enabledMap.put(playerId, next);
+        saveData();
+        return next;
     }
 
     private static int getComboDecayUpgradeCost(Player player) {
@@ -3130,6 +3175,10 @@ public final class SheepMergeManager {
         automationAutoAbilityUpgradeByPlayer.remove(id);
         automationSlowAutoMergeUpgradeByPlayer.remove(id);
         automationSlowAutoShearUpgradeByPlayer.remove(id);
+        automationAutoBuyEnabledByPlayer.remove(id);
+        automationAutoAbilityEnabledByPlayer.remove(id);
+        automationSlowAutoMergeEnabledByPlayer.remove(id);
+        automationSlowAutoShearEnabledByPlayer.remove(id);
         nextAutomationPointAtByPlayer.remove(id);
         nextAutomationAutoBuyAtByPlayer.remove(id);
         nextAutomationAutoAbilityAtByPlayer.remove(id);
@@ -5852,36 +5901,72 @@ public final class SheepMergeManager {
                 "Auto Buy Upgrades",
                 List.of(
                         "Level: " + getAutomationAutoBuyUpgradeLevel(player),
+                        "Status: " + (isAutomationAutoBuyEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_AUTO_BUY_INTERVAL_MS),
                         "Cost: " + formatPoints(getAutomationAutoBuyUpgradeCost(player)) + " automation points",
-                        "Buys one affordable upgrade")));
+                        "Buys one affordable upgrade",
+                        "Click: upgrade")));
 
         inventory.setItem(AUTOMATION_AUTO_ABILITY_SLOT, MenuItemFactory.create(
                 Material.BREWING_STAND,
                 "Auto Activate Abilities",
                 List.of(
                         "Level: " + getAutomationAutoAbilityUpgradeLevel(player),
+                        "Status: " + (isAutomationAutoAbilityEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS),
                         "Cost: " + formatPoints(getAutomationAutoAbilityUpgradeCost(player)) + " automation points",
-                        "Activates non-active quest abilities")));
+                        "Activates non-active quest abilities",
+                        "Click: upgrade")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
                 "Slow Auto Merge",
                 List.of(
                         "Level: " + getAutomationSlowAutoMergeUpgradeLevel(player),
+                        "Status: " + (isAutomationSlowAutoMergeEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_SLOW_AUTO_MERGE_INTERVAL_MS),
                         "Cost: " + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player)) + " automation points",
-                        "Slower passive auto-merge")));
+                        "Slower passive auto-merge",
+                        "Click: upgrade")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
                 "Slow Auto Shear",
                 List.of(
                         "Level: " + getAutomationSlowAutoShearUpgradeLevel(player),
+                        "Status: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_SLOW_AUTO_SHEAR_INTERVAL_MS),
                         "Cost: " + formatPoints(getAutomationSlowAutoShearUpgradeCost(player)) + " automation points",
-                        "Slower passive auto-shear")));
+                        "Slower passive auto-shear",
+                        "Click: upgrade")));
+
+        inventory.setItem(AUTOMATION_AUTO_BUY_TOGGLE_SLOT, MenuItemFactory.create(
+                Material.LEVER,
+                "Toggle Auto Buy",
+                List.of(
+                        "Current: " + (isAutomationAutoBuyEnabled(player) ? "ENABLED" : "DISABLED"),
+                        getAutomationAutoBuyUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+
+        inventory.setItem(AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT, MenuItemFactory.create(
+                Material.LEVER,
+                "Toggle Auto Ability",
+                List.of(
+                        "Current: " + (isAutomationAutoAbilityEnabled(player) ? "ENABLED" : "DISABLED"),
+                        getAutomationAutoAbilityUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+
+        inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT, MenuItemFactory.create(
+                Material.LEVER,
+                "Toggle Slow Auto Merge",
+                List.of(
+                        "Current: " + (isAutomationSlowAutoMergeEnabled(player) ? "ENABLED" : "DISABLED"),
+                        getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+
+        inventory.setItem(AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT, MenuItemFactory.create(
+                Material.LEVER,
+                "Toggle Slow Auto Shear",
+                List.of(
+                        "Current: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
+                        getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
 
         inventory.setItem(AUTOMATION_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -5932,6 +6017,38 @@ public final class SheepMergeManager {
             case AUTOMATION_BACK_TO_UPGRADES_SLOT -> {
                 openUpgradeMenu(player);
                 return;
+            }
+            case AUTOMATION_AUTO_BUY_TOGGLE_SLOT -> {
+                if (getAutomationAutoBuyUpgradeLevel(player) <= 0) {
+                    player.sendMessage(warning("Buy Auto Buy level 1 first."));
+                    break;
+                }
+                boolean enabled = toggleAutomationEnabled(player, automationAutoBuyEnabledByPlayer);
+                player.sendMessage(action("Auto Buy " + (enabled ? "enabled" : "disabled") + "."));
+            }
+            case AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT -> {
+                if (getAutomationAutoAbilityUpgradeLevel(player) <= 0) {
+                    player.sendMessage(warning("Buy Auto Ability level 1 first."));
+                    break;
+                }
+                boolean enabled = toggleAutomationEnabled(player, automationAutoAbilityEnabledByPlayer);
+                player.sendMessage(action("Auto Ability " + (enabled ? "enabled" : "disabled") + "."));
+            }
+            case AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT -> {
+                if (getAutomationSlowAutoMergeUpgradeLevel(player) <= 0) {
+                    player.sendMessage(warning("Buy Slow Auto Merge level 1 first."));
+                    break;
+                }
+                boolean enabled = toggleAutomationEnabled(player, automationSlowAutoMergeEnabledByPlayer);
+                player.sendMessage(action("Slow Auto Merge " + (enabled ? "enabled" : "disabled") + "."));
+            }
+            case AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT -> {
+                if (getAutomationSlowAutoShearUpgradeLevel(player) <= 0) {
+                    player.sendMessage(warning("Buy Slow Auto Shear level 1 first."));
+                    break;
+                }
+                boolean enabled = toggleAutomationEnabled(player, automationSlowAutoShearEnabledByPlayer);
+                player.sendMessage(action("Slow Auto Shear " + (enabled ? "enabled" : "disabled") + "."));
             }
             default -> {
                 return;
@@ -6622,8 +6739,10 @@ public final class SheepMergeManager {
                             ? Integer.MAX_VALUE
                             : points.intValue();
                     playerListObjective.getScore(online.getName()).setScore(listValue);
+                    online.setPlayerListName(color("&e" + formatPoints(points) + " &7| &f" + online.getName()));
                 } else {
                     scoreboard.resetScores(online.getName());
+                    online.setPlayerListName(null);
                 }
             }
         }
@@ -6737,6 +6856,10 @@ public final class SheepMergeManager {
             dataConfig.set("automationAutoAbility", null);
             dataConfig.set("automationSlowAutoMerge", null);
             dataConfig.set("automationSlowAutoShear", null);
+            dataConfig.set("automationAutoBuyEnabled", null);
+            dataConfig.set("automationAutoAbilityEnabled", null);
+            dataConfig.set("automationSlowAutoMergeEnabled", null);
+            dataConfig.set("automationSlowAutoShearEnabled", null);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
@@ -6886,6 +7009,18 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : automationSlowAutoShearUpgradeByPlayer.entrySet()) {
                 dataConfig.set("automationSlowAutoShear." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : automationAutoBuyEnabledByPlayer.entrySet()) {
+                dataConfig.set("automationAutoBuyEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : automationAutoAbilityEnabledByPlayer.entrySet()) {
+                dataConfig.set("automationAutoAbilityEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : automationSlowAutoMergeEnabledByPlayer.entrySet()) {
+                dataConfig.set("automationSlowAutoMergeEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : automationSlowAutoShearEnabledByPlayer.entrySet()) {
+                dataConfig.set("automationSlowAutoShearEnabled." + entry.getKey().toString(), entry.getValue());
             }
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
@@ -7415,6 +7550,50 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     automationSlowAutoShearUpgradeByPlayer.put(uuid,
                             Math.max(0, dataConfig.getInt("automationSlowAutoShear." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("automationAutoBuyEnabled")) {
+            dataConfig.getConfigurationSection("automationAutoBuyEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    automationAutoBuyEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("automationAutoBuyEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("automationAutoAbilityEnabled")) {
+            dataConfig.getConfigurationSection("automationAutoAbilityEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    automationAutoAbilityEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("automationAutoAbilityEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("automationSlowAutoMergeEnabled")) {
+            dataConfig.getConfigurationSection("automationSlowAutoMergeEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    automationSlowAutoMergeEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("automationSlowAutoMergeEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("automationSlowAutoShearEnabled")) {
+            dataConfig.getConfigurationSection("automationSlowAutoShearEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    automationSlowAutoShearEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("automationSlowAutoShearEnabled." + key, true));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }

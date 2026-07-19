@@ -122,6 +122,7 @@ public class SheepMergePlugin extends JavaPlugin {
         long reminderTickInterval = configuration == null ? 20L : configuration.getSchedulerReminderTickInterval();
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player player : getServer().getOnlinePlayers()) {
+                SheepMergeManager.tickAutomationPlaytimePoints(player);
                 if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
                     continue;
                 }
