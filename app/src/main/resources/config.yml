@@ -63,12 +63,16 @@ gameplay:
       autoAbility: 14
       slowAutoMerge: 16
       slowAutoShear: 12
+      autoSpawn: 20
     intervals:
       pointGainMs: 60000
       autoBuyMs: 5000
       autoAbilityMs: 5000
       slowAutoMergeMs: 3000
       slowAutoShearMs: 3000
+      autoSpawnBaseMs: 10000
+      autoSpawnReductionMsPerLevel: 1000
+      autoSpawnMinMs: 0
     conditions:
       minPointsReserve: 0
       minQuestPoints: 0

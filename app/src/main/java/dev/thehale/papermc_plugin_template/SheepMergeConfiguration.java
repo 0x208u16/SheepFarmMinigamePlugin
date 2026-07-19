@@ -63,11 +63,15 @@ public final class SheepMergeConfiguration {
     private final int automationAutoAbilityBaseCost;
     private final int automationSlowAutoMergeBaseCost;
     private final int automationSlowAutoShearBaseCost;
+    private final int automationAutoSpawnBaseCost;
     private final long automationPointIntervalMs;
     private final long automationAutoBuyIntervalMs;
     private final long automationAutoAbilityIntervalMs;
     private final long automationSlowAutoMergeIntervalMs;
     private final long automationSlowAutoShearIntervalMs;
+    private final long automationAutoSpawnBaseIntervalMs;
+    private final long automationAutoSpawnIntervalStepMs;
+    private final long automationAutoSpawnMinIntervalMs;
     private final long automationConditionMinPointsReserve;
     private final int automationConditionMinQuestPoints;
     private final int automationConditionMinSheepForMerge;
@@ -147,6 +151,7 @@ public final class SheepMergeConfiguration {
         automationAutoAbilityBaseCost = getInt(configuration, "gameplay.automation.costs.autoAbility", 14, 1);
         automationSlowAutoMergeBaseCost = getInt(configuration, "gameplay.automation.costs.slowAutoMerge", 16, 1);
         automationSlowAutoShearBaseCost = getInt(configuration, "gameplay.automation.costs.slowAutoShear", 12, 1);
+        automationAutoSpawnBaseCost = getInt(configuration, "gameplay.automation.costs.autoSpawn", 20, 1);
         automationPointIntervalMs = getLong(configuration, "gameplay.automation.intervals.pointGainMs", 60_000L, 1L);
         automationAutoBuyIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoBuyMs", 5_000L, 1L);
         automationAutoAbilityIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoAbilityMs", 5_000L,
@@ -155,6 +160,12 @@ public final class SheepMergeConfiguration {
                 3_000L, 1L);
         automationSlowAutoShearIntervalMs = getLong(configuration, "gameplay.automation.intervals.slowAutoShearMs",
                 3_000L, 1L);
+        automationAutoSpawnBaseIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoSpawnBaseMs",
+                10_000L, 0L);
+        automationAutoSpawnIntervalStepMs = getLong(configuration,
+                "gameplay.automation.intervals.autoSpawnReductionMsPerLevel", 1_000L, 1L);
+        automationAutoSpawnMinIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoSpawnMinMs", 0L,
+                0L);
         automationConditionMinPointsReserve = getLong(configuration, "gameplay.automation.conditions.minPointsReserve",
                 0L, 0L);
         automationConditionMinQuestPoints = getInt(configuration, "gameplay.automation.conditions.minQuestPoints", 0,
@@ -371,6 +382,10 @@ public final class SheepMergeConfiguration {
         return automationSlowAutoShearBaseCost;
     }
 
+    public int getAutomationAutoSpawnBaseCost() {
+        return automationAutoSpawnBaseCost;
+    }
+
     public long getAutomationPointIntervalMs() {
         return automationPointIntervalMs;
     }
@@ -389,6 +404,18 @@ public final class SheepMergeConfiguration {
 
     public long getAutomationSlowAutoShearIntervalMs() {
         return automationSlowAutoShearIntervalMs;
+    }
+
+    public long getAutomationAutoSpawnBaseIntervalMs() {
+        return automationAutoSpawnBaseIntervalMs;
+    }
+
+    public long getAutomationAutoSpawnIntervalStepMs() {
+        return automationAutoSpawnIntervalStepMs;
+    }
+
+    public long getAutomationAutoSpawnMinIntervalMs() {
+        return automationAutoSpawnMinIntervalMs;
     }
 
     public long getAutomationConditionMinPointsReserve() {
