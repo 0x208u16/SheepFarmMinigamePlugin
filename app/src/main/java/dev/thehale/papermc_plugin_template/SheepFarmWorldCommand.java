@@ -5,6 +5,7 @@ import dev.thehale.papermc_plugin_template.commands.CheckQuestPointsCommandModul
 import dev.thehale.papermc_plugin_template.commands.CheckpointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.ComboFrenzyCommandModule;
 import dev.thehale.papermc_plugin_template.commands.DashHelpCommandModule;
+import dev.thehale.papermc_plugin_template.commands.GiveAutomationPointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.GivePointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.GiveQuestPointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.HelpCommandModule;
@@ -68,6 +69,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "checkquestpoints",
             "checkprestige",
             "givepoints",
+            "giveautomationpoints",
             "setpoints",
             "givequestpoints",
             "setquestpoints",
@@ -87,6 +89,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static final List<String> LEVEL_HINTS = List.of("<level>", "0", "1");
     private static final List<String> ADMIN_AMOUNT_PLAYER_SUBCOMMANDS = List.of(
             "givepoints",
+            "giveautomationpoints",
             "setpoints",
             "givequestpoints",
             "setquestpoints",
@@ -117,6 +120,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new CheckQuestPointsCommandModule(this::handleCheckQuestPointsCommand, this::tabCompleteAdminStatCheck),
             new CheckPrestigeCommandModule(this::handleCheckPrestigeCommand, this::tabCompleteAdminStatCheck),
             new GivePointsCommandModule(this::handleGivePointsCommand, this::tabCompleteAdminAmountPlayer),
+            new GiveAutomationPointsCommandModule(this::handleGiveAutomationPointsCommand,
+                    this::tabCompleteAdminAmountPlayer),
             new SetPointsCommandModule(this::handleSetPointsCommand, this::tabCompleteAdminAmountPlayer),
             new GiveQuestPointsCommandModule(this::handleGiveQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
             new SetQuestPointsCommandModule(this::handleSetQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
@@ -173,6 +178,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 ChatColor.GRAY + "- " + label("/sheepmerge checkprestige [player]") + ": admin prestige check");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge givepoints <amount> [player]") + ": admin give points");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge giveautomationpoints <amount> [player]")
+                + ": admin give automation points");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge setpoints <amount> [player]") + ": admin set points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge givequestpoints <amount> [player]")
@@ -239,7 +246,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        if (topic.equalsIgnoreCase("givepoints") || topic.equalsIgnoreCase("setpoints")
+        if (topic.equalsIgnoreCase("givepoints") || topic.equalsIgnoreCase("giveautomationpoints")
+                || topic.equalsIgnoreCase("setpoints")
                 || topic.equalsIgnoreCase("givequestpoints") || topic.equalsIgnoreCase("setquestpoints")
                 || topic.equalsIgnoreCase("setprestige")) {
             player.sendMessage(ChatColor.DARK_AQUA + "Admin value hints:");
@@ -754,7 +762,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Unable to commit the shared farm build world right now.");
                 return true;
             }
-            player.sendMessage("Refreshing " + updated + " loaded farm world(s). Players will be able to return shortly.");
+            player.sendMessage(
+                    "Refreshing " + updated + " loaded farm world(s). Players will be able to return shortly.");
             return true;
         }
 
@@ -841,6 +850,38 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     "Points Updated",
                     target,
                     "Points",
+                    previous,
+                    updated));
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleGiveAutomationPointsCommand(Player player, String[] args) {
+        if (args.length >= 2 && args[0].equalsIgnoreCase("giveautomationpoints")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            int amount;
+            try {
+                amount = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage(error("Invalid amount. Usage: /sheepmerge giveautomationpoints <amount> [player]"));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            int previous = SheepMergeManager.getAutomationPoints(target);
+            SheepMergeManager.adminGiveAutomationPoints(target, amount);
+            int updated = SheepMergeManager.getAutomationPoints(target);
+            player.sendMessage(statUpdateMessage(
+                    "Automation Points Updated",
+                    target,
+                    "Automation Points",
                     previous,
                     updated));
             return true;

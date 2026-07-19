@@ -305,6 +305,7 @@ public final class SheepMergeManager {
     private static int AUTOMATION_SLOW_AUTO_SHEAR_BASE_COST = 12;
     private static int AUTOMATION_AUTO_SPAWN_BASE_COST = 20;
     private static final int AUTOMATION_SINGLE_LEVEL_MAX = 1;
+    private static final int AUTOMATION_AUTO_SPAWN_MAX_LEVEL = 10;
     private static int AUTOMATION_AUTO_PRESTIGE_BASE_COST = 64;
     private static long AUTOMATION_POINT_INTERVAL_MS = 60_000L;
     private static long AUTOMATION_AUTO_BUY_INTERVAL_MS = 5_000L;
@@ -2303,7 +2304,9 @@ public final class SheepMergeManager {
     }
 
     public static int getAutomationAutoSpawnUpgradeLevel(Player player) {
-        return player == null ? 0 : automationAutoSpawnUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
+                        Math.max(0, automationAutoSpawnUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getAutomationAutoPrestigeUpgradeLevel(Player player) {
@@ -2460,6 +2463,9 @@ public final class SheepMergeManager {
     }
 
     private static int getAutomationAutoSpawnUpgradeCost(Player player) {
+        if (getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL) {
+            return 0;
+        }
         return getDoubledUpgradeCost(AUTOMATION_AUTO_SPAWN_BASE_COST, getAutomationAutoSpawnUpgradeLevel(player));
     }
 
@@ -2607,7 +2613,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradeAutomationAutoSpawn(Player player) {
-        if (player == null) {
+        if (player == null || getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL) {
             return false;
         }
         int cost = getAutomationAutoSpawnUpgradeCost(player);
@@ -3527,6 +3533,15 @@ public final class SheepMergeManager {
         }
         UUID id = player.getUniqueId();
         questPointsByPlayer.put(id, addSaturated(questPointsByPlayer.getOrDefault(id, 0), amount));
+        saveData();
+    }
+
+    public static void adminGiveAutomationPoints(Player player, int amount) {
+        if (player == null || amount == 0) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        automationPointsByPlayer.put(id, addSaturated(automationPointsByPlayer.getOrDefault(id, 0), amount));
         saveData();
     }
 
@@ -6408,12 +6423,18 @@ public final class SheepMergeManager {
                 Material.SHEEP_SPAWN_EGG,
                 "Auto Spawn Sheep",
                 List.of(
-                        "Level: " + getAutomationAutoSpawnUpgradeLevel(player),
+                        "Level: " + getAutomationAutoSpawnUpgradeLevel(player) + " / "
+                                + AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
                         "Status: " + (isAutomationAutoSpawnEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + (autoSpawnInterval <= 0L ? "instant" : formatDuration(autoSpawnInterval)),
                         "Consumes spawn eggs",
-                        "Cost: " + formatPoints(getAutomationAutoSpawnUpgradeCost(player)) + " automation points",
-                        "Click: upgrade")));
+                        getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
+                                ? "Cost: MAXED"
+                                : "Cost: " + formatPoints(getAutomationAutoSpawnUpgradeCost(player))
+                                        + " automation points",
+                        getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
+                                ? "Click: maxed"
+                                : "Click: upgrade")));
 
         inventory.setItem(AUTOMATION_AUTO_BUY_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
@@ -6545,6 +6566,10 @@ public final class SheepMergeManager {
                 }
             }
             case AUTOMATION_AUTO_SPAWN_SLOT -> {
+                if (getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL) {
+                    player.sendMessage(warning("Auto Spawn is already maxed."));
+                    break;
+                }
                 if (upgradeAutomationAutoSpawn(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Auto Spawn upgraded."));
@@ -8464,7 +8489,8 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationAutoSpawnUpgradeByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("automationAutoSpawn." + key, 0)));
+                            Math.max(0, Math.min(AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
+                                    dataConfig.getInt("automationAutoSpawn." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
