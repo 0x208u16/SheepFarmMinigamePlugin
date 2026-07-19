@@ -187,6 +187,7 @@ public final class SheepMergeManager {
     private static final int HIGHER_TIER_CHANCE_BASE_CAP_PERCENT = 50;
     private static final int QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT = 50;
     private static final int PRESTIGE_DOUBLE_POINTS_BASE_COST = 1;
+    private static final int PRESTIGE_DOUBLE_POINTS_MAX_LEVEL = 20;
     private static final int PRESTIGE_HIGHER_MAX_LEVEL_BASE_COST = 2;
     private static final int PRESTIGE_START_EGGS_BASE_COST = 1;
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
@@ -303,6 +304,7 @@ public final class SheepMergeManager {
     private static int AUTOMATION_SLOW_AUTO_MERGE_BASE_COST = 16;
     private static int AUTOMATION_SLOW_AUTO_SHEAR_BASE_COST = 12;
     private static int AUTOMATION_AUTO_SPAWN_BASE_COST = 20;
+    private static final int AUTOMATION_SINGLE_LEVEL_MAX = 1;
     private static int AUTOMATION_AUTO_PRESTIGE_BASE_COST = 64;
     private static long AUTOMATION_POINT_INTERVAL_MS = 60_000L;
     private static long AUTOMATION_AUTO_BUY_INTERVAL_MS = 5_000L;
@@ -2277,19 +2279,27 @@ public final class SheepMergeManager {
     }
 
     public static int getAutomationAutoBuyUpgradeLevel(Player player) {
-        return player == null ? 0 : automationAutoBuyUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                        Math.max(0, automationAutoBuyUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getAutomationAutoAbilityUpgradeLevel(Player player) {
-        return player == null ? 0 : automationAutoAbilityUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                        Math.max(0, automationAutoAbilityUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getAutomationSlowAutoMergeUpgradeLevel(Player player) {
-        return player == null ? 0 : automationSlowAutoMergeUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                        Math.max(0, automationSlowAutoMergeUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getAutomationSlowAutoShearUpgradeLevel(Player player) {
-        return player == null ? 0 : automationSlowAutoShearUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                        Math.max(0, automationSlowAutoShearUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getAutomationAutoSpawnUpgradeLevel(Player player) {
@@ -2297,7 +2307,9 @@ public final class SheepMergeManager {
     }
 
     public static int getAutomationAutoPrestigeUpgradeLevel(Player player) {
-        return player == null ? 0 : automationAutoPrestigeUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                        Math.max(0, automationAutoPrestigeUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static boolean isAutomationAutoBuyEnabled(Player player) {
@@ -2418,19 +2430,31 @@ public final class SheepMergeManager {
     }
 
     private static int getAutomationAutoBuyUpgradeCost(Player player) {
+        if (getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+            return 0;
+        }
         return getDoubledUpgradeCost(AUTOMATION_AUTO_BUY_BASE_COST, getAutomationAutoBuyUpgradeLevel(player));
     }
 
     private static int getAutomationAutoAbilityUpgradeCost(Player player) {
+        if (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+            return 0;
+        }
         return getDoubledUpgradeCost(AUTOMATION_AUTO_ABILITY_BASE_COST, getAutomationAutoAbilityUpgradeLevel(player));
     }
 
     private static int getAutomationSlowAutoMergeUpgradeCost(Player player) {
+        if (getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+            return 0;
+        }
         return getDoubledUpgradeCost(AUTOMATION_SLOW_AUTO_MERGE_BASE_COST,
                 getAutomationSlowAutoMergeUpgradeLevel(player));
     }
 
     private static int getAutomationSlowAutoShearUpgradeCost(Player player) {
+        if (getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+            return 0;
+        }
         return getDoubledUpgradeCost(AUTOMATION_SLOW_AUTO_SHEAR_BASE_COST,
                 getAutomationSlowAutoShearUpgradeLevel(player));
     }
@@ -2526,7 +2550,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradeAutomationAutoBuy(Player player) {
-        if (player == null) {
+        if (player == null || getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
             return false;
         }
         int cost = getAutomationAutoBuyUpgradeCost(player);
@@ -2539,7 +2563,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradeAutomationAutoAbility(Player player) {
-        if (player == null) {
+        if (player == null || getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
             return false;
         }
         int cost = getAutomationAutoAbilityUpgradeCost(player);
@@ -2553,7 +2577,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradeAutomationSlowAutoMerge(Player player) {
-        if (player == null) {
+        if (player == null || getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
             return false;
         }
         int cost = getAutomationSlowAutoMergeUpgradeCost(player);
@@ -2568,7 +2592,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradeAutomationSlowAutoShear(Player player) {
-        if (player == null) {
+        if (player == null || getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
             return false;
         }
         int cost = getAutomationSlowAutoShearUpgradeCost(player);
@@ -5060,7 +5084,9 @@ public final class SheepMergeManager {
     }
 
     public static int getPrestigeDoublePointsChanceLevel(Player player) {
-        return player == null ? 0 : prestigeDoublePointsChanceByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0
+                : Math.min(PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
+                        Math.max(0, prestigeDoublePointsChanceByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
     public static int getDoublePointsChancePercent(Player player) {
@@ -5109,6 +5135,9 @@ public final class SheepMergeManager {
     }
 
     public static int getPrestigeDoublePointsCost(Player player) {
+        if (getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL) {
+            return 0;
+        }
         return getPrestigeUpgradeCost(PRESTIGE_DOUBLE_POINTS_BASE_COST, getPrestigeDoublePointsChanceLevel(player));
     }
 
@@ -5548,6 +5577,9 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradePrestigeDoublePoints(Player player) {
+        if (player == null || getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL) {
+            return false;
+        }
         int cost = getPrestigeDoublePointsCost(player);
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
@@ -5945,9 +5977,13 @@ public final class SheepMergeManager {
                 Material.EMERALD,
                 "Double Points Chance",
                 List.of(
-                        "Level: " + getPrestigeDoublePointsChanceLevel(player),
+                        "Level: " + getPrestigeDoublePointsChanceLevel(player) + " / "
+                                + PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
                         "Chance: " + getDoublePointsChancePercent(player) + "%",
-                        "Cost: " + formatPoints(getPrestigeDoublePointsCost(player)) + " prestige points",
+                        getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getPrestigeDoublePointsCost(player))
+                                        + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_HIGHER_MAX_LEVEL_SLOT, MenuItemFactory.create(
@@ -6061,6 +6097,10 @@ public final class SheepMergeManager {
             case PRESTIGE_DOUBLE_POINTS_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
                         "Prestige once from /sheepmerge prestige")) {
+                    break;
+                }
+                if (getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL) {
+                    player.sendMessage(warning("Double points chance is maxed."));
                     break;
                 }
                 if (upgradePrestigeDoublePoints(player)) {
@@ -6286,34 +6326,51 @@ public final class SheepMergeManager {
                 Material.HOPPER,
                 "Auto Buy Upgrades",
                 List.of(
-                        "Level: " + getAutomationAutoBuyUpgradeLevel(player),
+                        "Level: " + getAutomationAutoBuyUpgradeLevel(player) + " / " + AUTOMATION_SINGLE_LEVEL_MAX,
                         "Status: " + (isAutomationAutoBuyEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_AUTO_BUY_INTERVAL_MS),
-                        "Cost: " + formatPoints(getAutomationAutoBuyUpgradeCost(player)) + " automation points",
+                        getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Cost: MAXED"
+                                : "Cost: " + formatPoints(getAutomationAutoBuyUpgradeCost(player))
+                                        + " automation points",
                         "Buys one affordable upgrade",
-                        "Click: upgrade")));
+                        getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Click: maxed"
+                                : "Click: unlock")));
 
         inventory.setItem(AUTOMATION_AUTO_ABILITY_SLOT, MenuItemFactory.create(
                 Material.BREWING_STAND,
                 "Auto Activate Abilities",
                 List.of(
-                        "Level: " + getAutomationAutoAbilityUpgradeLevel(player),
+                        "Level: " + getAutomationAutoAbilityUpgradeLevel(player) + " / "
+                                + AUTOMATION_SINGLE_LEVEL_MAX,
                         "Status: " + (isAutomationAutoAbilityEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS),
-                        "Cost: " + formatPoints(getAutomationAutoAbilityUpgradeCost(player)) + " automation points",
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Cost: MAXED"
+                                : "Cost: " + formatPoints(getAutomationAutoAbilityUpgradeCost(player))
+                                        + " automation points",
                         "Activates non-active quest abilities",
-                        "Click: upgrade")));
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Click: maxed"
+                                : "Click: unlock")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
                 "Auto Merge",
                 List.of(
-                        "Level: " + getAutomationSlowAutoMergeUpgradeLevel(player),
+                        "Level: " + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
+                                + AUTOMATION_SINGLE_LEVEL_MAX,
                         "Status: " + (isAutomationSlowAutoMergeEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_SLOW_AUTO_MERGE_INTERVAL_MS),
-                        "Cost: " + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player)) + " automation points",
+                        getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Cost: MAXED"
+                                : "Cost: " + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player))
+                                        + " automation points",
                         "Slower passive auto-merge",
-                        "Click: upgrade")));
+                        getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Click: maxed"
+                                : "Click: unlock")));
 
         inventory.setItem(AUTOMATION_AUTO_PRESTIGE_SLOT, MenuItemFactory.create(
                 Material.NETHER_STAR,
@@ -6333,12 +6390,18 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Auto Shear",
                 List.of(
-                        "Level: " + getAutomationSlowAutoShearUpgradeLevel(player),
+                        "Level: " + getAutomationSlowAutoShearUpgradeLevel(player) + " / "
+                                + AUTOMATION_SINGLE_LEVEL_MAX,
                         "Status: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
                         "Runs every " + formatDuration(AUTOMATION_SLOW_AUTO_SHEAR_INTERVAL_MS),
-                        "Cost: " + formatPoints(getAutomationSlowAutoShearUpgradeCost(player)) + " automation points",
+                        getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Cost: MAXED"
+                                : "Cost: " + formatPoints(getAutomationSlowAutoShearUpgradeCost(player))
+                                        + " automation points",
                         "Slower passive auto-shear",
-                        "Click: upgrade")));
+                        getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                                ? "Click: maxed"
+                                : "Click: unlock")));
 
         long autoSpawnInterval = getAutomationAutoSpawnIntervalMs(player);
         inventory.setItem(AUTOMATION_AUTO_SPAWN_SLOT, MenuItemFactory.create(
@@ -6424,6 +6487,10 @@ public final class SheepMergeManager {
         }
         switch (slot) {
             case AUTOMATION_AUTO_BUY_SLOT -> {
+                if (getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+                    player.sendMessage(warning("Auto Buy is already maxed."));
+                    break;
+                }
                 if (upgradeAutomationAutoBuy(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Auto Buy upgraded."));
@@ -6432,6 +6499,10 @@ public final class SheepMergeManager {
                 }
             }
             case AUTOMATION_AUTO_ABILITY_SLOT -> {
+                if (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+                    player.sendMessage(warning("Auto Ability is already maxed."));
+                    break;
+                }
                 if (upgradeAutomationAutoAbility(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Auto Ability upgraded."));
@@ -6440,6 +6511,10 @@ public final class SheepMergeManager {
                 }
             }
             case AUTOMATION_SLOW_AUTO_MERGE_SLOT -> {
+                if (getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+                    player.sendMessage(warning("Slow Auto Merge is already maxed."));
+                    break;
+                }
                 if (upgradeAutomationSlowAutoMerge(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Slow Auto Merge upgraded."));
@@ -6448,6 +6523,10 @@ public final class SheepMergeManager {
                 }
             }
             case AUTOMATION_SLOW_AUTO_SHEAR_SLOT -> {
+                if (getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+                    player.sendMessage(warning("Slow Auto Shear is already maxed."));
+                    break;
+                }
                 if (upgradeAutomationSlowAutoShear(player)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Slow Auto Shear upgraded."));
@@ -7827,7 +7906,10 @@ public final class SheepMergeManager {
             dataConfig.getConfigurationSection("prestigeDoublePoints").getKeys(false).forEach(key -> {
                 try {
                     UUID uuid = UUID.fromString(key);
-                    prestigeDoublePointsChanceByPlayer.put(uuid, dataConfig.getInt("prestigeDoublePoints." + key, 0));
+                    prestigeDoublePointsChanceByPlayer.put(uuid,
+                            Math.max(0,
+                                    Math.min(PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
+                                            dataConfig.getInt("prestigeDoublePoints." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -8334,7 +8416,8 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationAutoBuyUpgradeByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("automationAutoBuy." + key, 0)));
+                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                                    dataConfig.getInt("automationAutoBuy." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -8345,7 +8428,8 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationAutoAbilityUpgradeByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("automationAutoAbility." + key, 0)));
+                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                                    dataConfig.getInt("automationAutoAbility." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -8356,7 +8440,8 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationSlowAutoMergeUpgradeByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("automationSlowAutoMerge." + key, 0)));
+                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                                    dataConfig.getInt("automationSlowAutoMerge." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -8367,7 +8452,8 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationSlowAutoShearUpgradeByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("automationSlowAutoShear." + key, 0)));
+                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                                    dataConfig.getInt("automationSlowAutoShear." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -8389,7 +8475,8 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationAutoPrestigeUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(1, dataConfig.getInt("automationAutoPrestige." + key, 0))));
+                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                                    dataConfig.getInt("automationAutoPrestige." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
