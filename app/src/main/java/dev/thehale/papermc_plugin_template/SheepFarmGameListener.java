@@ -34,6 +34,12 @@ public class SheepFarmGameListener implements Listener {
         }
 
         World world = event.getLocation().getWorld();
+        if (SheepMergeManager.isFarmBuildWorld(world)
+                && (world != null && (world.hasStorm() || world.isThundering()))) {
+            event.setCancelled(true);
+            return;
+        }
+
         if (!SheepMergeManager.isSheepFarmWorld(world)) {
             return;
         }
