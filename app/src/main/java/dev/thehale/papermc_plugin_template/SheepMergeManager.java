@@ -275,6 +275,9 @@ public final class SheepMergeManager {
     private static long TUTORIAL_STATUS_FEED_REPEAT_MS = 12_000L;
     private static long TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS = 5_000L;
     private static long TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS = 15_000L;
+    private static final int WOOL_REGEN_PERCENT_DISPLAY_DECIMALS = 6;
+    private static final int WOOL_REGEN_FACTOR_DISPLAY_DECIMALS = 10;
+    private static final double WOOL_REGEN_MAX_REDUCTION_PERCENT = 99.999999D;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -7147,27 +7150,42 @@ public final class SheepMergeManager {
 
     private static int getWoolCooldownPercentAtLevel(int level) {
         int normalizedLevel = Math.max(0, level);
-        return (int) Math.round(Math.pow(0.75D, normalizedLevel) * 100.0D);
+        return Math.max(1, (int) Math.ceil(getWoolCooldownPercentRawAtLevel(normalizedLevel)));
     }
 
     private static double getWoolCooldownFactorAtLevel(int level) {
-        return Math.pow(0.75D, Math.max(0, level));
+        double factor = Math.pow(0.75D, Math.max(0, level));
+        if (!Double.isFinite(factor) || factor <= 0.0D) {
+            return (100.0D - WOOL_REGEN_MAX_REDUCTION_PERCENT) / 100.0D;
+        }
+        return Math.max((100.0D - WOOL_REGEN_MAX_REDUCTION_PERCENT) / 100.0D, factor);
+    }
+
+    private static double getWoolCooldownPercentRawAtLevel(int level) {
+        return getWoolCooldownFactorAtLevel(level) * 100.0D;
+    }
+
+    private static double getWoolCooldownReductionPercentRawAtLevel(int level) {
+        return Math.min(WOOL_REGEN_MAX_REDUCTION_PERCENT, 100.0D - getWoolCooldownPercentRawAtLevel(level));
     }
 
     private static String getWoolCooldownPercentDisplayAtLevel(int level) {
-        return String.format(Locale.ROOT, "%.1f", getWoolCooldownFactorAtLevel(level) * 100.0D);
+        return String.format(Locale.ROOT, "%1$." + WOOL_REGEN_PERCENT_DISPLAY_DECIMALS + "f",
+                getWoolCooldownPercentRawAtLevel(level));
     }
 
     private static String getWoolCooldownReductionPercentDisplayAtLevel(int level) {
-        return String.format(Locale.ROOT, "%.1f", 100.0D - (getWoolCooldownFactorAtLevel(level) * 100.0D));
+        return String.format(Locale.ROOT, "%1$." + WOOL_REGEN_PERCENT_DISPLAY_DECIMALS + "f",
+                getWoolCooldownReductionPercentRawAtLevel(level));
     }
 
     private static String getWoolCooldownFactorDisplayAtLevel(int level) {
-        return String.format(Locale.ROOT, "%.3f", getWoolCooldownFactorAtLevel(level));
+        return String.format(Locale.ROOT, "%1$." + WOOL_REGEN_FACTOR_DISPLAY_DECIMALS + "f",
+                getWoolCooldownFactorAtLevel(level));
     }
 
     private static int getWoolCooldownReductionPercentAtLevel(int level) {
-        return Math.max(0, 100 - getWoolCooldownPercentAtLevel(level));
+        return Math.min(99, Math.max(0, 100 - getWoolCooldownPercentAtLevel(level)));
     }
 
     private static int getDoubledUpgradeCost(int baseCost, int level) {
