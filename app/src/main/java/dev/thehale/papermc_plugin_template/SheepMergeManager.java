@@ -5583,6 +5583,12 @@ public final class SheepMergeManager {
                 || !isTutorialInProgress(player) || !isInTutorialWorld(player)) {
             return false;
         }
+
+        TutorialStep step = getCurrentTutorialStep(player);
+        if (step != TutorialStep.OPEN_PRESTIGE && step != TutorialStep.PRESTIGE_ONCE) {
+            return false;
+        }
+
         BigInteger afterSpend = getPlayerPointsBig(player).subtract(spendPoints);
         return afterSpend.compareTo(getPrestigeCostBig(player)) < 0;
     }
