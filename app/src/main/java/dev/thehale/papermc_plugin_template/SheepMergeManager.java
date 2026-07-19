@@ -2176,8 +2176,8 @@ public final class SheepMergeManager {
         return level + 1;
     }
 
-    public static int getShearUpgradeCost(Player player) {
-        return getDoubledUpgradeCost(SHEAR_SHOP_BASE_COST, getShearShopLevel(player));
+    public static BigInteger getShearUpgradeCost(Player player) {
+        return getDoubledUpgradeCostBig(SHEAR_SHOP_BASE_COST, getShearShopLevel(player));
     }
 
     public static int getShearWoolSaveChancePercent(Player player) {
@@ -2189,12 +2189,12 @@ public final class SheepMergeManager {
                 getShearTierBoostLevel(player) * SHEAR_TIER_BOOST_CHANCE_PER_LEVEL);
     }
 
-    public static int getShearWoolSaveUpgradeCost(Player player) {
-        return getDoubledUpgradeCost(SHEAR_WOOL_SAVE_BASE_COST, getShearWoolSaveLevel(player));
+    public static BigInteger getShearWoolSaveUpgradeCost(Player player) {
+        return getDoubledUpgradeCostBig(SHEAR_WOOL_SAVE_BASE_COST, getShearWoolSaveLevel(player));
     }
 
-    public static int getShearTierBoostUpgradeCost(Player player) {
-        return getDoubledUpgradeCost(SHEAR_TIER_BOOST_BASE_COST, getShearTierBoostLevel(player));
+    public static BigInteger getShearTierBoostUpgradeCost(Player player) {
+        return getDoubledUpgradeCostBig(SHEAR_TIER_BOOST_BASE_COST, getShearTierBoostLevel(player));
     }
 
     public static int getComboDecayUpgradeLevel(Player player) {
@@ -2264,12 +2264,12 @@ public final class SheepMergeManager {
         return next;
     }
 
-    private static int getComboDecayUpgradeCost(Player player) {
-        return getDoubledUpgradeCost(COMBO_DECAY_BASE_COST, getComboDecayUpgradeLevel(player));
+    private static BigInteger getComboDecayUpgradeCost(Player player) {
+        return getDoubledUpgradeCostBig(COMBO_DECAY_BASE_COST, getComboDecayUpgradeLevel(player));
     }
 
-    private static int getComboGainUpgradeCost(Player player) {
-        return getDoubledUpgradeCost(COMBO_GAIN_BASE_COST, getComboGainUpgradeLevel(player));
+    private static BigInteger getComboGainUpgradeCost(Player player) {
+        return getDoubledUpgradeCostBig(COMBO_GAIN_BASE_COST, getComboGainUpgradeLevel(player));
     }
 
     private static int getComboMaxUpgradePrestigeCost(Player player) {
@@ -2329,7 +2329,7 @@ public final class SheepMergeManager {
         if (currentLevel >= COMBO_DECAY_MAX_LEVEL) {
             return false;
         }
-        int cost = getComboDecayUpgradeCost(player);
+        BigInteger cost = getComboDecayUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -2368,7 +2368,7 @@ public final class SheepMergeManager {
         if (currentLevel >= COMBO_GAIN_MAX_LEVEL) {
             return false;
         }
-        int cost = getComboGainUpgradeCost(player);
+        BigInteger cost = getComboGainUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -2455,7 +2455,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
-        int cost = getShearUpgradeCost(player);
+        BigInteger cost = getShearUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -2475,7 +2475,7 @@ public final class SheepMergeManager {
         if (currentLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL) {
             return false;
         }
-        int cost = getShearWoolSaveUpgradeCost(player);
+        BigInteger cost = getShearWoolSaveUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -2495,7 +2495,7 @@ public final class SheepMergeManager {
         if (currentLevel >= SHEAR_TIER_BOOST_MAX_LEVEL) {
             return false;
         }
-        int cost = getShearTierBoostUpgradeCost(player);
+        BigInteger cost = getShearTierBoostUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -2982,51 +2982,51 @@ public final class SheepMergeManager {
         };
     }
 
-    private static long getTutorialStepRequiredPoints(Player player, TutorialStep step) {
+    private static BigInteger getTutorialStepRequiredPoints(Player player, TutorialStep step) {
         if (player == null || step == null) {
-            return -1L;
+            return BigInteger.valueOf(-1L);
         }
         return switch (step) {
             case BUY_REGULAR_UPGRADE -> getMinimumRegularUpgradeCost(player);
             case BUY_SHEAR_UPGRADE -> getMinimumShearUpgradeCost(player);
-            case PRESTIGE_ONCE -> getPrestigeCost(player);
-            default -> -1L;
+            case PRESTIGE_ONCE -> getPrestigeCostBig(player);
+            default -> BigInteger.valueOf(-1L);
         };
     }
 
-    private static long getMinimumRegularUpgradeCost(Player player) {
+    private static BigInteger getMinimumRegularUpgradeCost(Player player) {
         if (player == null) {
-            return -1L;
+            return BigInteger.valueOf(-1L);
         }
-        long minimum = Long.MAX_VALUE;
+        BigInteger minimum = null;
         if (getPlayerLimit(player) < MAX_SHEEP_LIMIT) {
-            minimum = Math.min(minimum, getUpgradeCost(player));
+            minimum = minPositive(minimum, getUpgradeCost(player));
         }
         if (getEggSpeedLevel(player) < getEggSpeedMaxLevel(player)) {
-            minimum = Math.min(minimum, getEggSpeedUpgradeCost(player));
+            minimum = minPositive(minimum, getEggSpeedUpgradeCost(player));
         }
         if (getWoolRegenLevel(player) < getWoolRegenMaxLevel(player)) {
-            minimum = Math.min(minimum, getWoolRegenUpgradeCost(player));
+            minimum = minPositive(minimum, getWoolRegenUpgradeCost(player));
         }
         if (getHigherTierChanceLevel(player) < getHigherTierChanceMaxLevel(player)) {
-            minimum = Math.min(minimum, getHigherTierChanceUpgradeCost(player));
+            minimum = minPositive(minimum, getHigherTierChanceUpgradeCost(player));
         }
-        return minimum == Long.MAX_VALUE ? -1L : minimum;
+        return minimum == null ? BigInteger.valueOf(-1L) : minimum;
     }
 
-    private static long getMinimumShearUpgradeCost(Player player) {
+    private static BigInteger getMinimumShearUpgradeCost(Player player) {
         if (player == null) {
-            return -1L;
+            return BigInteger.valueOf(-1L);
         }
-        long minimum = Long.MAX_VALUE;
-        minimum = Math.min(minimum, getShearUpgradeCost(player));
+        BigInteger minimum = null;
+        minimum = minPositive(minimum, getShearUpgradeCost(player));
         if (getShearWoolSaveLevel(player) < SHEAR_WOOL_SAVE_MAX_LEVEL) {
-            minimum = Math.min(minimum, getShearWoolSaveUpgradeCost(player));
+            minimum = minPositive(minimum, getShearWoolSaveUpgradeCost(player));
         }
         if (getShearTierBoostLevel(player) < SHEAR_TIER_BOOST_MAX_LEVEL) {
-            minimum = Math.min(minimum, getShearTierBoostUpgradeCost(player));
+            minimum = minPositive(minimum, getShearTierBoostUpgradeCost(player));
         }
-        return minimum == Long.MAX_VALUE ? -1L : minimum;
+        return minimum == null ? BigInteger.valueOf(-1L) : minimum;
     }
 
     private static void maybeSendTutorialMergePointsReminder(Player player, long now) {
@@ -3035,13 +3035,13 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         TutorialStep step = getCurrentTutorialStep(player);
-        long requiredPoints = getTutorialStepRequiredPoints(player, step);
-        if (requiredPoints <= 0L) {
+        BigInteger requiredPoints = getTutorialStepRequiredPoints(player, step);
+        if (requiredPoints == null || requiredPoints.signum() <= 0) {
             return;
         }
 
-        long currentPoints = getPlayerPoints(player);
-        if (currentPoints >= requiredPoints) {
+        BigInteger currentPoints = getPlayerPointsBig(player);
+        if (currentPoints.compareTo(requiredPoints) >= 0) {
             return;
         }
 
@@ -3050,7 +3050,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        long missing = requiredPoints - currentPoints;
+        BigInteger missing = requiredPoints.subtract(currentPoints).max(BigInteger.ZERO);
         String taskLabel = getCurrentTutorialTaskLabel(step);
         lastTutorialMergePointsReminderTimestampByPlayer.put(playerId, now);
         player.sendMessage(warning("Current tutorial task needs " + formatPoints(requiredPoints)
@@ -3058,6 +3058,16 @@ public final class SheepMergeManager {
         player.sendMessage(hint(
                 "Merge sheep with SHIFT + RIGHT-CLICK then RIGHT-CLICK on another sheep of the same tier to earn points faster, then complete: "
                         + taskLabel + "."));
+    }
+
+    private static BigInteger minPositive(BigInteger current, BigInteger candidate) {
+        if (candidate == null || candidate.signum() <= 0) {
+            return current;
+        }
+        if (current == null || candidate.compareTo(current) < 0) {
+            return candidate;
+        }
+        return current;
     }
 
     private static boolean isTutorialActionAllowed(TutorialStep step, TutorialAction action) {
@@ -4640,8 +4650,8 @@ public final class SheepMergeManager {
                 BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(ownerId, 0)));
     }
 
-    public static int getUpgradeCost(Player player) {
-        return getDoubledUpgradeCost(LIMIT_UPGRADE_COST, getLimitUpgradeLevel(player));
+    public static BigInteger getUpgradeCost(Player player) {
+        return getDoubledUpgradeCostBig(LIMIT_UPGRADE_COST, getLimitUpgradeLevel(player));
     }
 
     public static int getLimitUpgradeStep() {
@@ -4655,7 +4665,7 @@ public final class SheepMergeManager {
         if (getPlayerLimit(player) >= MAX_SHEEP_LIMIT) {
             return false;
         }
-        int cost = getUpgradeCost(player);
+        BigInteger cost = getUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -5231,15 +5241,16 @@ public final class SheepMergeManager {
         return true;
     }
 
-    private static boolean wouldDipBelowTutorialPrestigeReserve(Player player, long spendPoints) {
-        if (player == null || spendPoints <= 0L || !isTutorialInProgress(player) || !isInTutorialWorld(player)) {
+    private static boolean wouldDipBelowTutorialPrestigeReserve(Player player, BigInteger spendPoints) {
+        if (player == null || spendPoints == null || spendPoints.signum() <= 0
+                || !isTutorialInProgress(player) || !isInTutorialWorld(player)) {
             return false;
         }
-        BigInteger afterSpend = getPlayerPointsBig(player).subtract(BigInteger.valueOf(spendPoints));
+        BigInteger afterSpend = getPlayerPointsBig(player).subtract(spendPoints);
         return afterSpend.compareTo(getPrestigeCostBig(player)) < 0;
     }
 
-    private static boolean canSpendUpgradePointsDuringTutorial(Player player, long spendPoints) {
+    private static boolean canSpendUpgradePointsDuringTutorial(Player player, BigInteger spendPoints) {
         if (!wouldDipBelowTutorialPrestigeReserve(player, spendPoints)) {
             return true;
         }
@@ -5247,6 +5258,10 @@ public final class SheepMergeManager {
                 + " points for your prestige step."));
         player.sendMessage(hint("Merge/shear a bit more before buying this upgrade."));
         return false;
+    }
+
+    private static boolean canSpendUpgradePointsDuringTutorial(Player player, long spendPoints) {
+        return canSpendUpgradePointsDuringTutorial(player, BigInteger.valueOf(spendPoints));
     }
 
     private static boolean upgradePrestigeDoublePoints(Player player) {
@@ -5367,7 +5382,7 @@ public final class SheepMergeManager {
         int limitLevel = getLimitUpgradeLevel(player);
         int currentLimit = getPlayerLimit(player);
         boolean limitMaxed = currentLimit >= MAX_SHEEP_LIMIT;
-        int limitCost = getUpgradeCost(player);
+        BigInteger limitCost = getUpgradeCost(player);
         inventory.setItem(LIMIT_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
                 "Sheep Limit",
@@ -5384,7 +5399,7 @@ public final class SheepMergeManager {
         int eggCurrentSeconds = getEggIntervalSeconds(player);
         int eggNextLevel = Math.min(eggMaxLevel, eggLevel + 1);
         int eggNextSeconds = Math.max(MIN_EGG_INTERVAL_SECONDS, BASE_EGG_INTERVAL_SECONDS - eggNextLevel);
-        int eggCost = getEggSpeedUpgradeCost(player);
+        BigInteger eggCost = getEggSpeedUpgradeCost(player);
         inventory.setItem(EGG_SPEED_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Faster Egg Spawn",
@@ -5405,7 +5420,7 @@ public final class SheepMergeManager {
         int woolNextLevel = Math.min(woolMaxLevel, woolLevel + 1);
         int woolNextCooldownPercent = getWoolCooldownPercentAtLevel(woolNextLevel);
         int woolNextReductionPercent = getWoolCooldownReductionPercentAtLevel(woolNextLevel);
-        int woolCost = getWoolRegenUpgradeCost(player);
+        BigInteger woolCost = getWoolRegenUpgradeCost(player);
         inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.createEnchanted(
                 Material.WHITE_WOOL,
                 "Faster Wool Regen",
@@ -5427,7 +5442,7 @@ public final class SheepMergeManager {
         int chanceCurrentPercent = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT, chanceLevel * 5);
         int chanceNextLevel = Math.min(chanceMaxLevel, chanceLevel + 1);
         int chanceNextPercent = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT, chanceNextLevel * 5);
-        int chanceCost = getHigherTierChanceUpgradeCost(player);
+        BigInteger chanceCost = getHigherTierChanceUpgradeCost(player);
         inventory.setItem(HIGHER_TIER_CHANCE_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.GOLDEN_APPLE,
                 "Higher Tier Spawn Chance",
@@ -6579,19 +6594,19 @@ public final class SheepMergeManager {
         openShopMenu(player);
     }
 
-    private static int getEggSpeedUpgradeCost(Player player) {
+    private static BigInteger getEggSpeedUpgradeCost(Player player) {
         int level = getEggSpeedLevel(player);
-        return getDoubledUpgradeCost(EGG_SPEED_UPGRADE_BASE_COST, level);
+        return getDoubledUpgradeCostBig(EGG_SPEED_UPGRADE_BASE_COST, level);
     }
 
-    private static int getWoolRegenUpgradeCost(Player player) {
+    private static BigInteger getWoolRegenUpgradeCost(Player player) {
         int level = getWoolRegenLevel(player);
-        return getDoubledUpgradeCost(WOOL_REGEN_UPGRADE_BASE_COST, level);
+        return getDoubledUpgradeCostBig(WOOL_REGEN_UPGRADE_BASE_COST, level);
     }
 
-    private static int getHigherTierChanceUpgradeCost(Player player) {
+    private static BigInteger getHigherTierChanceUpgradeCost(Player player) {
         int level = getHigherTierChanceLevel(player);
-        return getDoubledUpgradeCost(HIGHER_TIER_CHANCE_UPGRADE_BASE_COST, level);
+        return getDoubledUpgradeCostBig(HIGHER_TIER_CHANCE_UPGRADE_BASE_COST, level);
     }
 
     private static boolean upgradeEggSpeed(Player player) {
@@ -6602,7 +6617,7 @@ public final class SheepMergeManager {
         if (currentLevel >= getEggSpeedMaxLevel(player)) {
             return false;
         }
-        int cost = getEggSpeedUpgradeCost(player);
+        BigInteger cost = getEggSpeedUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -6623,7 +6638,7 @@ public final class SheepMergeManager {
         if (currentLevel >= getWoolRegenMaxLevel(player)) {
             return false;
         }
-        int cost = getWoolRegenUpgradeCost(player);
+        BigInteger cost = getWoolRegenUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -6643,7 +6658,7 @@ public final class SheepMergeManager {
         if (currentLevel >= getHigherTierChanceMaxLevel(player)) {
             return false;
         }
-        int cost = getHigherTierChanceUpgradeCost(player);
+        BigInteger cost = getHigherTierChanceUpgradeCost(player);
         if (!canSpendUpgradePointsDuringTutorial(player, cost)) {
             return false;
         }
@@ -6679,6 +6694,14 @@ public final class SheepMergeManager {
         long multiplier = 1L << Math.min(30, level);
         long cost = baseCost * multiplier;
         return cost > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) cost;
+    }
+
+    private static BigInteger getDoubledUpgradeCostBig(int baseCost, int level) {
+        if (baseCost <= 0) {
+            return BigInteger.ZERO;
+        }
+        int normalizedLevel = Math.max(0, level);
+        return BigInteger.valueOf(baseCost).shiftLeft(normalizedLevel);
     }
 
     public static int getSheepCount(World world) {
