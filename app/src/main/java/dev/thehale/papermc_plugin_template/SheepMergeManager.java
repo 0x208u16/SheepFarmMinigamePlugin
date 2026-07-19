@@ -5774,7 +5774,7 @@ public final class SheepMergeManager {
                 "Faster Wool Regen",
                 List.of(
                         "Level: " + woolLevel + " / " + woolMaxLevel,
-                        "Current: " + woolCurrentReductionPercent + "% reduced + " + "(duration * " + woolCurrentFactor
+                        "Current: " + woolCurrentReductionPercent + "% reduced " + "(duration * " + woolCurrentFactor
                                 + ")",
                         woolLevel >= woolMaxLevel
                                 ? "Next: MAXED"
