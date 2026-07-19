@@ -11,6 +11,58 @@ farm:
     z: 0.5
 
 gameplay:
+  starting:
+    points: 1000
+  prestige:
+    levelBaseCost: 500
+  upgrades:
+    limit:
+      baseCost: 16
+    eggSpeed:
+      baseCost: 20
+    woolRegen:
+      baseCost: 24
+    higherTierChance:
+      baseCost: 28
+  quests:
+    targets:
+      shears: 20
+      spawns: 12
+      merges: 8
+    rewards:
+      shears: 8
+      spawns: 5
+      merges: 7
+  abilities:
+    costs:
+      luckyBurst: 8
+      woolRush: 10
+      jackpotShears: 15
+      autoMerge: 18
+      autoShear: 12
+    durations:
+      luckyBurstMs: 180000
+      woolRushMs: 240000
+      jackpotShearsMs: 120000
+      autoMergeMs: 90000
+      autoShearMs: 90000
+  questUpgrades:
+    durationBaseCost: 12
+    powerBaseCost: 15
+  shearShop:
+    baseCost: 20
+    woolSaveBaseCost: 30
+    tierBoostBaseCost: 45
+  combo:
+    decayBaseCost: 75
+    gainBaseCost: 90
+    maxBasePrestigeCost: 3
+  tutorial:
+    targets:
+      shears: 3
+      spawns: 3
+      merges: 1
+      menuSections: 8
   reminders:
     merge:
       delayMs: 30000

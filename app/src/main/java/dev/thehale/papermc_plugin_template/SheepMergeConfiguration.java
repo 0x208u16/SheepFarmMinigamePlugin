@@ -24,6 +24,48 @@ public final class SheepMergeConfiguration {
     private final long tutorialFocusNotificationCooldownMs;
     private final long tutorialMergePointsReminderRepeatMs;
 
+    private final int upgradeLimitBaseCost;
+    private final int upgradeEggSpeedBaseCost;
+    private final int upgradeWoolRegenBaseCost;
+    private final int upgradeHigherTierChanceBaseCost;
+
+    private final int questShearsTarget;
+    private final int questSpawnsTarget;
+    private final int questMergesTarget;
+    private final int questShearsReward;
+    private final int questSpawnsReward;
+    private final int questMergesReward;
+
+    private final int abilityLuckyBurstBaseCost;
+    private final int abilityWoolRushBaseCost;
+    private final int abilityJackpotShearsBaseCost;
+    private final int abilityAutoMergeBaseCost;
+    private final int abilityAutoShearBaseCost;
+
+    private final long abilityLuckyBurstBaseDurationMs;
+    private final long abilityWoolRushBaseDurationMs;
+    private final long abilityJackpotShearsBaseDurationMs;
+    private final long abilityAutoMergeBaseDurationMs;
+    private final long abilityAutoShearBaseDurationMs;
+
+    private final int questUpgradeDurationBaseCost;
+    private final int questUpgradePowerBaseCost;
+
+    private final int shearShopBaseCost;
+    private final int shearWoolSaveBaseCost;
+    private final int shearTierBoostBaseCost;
+
+    private final int comboDecayBaseCost;
+    private final int comboGainBaseCost;
+    private final int comboMaxBasePrestigeCost;
+
+    private final long startingPlayerPoints;
+    private final int tutorialShearTarget;
+    private final int tutorialSpawnTarget;
+    private final int tutorialMergeTarget;
+    private final int tutorialMenuSectionTarget;
+    private final int prestigeLevelBaseCost;
+
     private SheepMergeConfiguration(FileConfiguration configuration) {
         schedulerFastTickInterval = getLong(configuration, "scheduling.fastTickInterval", 2L, 1L);
         schedulerNormalTickInterval = getLong(configuration, "scheduling.normalTickInterval", 20L, 1L);
@@ -46,6 +88,53 @@ public final class SheepMergeConfiguration {
                 "gameplay.reminders.tutorialFocus.cooldownMs", 5_000L, 0L);
         tutorialMergePointsReminderRepeatMs = getLong(configuration,
                 "gameplay.reminders.tutorialMergePoints.repeatMs", 15_000L, 1L);
+
+        upgradeLimitBaseCost = getInt(configuration, "gameplay.upgrades.limit.baseCost", 16, 1);
+        upgradeEggSpeedBaseCost = getInt(configuration, "gameplay.upgrades.eggSpeed.baseCost", 20, 1);
+        upgradeWoolRegenBaseCost = getInt(configuration, "gameplay.upgrades.woolRegen.baseCost", 24, 1);
+        upgradeHigherTierChanceBaseCost = getInt(configuration, "gameplay.upgrades.higherTierChance.baseCost", 28, 1);
+
+        questShearsTarget = getInt(configuration, "gameplay.quests.targets.shears", 20, 1);
+        questSpawnsTarget = getInt(configuration, "gameplay.quests.targets.spawns", 12, 1);
+        questMergesTarget = getInt(configuration, "gameplay.quests.targets.merges", 8, 1);
+        questShearsReward = getInt(configuration, "gameplay.quests.rewards.shears", 8, 1);
+        questSpawnsReward = getInt(configuration, "gameplay.quests.rewards.spawns", 5, 1);
+        questMergesReward = getInt(configuration, "gameplay.quests.rewards.merges", 7, 1);
+
+        abilityLuckyBurstBaseCost = getInt(configuration, "gameplay.abilities.costs.luckyBurst", 8, 1);
+        abilityWoolRushBaseCost = getInt(configuration, "gameplay.abilities.costs.woolRush", 10, 1);
+        abilityJackpotShearsBaseCost = getInt(configuration, "gameplay.abilities.costs.jackpotShears", 15, 1);
+        abilityAutoMergeBaseCost = getInt(configuration, "gameplay.abilities.costs.autoMerge", 18, 1);
+        abilityAutoShearBaseCost = getInt(configuration, "gameplay.abilities.costs.autoShear", 12, 1);
+
+        abilityLuckyBurstBaseDurationMs = getLong(configuration, "gameplay.abilities.durations.luckyBurstMs", 180_000L,
+                1L);
+        abilityWoolRushBaseDurationMs = getLong(configuration, "gameplay.abilities.durations.woolRushMs", 240_000L,
+                1L);
+        abilityJackpotShearsBaseDurationMs = getLong(configuration, "gameplay.abilities.durations.jackpotShearsMs",
+                120_000L, 1L);
+        abilityAutoMergeBaseDurationMs = getLong(configuration, "gameplay.abilities.durations.autoMergeMs", 90_000L,
+                1L);
+        abilityAutoShearBaseDurationMs = getLong(configuration, "gameplay.abilities.durations.autoShearMs", 90_000L,
+                1L);
+
+        questUpgradeDurationBaseCost = getInt(configuration, "gameplay.questUpgrades.durationBaseCost", 12, 1);
+        questUpgradePowerBaseCost = getInt(configuration, "gameplay.questUpgrades.powerBaseCost", 15, 1);
+
+        shearShopBaseCost = getInt(configuration, "gameplay.shearShop.baseCost", 20, 1);
+        shearWoolSaveBaseCost = getInt(configuration, "gameplay.shearShop.woolSaveBaseCost", 30, 1);
+        shearTierBoostBaseCost = getInt(configuration, "gameplay.shearShop.tierBoostBaseCost", 45, 1);
+
+        comboDecayBaseCost = getInt(configuration, "gameplay.combo.decayBaseCost", 75, 1);
+        comboGainBaseCost = getInt(configuration, "gameplay.combo.gainBaseCost", 90, 1);
+        comboMaxBasePrestigeCost = getInt(configuration, "gameplay.combo.maxBasePrestigeCost", 3, 1);
+
+        startingPlayerPoints = getLong(configuration, "gameplay.starting.points", 1_000L, 0L);
+        tutorialShearTarget = getInt(configuration, "gameplay.tutorial.targets.shears", 3, 1);
+        tutorialSpawnTarget = getInt(configuration, "gameplay.tutorial.targets.spawns", 3, 1);
+        tutorialMergeTarget = getInt(configuration, "gameplay.tutorial.targets.merges", 1, 1);
+        tutorialMenuSectionTarget = getInt(configuration, "gameplay.tutorial.targets.menuSections", 8, 1);
+        prestigeLevelBaseCost = getInt(configuration, "gameplay.prestige.levelBaseCost", 500, 1);
     }
 
     public static void initialize(SheepMergePlugin plugin) {
@@ -119,11 +208,154 @@ public final class SheepMergeConfiguration {
         return tutorialMergePointsReminderRepeatMs;
     }
 
+    public int getUpgradeLimitBaseCost() {
+        return upgradeLimitBaseCost;
+    }
+
+    public int getUpgradeEggSpeedBaseCost() {
+        return upgradeEggSpeedBaseCost;
+    }
+
+    public int getUpgradeWoolRegenBaseCost() {
+        return upgradeWoolRegenBaseCost;
+    }
+
+    public int getUpgradeHigherTierChanceBaseCost() {
+        return upgradeHigherTierChanceBaseCost;
+    }
+
+    public int getQuestShearsTarget() {
+        return questShearsTarget;
+    }
+
+    public int getQuestSpawnsTarget() {
+        return questSpawnsTarget;
+    }
+
+    public int getQuestMergesTarget() {
+        return questMergesTarget;
+    }
+
+    public int getQuestShearsReward() {
+        return questShearsReward;
+    }
+
+    public int getQuestSpawnsReward() {
+        return questSpawnsReward;
+    }
+
+    public int getQuestMergesReward() {
+        return questMergesReward;
+    }
+
+    public int getAbilityLuckyBurstBaseCost() {
+        return abilityLuckyBurstBaseCost;
+    }
+
+    public int getAbilityWoolRushBaseCost() {
+        return abilityWoolRushBaseCost;
+    }
+
+    public int getAbilityJackpotShearsBaseCost() {
+        return abilityJackpotShearsBaseCost;
+    }
+
+    public int getAbilityAutoMergeBaseCost() {
+        return abilityAutoMergeBaseCost;
+    }
+
+    public int getAbilityAutoShearBaseCost() {
+        return abilityAutoShearBaseCost;
+    }
+
+    public long getAbilityLuckyBurstBaseDurationMs() {
+        return abilityLuckyBurstBaseDurationMs;
+    }
+
+    public long getAbilityWoolRushBaseDurationMs() {
+        return abilityWoolRushBaseDurationMs;
+    }
+
+    public long getAbilityJackpotShearsBaseDurationMs() {
+        return abilityJackpotShearsBaseDurationMs;
+    }
+
+    public long getAbilityAutoMergeBaseDurationMs() {
+        return abilityAutoMergeBaseDurationMs;
+    }
+
+    public long getAbilityAutoShearBaseDurationMs() {
+        return abilityAutoShearBaseDurationMs;
+    }
+
+    public int getQuestUpgradeDurationBaseCost() {
+        return questUpgradeDurationBaseCost;
+    }
+
+    public int getQuestUpgradePowerBaseCost() {
+        return questUpgradePowerBaseCost;
+    }
+
+    public int getShearShopBaseCost() {
+        return shearShopBaseCost;
+    }
+
+    public int getShearWoolSaveBaseCost() {
+        return shearWoolSaveBaseCost;
+    }
+
+    public int getShearTierBoostBaseCost() {
+        return shearTierBoostBaseCost;
+    }
+
+    public int getComboDecayBaseCost() {
+        return comboDecayBaseCost;
+    }
+
+    public int getComboGainBaseCost() {
+        return comboGainBaseCost;
+    }
+
+    public int getComboMaxBasePrestigeCost() {
+        return comboMaxBasePrestigeCost;
+    }
+
+    public long getStartingPlayerPoints() {
+        return startingPlayerPoints;
+    }
+
+    public int getTutorialShearTarget() {
+        return tutorialShearTarget;
+    }
+
+    public int getTutorialSpawnTarget() {
+        return tutorialSpawnTarget;
+    }
+
+    public int getTutorialMergeTarget() {
+        return tutorialMergeTarget;
+    }
+
+    public int getTutorialMenuSectionTarget() {
+        return tutorialMenuSectionTarget;
+    }
+
+    public int getPrestigeLevelBaseCost() {
+        return prestigeLevelBaseCost;
+    }
+
     private static long getLong(FileConfiguration configuration, String path, long defaultValue, long minValue) {
         if (configuration == null) {
             return defaultValue;
         }
         return Math.max(minValue, configuration.getLong(path, defaultValue));
+    }
+
+    private static int getInt(FileConfiguration configuration, String path, int defaultValue, int minValue) {
+        if (configuration == null) {
+            return defaultValue;
+        }
+        return Math.max(minValue, configuration.getInt(path, defaultValue));
     }
 
     private static double getDouble(FileConfiguration configuration, String path, double defaultValue) {

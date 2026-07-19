@@ -1,5 +1,30 @@
 package dev.thehale.papermc_plugin_template;
 
+import dev.thehale.papermc_plugin_template.commands.CheckPrestigeCommandModule;
+import dev.thehale.papermc_plugin_template.commands.CheckQuestPointsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.CheckpointsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.ComboFrenzyCommandModule;
+import dev.thehale.papermc_plugin_template.commands.DashHelpCommandModule;
+import dev.thehale.papermc_plugin_template.commands.GivePointsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.GiveQuestPointsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.HelpCommandModule;
+import dev.thehale.papermc_plugin_template.commands.KickCommandModule;
+import dev.thehale.papermc_plugin_template.commands.LeaderboardCommandModule;
+import dev.thehale.papermc_plugin_template.commands.PrestigeCommandModule;
+import dev.thehale.papermc_plugin_template.commands.ReloadCommandModule;
+import dev.thehale.papermc_plugin_template.commands.ResetDataCommandModule;
+import dev.thehale.papermc_plugin_template.commands.SetPointsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.SetPrestigeCommandModule;
+import dev.thehale.papermc_plugin_template.commands.SetQuestPointsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.SheepMergeCommandModule;
+import dev.thehale.papermc_plugin_template.commands.ShopCommandModule;
+import dev.thehale.papermc_plugin_template.commands.StatsCommandModule;
+import dev.thehale.papermc_plugin_template.commands.StatusCommandModule;
+import dev.thehale.papermc_plugin_template.commands.StormCommandModule;
+import dev.thehale.papermc_plugin_template.commands.UpgradeCommandModule;
+import dev.thehale.papermc_plugin_template.commands.VisitCommandModule;
+import dev.thehale.papermc_plugin_template.commands.WorldCommandModule;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Difficulty;
@@ -22,51 +47,6 @@ import java.util.Set;
 
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
-    private interface CommandModule {
-        String root();
-
-        boolean execute(Player player, String[] args);
-
-        List<String> tabComplete(CommandSender sender, String[] args);
-    }
-
-    private static final class RootCommandModule implements CommandModule {
-        private final String root;
-        private final RootCommandExecutor executor;
-        private final RootTabCompleter tabCompleter;
-
-        private RootCommandModule(String root, RootCommandExecutor executor, RootTabCompleter tabCompleter) {
-            this.root = root;
-            this.executor = executor;
-            this.tabCompleter = tabCompleter;
-        }
-
-        @Override
-        public String root() {
-            return root;
-        }
-
-        @Override
-        public boolean execute(Player player, String[] args) {
-            return executor.execute(player, args);
-        }
-
-        @Override
-        public List<String> tabComplete(CommandSender sender, String[] args) {
-            return tabCompleter.complete(sender, args);
-        }
-    }
-
-    @FunctionalInterface
-    private interface RootCommandExecutor {
-        boolean execute(Player player, String[] args);
-    }
-
-    @FunctionalInterface
-    private interface RootTabCompleter {
-        List<String> complete(CommandSender sender, String[] args);
-    }
-
     private static final Set<String> initializedManagedWorldNames = new HashSet<>();
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
@@ -80,6 +60,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "status",
             "storm",
             "combofrenzy",
+            "reload",
             "leaderboard",
             "resetdata",
             "stats",
@@ -117,33 +98,30 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "checkquestpoints",
             "checkprestige");
 
-    private final List<CommandModule> rootModules = List.of(
-            new RootCommandModule("help", this::handleHelpRootCommand, this::tabCompleteNone),
-            new RootCommandModule("-help", this::handleDashHelpRootCommand, this::tabCompleteNone),
-            new RootCommandModule("upgrade", this::handleUpgradeCommand, this::tabCompleteNone),
-            new RootCommandModule("prestige", this::handlePrestigeCommand, this::tabCompleteNone),
-            new RootCommandModule("shop", this::handleShopCommand, this::tabCompleteNone),
-            new RootCommandModule("visit", this::handleVisitCommand, this::tabCompleteVisit),
-            new RootCommandModule("kick", this::handleKickCommand, this::tabCompleteKick),
-            new RootCommandModule("status", this::handleStatusCommand, this::tabCompleteNone),
-            new RootCommandModule("storm", this::handleStormCommand, this::tabCompleteNone),
-            new RootCommandModule("combofrenzy", this::handleComboFrenzyCommand, this::tabCompleteNone),
-            new RootCommandModule("leaderboard", this::handleLeaderboardCommand, this::tabCompleteLeaderboard),
-            new RootCommandModule("resetdata", this::handleResetDataCommand, this::tabCompleteAdminPlayerTarget),
-            new RootCommandModule("stats", this::handleStatsCommand, this::tabCompleteAdminStatCheck),
-            new RootCommandModule("checkpoints", this::handleCheckpointsCommand, this::tabCompleteAdminStatCheck),
-            new RootCommandModule("checkquestpoints", this::handleCheckQuestPointsCommand,
-                    this::tabCompleteAdminStatCheck),
-            new RootCommandModule("checkprestige", this::handleCheckPrestigeCommand,
-                    this::tabCompleteAdminStatCheck),
-            new RootCommandModule("givepoints", this::handleGivePointsCommand, this::tabCompleteAdminAmountPlayer),
-            new RootCommandModule("setpoints", this::handleSetPointsCommand, this::tabCompleteAdminAmountPlayer),
-            new RootCommandModule("givequestpoints", this::handleGiveQuestPointsCommand,
-                    this::tabCompleteAdminAmountPlayer),
-            new RootCommandModule("setquestpoints", this::handleSetQuestPointsCommand,
-                    this::tabCompleteAdminAmountPlayer),
-            new RootCommandModule("setprestige", this::handleSetPrestigeCommand, this::tabCompleteAdminAmountPlayer),
-            new RootCommandModule("world", this::handleWorldCommand, this::tabCompleteWorld));
+    private final List<SheepMergeCommandModule> rootModules = List.of(
+            new HelpCommandModule(this::handleHelpRootCommand, this::tabCompleteNone),
+            new DashHelpCommandModule(this::handleDashHelpRootCommand, this::tabCompleteNone),
+            new UpgradeCommandModule(this::handleUpgradeCommand, this::tabCompleteNone),
+            new PrestigeCommandModule(this::handlePrestigeCommand, this::tabCompleteNone),
+            new ShopCommandModule(this::handleShopCommand, this::tabCompleteNone),
+            new VisitCommandModule(this::handleVisitCommand, this::tabCompleteVisit),
+            new KickCommandModule(this::handleKickCommand, this::tabCompleteKick),
+            new StatusCommandModule(this::handleStatusCommand, this::tabCompleteNone),
+            new StormCommandModule(this::handleStormCommand, this::tabCompleteNone),
+            new ComboFrenzyCommandModule(this::handleComboFrenzyCommand, this::tabCompleteNone),
+            new ReloadCommandModule(this::handleReloadCommand, this::tabCompleteNone),
+            new LeaderboardCommandModule(this::handleLeaderboardCommand, this::tabCompleteLeaderboard),
+            new ResetDataCommandModule(this::handleResetDataCommand, this::tabCompleteAdminPlayerTarget),
+            new StatsCommandModule(this::handleStatsCommand, this::tabCompleteAdminStatCheck),
+            new CheckpointsCommandModule(this::handleCheckpointsCommand, this::tabCompleteAdminStatCheck),
+            new CheckQuestPointsCommandModule(this::handleCheckQuestPointsCommand, this::tabCompleteAdminStatCheck),
+            new CheckPrestigeCommandModule(this::handleCheckPrestigeCommand, this::tabCompleteAdminStatCheck),
+            new GivePointsCommandModule(this::handleGivePointsCommand, this::tabCompleteAdminAmountPlayer),
+            new SetPointsCommandModule(this::handleSetPointsCommand, this::tabCompleteAdminAmountPlayer),
+            new GiveQuestPointsCommandModule(this::handleGiveQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
+            new SetQuestPointsCommandModule(this::handleSetQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
+            new SetPrestigeCommandModule(this::handleSetPrestigeCommand, this::tabCompleteAdminAmountPlayer),
+            new WorldCommandModule(this::handleWorldCommand, this::tabCompleteWorld));
 
     public static String getWorldName(java.util.UUID playerId) {
         return "sheepfarm_" + playerId.toString().replace("-", "");
@@ -179,6 +157,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": remove the leaderboard display");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge reload")
+                + ": reload plugin configuration values live");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge world") + ": travel to the shared farm build world");
         player.sendMessage(
@@ -321,7 +301,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length > 0) {
-            CommandModule module = findRootModule(args[0]);
+            SheepMergeCommandModule module = findRootModule(args[0]);
             if (module != null) {
                 return module.tabComplete(sender, args);
             }
@@ -350,15 +330,15 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean dispatchRootCommand(Player player, String[] args) {
-        CommandModule module = findRootModule(args[0]);
+        SheepMergeCommandModule module = findRootModule(args[0]);
         return module != null && module.execute(player, args);
     }
 
-    private CommandModule findRootModule(String root) {
+    private SheepMergeCommandModule findRootModule(String root) {
         if (root == null) {
             return null;
         }
-        for (CommandModule module : rootModules) {
+        for (SheepMergeCommandModule module : rootModules) {
             if (module.root().equalsIgnoreCase(root)) {
                 return module;
             }
@@ -693,6 +673,28 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             } else {
                 player.sendMessage("A combo frenzy is already active or could not be started.");
             }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleReloadCommand(Player player, String[] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+
+            SheepMergePlugin plugin = SheepMergePlugin.instance;
+            if (plugin == null) {
+                player.sendMessage(error("Plugin instance not available."));
+                return true;
+            }
+
+            plugin.reloadConfig();
+            SheepMergeConfiguration.initialize(plugin);
+            SheepMergeManager.applyConfiguration(SheepMergeConfiguration.get());
+            player.sendMessage(adminHeader("Config") + " " + value("Configuration reloaded."));
             return true;
         }
         return false;
@@ -1134,6 +1136,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (root.equals("resetdata") || root.equals("stats") || root.equals("checkpoints")
                 || root.equals("checkquestpoints") || root.equals("checkprestige") || root.equals("givepoints")
                 || root.equals("setpoints") || root.equals("givequestpoints") || root.equals("setquestpoints")
+                || root.equals("reload")
                 || root.equals("setprestige")) {
             player.sendMessage(error("Invalid admin command syntax for /sheepmerge " + root
                     + ". Use /sheepmerge help -help for command hints."));

@@ -141,16 +141,16 @@ public final class SheepMergeManager {
     private static final int BASE_SHEEP_LIMIT = 10;
     private static final int MAX_SHEEP_LIMIT = 50;
     private static final int LIMIT_UPGRADE_STEP = 5;
-    private static final int LIMIT_UPGRADE_COST = 10;
+    private static int LIMIT_UPGRADE_COST = 16;
     private static final int BASE_EGG_INTERVAL_SECONDS = 10;
     private static final int MIN_EGG_INTERVAL_SECONDS = 2;
     private static final int EGG_SPEED_MAX_LEVEL = BASE_EGG_INTERVAL_SECONDS - MIN_EGG_INTERVAL_SECONDS;
     private static final int EGG_SPEED_BASE_MAX_LEVEL = Math.max(1, EGG_SPEED_MAX_LEVEL / 2);
-    private static final int EGG_SPEED_UPGRADE_BASE_COST = 8;
-    private static final int WOOL_REGEN_UPGRADE_BASE_COST = 13;
+    private static int EGG_SPEED_UPGRADE_BASE_COST = 20;
+    private static int WOOL_REGEN_UPGRADE_BASE_COST = 24;
     private static final int WOOL_REGEN_MAX_LEVEL = 8;
     private static final int WOOL_REGEN_BASE_MAX_LEVEL = Math.max(1, WOOL_REGEN_MAX_LEVEL / 2);
-    private static final int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 15;
+    private static int HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = 28;
     private static final int HIGHER_TIER_CHANCE_MAX_LEVEL = 10;
     private static final int HIGHER_TIER_CHANCE_BASE_MAX_LEVEL = Math.max(1, HIGHER_TIER_CHANCE_MAX_LEVEL / 2);
     private static final int HIGHER_TIER_CHANCE_HARD_MAX_LEVEL = 10;
@@ -163,30 +163,30 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_EGG_CAP_BASE_COST = 2;
     private static final int PRESTIGE_BASE_SPAWN_TIER_BASE_COST = 10;
     private static final int PRESTIGE_QUEST_REWARD_BASE_COST = 4;
-    private static final int QUEST_SHEARS_TARGET = 20;
-    private static final int QUEST_SPAWNS_TARGET = 12;
-    private static final int QUEST_MERGES_TARGET = 8;
-    private static final int QUEST_SHEARS_REWARD = 8;
-    private static final int QUEST_SPAWNS_REWARD = 5;
-    private static final int QUEST_MERGES_REWARD = 7;
+    private static int QUEST_SHEARS_TARGET = 20;
+    private static int QUEST_SPAWNS_TARGET = 12;
+    private static int QUEST_MERGES_TARGET = 8;
+    private static int QUEST_SHEARS_REWARD = 8;
+    private static int QUEST_SPAWNS_REWARD = 5;
+    private static int QUEST_MERGES_REWARD = 7;
     private static final long BASE_QUEST_RESET_MS = 15L * 60L * 1000L;
     private static final long MIN_QUEST_RESET_MS = 5L * 60L * 1000L;
     private static final long QUEST_RESET_REDUCTION_PER_PRESTIGE_MS = 60L * 1000L;
-    private static final int QUEST_LUCKY_BURST_BASE_COST = 8;
-    private static final int QUEST_WOOL_RUSH_BASE_COST = 10;
-    private static final int QUEST_JACKPOT_SHEARS_BASE_COST = 15;
-    private static final int QUEST_AUTO_MERGE_BASE_COST = 18;
-    private static final int QUEST_AUTO_SHEAR_BASE_COST = 12;
-    private static final long QUEST_LUCKY_BURST_BASE_DURATION_MS = 3L * 60L * 1000L;
-    private static final long QUEST_WOOL_RUSH_BASE_DURATION_MS = 4L * 60L * 1000L;
-    private static final long QUEST_JACKPOT_SHEARS_BASE_DURATION_MS = 2L * 60L * 1000L;
-    private static final long QUEST_AUTO_MERGE_BASE_DURATION_MS = 90L * 1000L;
-    private static final long QUEST_AUTO_SHEAR_BASE_DURATION_MS = 90L * 1000L;
+    private static int QUEST_LUCKY_BURST_BASE_COST = 8;
+    private static int QUEST_WOOL_RUSH_BASE_COST = 10;
+    private static int QUEST_JACKPOT_SHEARS_BASE_COST = 15;
+    private static int QUEST_AUTO_MERGE_BASE_COST = 18;
+    private static int QUEST_AUTO_SHEAR_BASE_COST = 12;
+    private static long QUEST_LUCKY_BURST_BASE_DURATION_MS = 3L * 60L * 1000L;
+    private static long QUEST_WOOL_RUSH_BASE_DURATION_MS = 4L * 60L * 1000L;
+    private static long QUEST_JACKPOT_SHEARS_BASE_DURATION_MS = 2L * 60L * 1000L;
+    private static long QUEST_AUTO_MERGE_BASE_DURATION_MS = 90L * 1000L;
+    private static long QUEST_AUTO_SHEAR_BASE_DURATION_MS = 90L * 1000L;
     private static final long ABILITY_AURA_SOUND_INTERVAL_MS = 15_000L;
     private static final long QUEST_AUTO_MERGE_INTERVAL_MS = 1000L;
     private static final long QUEST_AUTO_SHEAR_INTERVAL_MS = 1000L;
-    private static final int QUEST_UPGRADE_DURATION_BASE_COST = 12;
-    private static final int QUEST_UPGRADE_POWER_BASE_COST = 15;
+    private static int QUEST_UPGRADE_DURATION_BASE_COST = 12;
+    private static int QUEST_UPGRADE_POWER_BASE_COST = 15;
     private static final int BASE_EGG_CAP = 10;
     private static final int PRESTIGE_EGG_CAP_STEP = 10;
     private static final int PRESTIGE_MAX_LEVEL = Integer.MAX_VALUE;
@@ -228,9 +228,9 @@ public final class SheepMergeManager {
             org.bukkit.DyeColor.PINK
     };
     private static final int FARM_UPGRADE_COMMAND_SLOT = 8;
-    private static final int SHEAR_SHOP_BASE_COST = 20;
-    private static final int SHEAR_WOOL_SAVE_BASE_COST = 30;
-    private static final int SHEAR_TIER_BOOST_BASE_COST = 45;
+    private static int SHEAR_SHOP_BASE_COST = 20;
+    private static int SHEAR_WOOL_SAVE_BASE_COST = 30;
+    private static int SHEAR_TIER_BOOST_BASE_COST = 45;
     private static final int SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL = 5;
     private static final int SHEAR_TIER_BOOST_CHANCE_PER_LEVEL = 1;
     private static final int SHEAR_WOOL_SAVE_CHANCE_CAP = 50;
@@ -263,16 +263,17 @@ public final class SheepMergeManager {
     private static final int COMBO_DECAY_MAX_LEVEL = 20;
     private static final int COMBO_MAX_MAX_LEVEL = 20;
     private static final int COMBO_GAIN_MAX_LEVEL = 20;
-    private static final int COMBO_DECAY_BASE_COST = 75;
-    private static final int COMBO_GAIN_BASE_COST = 90;
-    private static final int COMBO_MAX_BASE_PRESTIGE_COST = 3;
+    private static int COMBO_DECAY_BASE_COST = 75;
+    private static int COMBO_GAIN_BASE_COST = 90;
+    private static int COMBO_MAX_BASE_PRESTIGE_COST = 3;
     private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
     private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
-    private static final long STARTING_PLAYER_POINTS = 1_000L;
-    private static final int TUTORIAL_SHEAR_TARGET = 3;
-    private static final int TUTORIAL_SPAWN_TARGET = 3;
-    private static final int TUTORIAL_MERGE_TARGET = 1;
-    private static final int TUTORIAL_MENU_SECTION_TARGET = 8;
+    private static long STARTING_PLAYER_POINTS = 1_000L;
+    private static int TUTORIAL_SHEAR_TARGET = 3;
+    private static int TUTORIAL_SPAWN_TARGET = 3;
+    private static int TUTORIAL_MERGE_TARGET = 1;
+    private static int TUTORIAL_MENU_SECTION_TARGET = 8;
+    private static int PRESTIGE_LEVEL_BASE_COST = 500;
     public static final String UPGRADE_MENU_TITLE = "Sheep Merge Upgrades";
     public static final String PRESTIGE_MENU_TITLE = "Prestige Upgrades";
     public static final String QUEST_MENU_TITLE = "Quest Abilities";
@@ -399,6 +400,40 @@ public final class SheepMergeManager {
         if (configuration == null) {
             return;
         }
+        LIMIT_UPGRADE_COST = configuration.getUpgradeLimitBaseCost();
+        EGG_SPEED_UPGRADE_BASE_COST = configuration.getUpgradeEggSpeedBaseCost();
+        WOOL_REGEN_UPGRADE_BASE_COST = configuration.getUpgradeWoolRegenBaseCost();
+        HIGHER_TIER_CHANCE_UPGRADE_BASE_COST = configuration.getUpgradeHigherTierChanceBaseCost();
+        QUEST_SHEARS_TARGET = configuration.getQuestShearsTarget();
+        QUEST_SPAWNS_TARGET = configuration.getQuestSpawnsTarget();
+        QUEST_MERGES_TARGET = configuration.getQuestMergesTarget();
+        QUEST_SHEARS_REWARD = configuration.getQuestShearsReward();
+        QUEST_SPAWNS_REWARD = configuration.getQuestSpawnsReward();
+        QUEST_MERGES_REWARD = configuration.getQuestMergesReward();
+        QUEST_LUCKY_BURST_BASE_COST = configuration.getAbilityLuckyBurstBaseCost();
+        QUEST_WOOL_RUSH_BASE_COST = configuration.getAbilityWoolRushBaseCost();
+        QUEST_JACKPOT_SHEARS_BASE_COST = configuration.getAbilityJackpotShearsBaseCost();
+        QUEST_AUTO_MERGE_BASE_COST = configuration.getAbilityAutoMergeBaseCost();
+        QUEST_AUTO_SHEAR_BASE_COST = configuration.getAbilityAutoShearBaseCost();
+        QUEST_LUCKY_BURST_BASE_DURATION_MS = configuration.getAbilityLuckyBurstBaseDurationMs();
+        QUEST_WOOL_RUSH_BASE_DURATION_MS = configuration.getAbilityWoolRushBaseDurationMs();
+        QUEST_JACKPOT_SHEARS_BASE_DURATION_MS = configuration.getAbilityJackpotShearsBaseDurationMs();
+        QUEST_AUTO_MERGE_BASE_DURATION_MS = configuration.getAbilityAutoMergeBaseDurationMs();
+        QUEST_AUTO_SHEAR_BASE_DURATION_MS = configuration.getAbilityAutoShearBaseDurationMs();
+        QUEST_UPGRADE_DURATION_BASE_COST = configuration.getQuestUpgradeDurationBaseCost();
+        QUEST_UPGRADE_POWER_BASE_COST = configuration.getQuestUpgradePowerBaseCost();
+        SHEAR_SHOP_BASE_COST = configuration.getShearShopBaseCost();
+        SHEAR_WOOL_SAVE_BASE_COST = configuration.getShearWoolSaveBaseCost();
+        SHEAR_TIER_BOOST_BASE_COST = configuration.getShearTierBoostBaseCost();
+        COMBO_DECAY_BASE_COST = configuration.getComboDecayBaseCost();
+        COMBO_GAIN_BASE_COST = configuration.getComboGainBaseCost();
+        COMBO_MAX_BASE_PRESTIGE_COST = configuration.getComboMaxBasePrestigeCost();
+        STARTING_PLAYER_POINTS = configuration.getStartingPlayerPoints();
+        TUTORIAL_SHEAR_TARGET = configuration.getTutorialShearTarget();
+        TUTORIAL_SPAWN_TARGET = configuration.getTutorialSpawnTarget();
+        TUTORIAL_MERGE_TARGET = configuration.getTutorialMergeTarget();
+        TUTORIAL_MENU_SECTION_TARGET = configuration.getTutorialMenuSectionTarget();
+        PRESTIGE_LEVEL_BASE_COST = configuration.getPrestigeLevelBaseCost();
         MERGE_REMINDER_DELAY_MS = configuration.getMergeReminderDelayMs();
         MERGE_REMINDER_REPEAT_MS = configuration.getMergeReminderRepeatMs();
         TUTORIAL_REMINDER_DELAY_MS = configuration.getTutorialReminderDelayMs();
@@ -1944,11 +1979,11 @@ public final class SheepMergeManager {
     }
 
     public static int getPrestigeCost(Player player) {
-        return getPrestigeUpgradeCost(500, getPrestigeLevel(player));
+        return getPrestigeUpgradeCost(PRESTIGE_LEVEL_BASE_COST, getPrestigeLevel(player));
     }
 
     private static int getPrestigeCostForLevel(int level) {
-        return getPrestigeUpgradeCost(500, Math.max(0, level));
+        return getPrestigeUpgradeCost(PRESTIGE_LEVEL_BASE_COST, Math.max(0, level));
     }
 
     private static int getAffordablePrestigeLevels(Player player) {
@@ -3779,6 +3814,9 @@ public final class SheepMergeManager {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
             return;
         }
+        if (player.isOp() || isFarmBuildWorld(player.getWorld())) {
+            return;
+        }
 
         var inventory = player.getInventory();
         ItemStack[] storageContents = inventory.getStorageContents();
@@ -3809,16 +3847,31 @@ public final class SheepMergeManager {
             if (itemStack == null) {
                 continue;
             }
-
-            Material type = itemStack.getType();
-            if (type == Material.SHEARS || type == Material.NETHER_STAR || type == Material.SHEEP_SPAWN_EGG) {
+            if (isForcedFarmLoadoutItem(itemStack)) {
                 storageContents[slot] = null;
                 storageChanged = true;
+                continue;
             }
+
+            storageContents[slot] = null;
+            storageChanged = true;
         }
 
         if (storageChanged) {
             inventory.setStorageContents(storageContents);
+        }
+
+        boolean armorChanged = false;
+        ItemStack[] armorContents = inventory.getArmorContents();
+        for (int index = 0; index < armorContents.length; index++) {
+            if (armorContents[index] == null) {
+                continue;
+            }
+            armorContents[index] = null;
+            armorChanged = true;
+        }
+        if (armorChanged) {
+            inventory.setArmorContents(armorContents);
         }
 
         ItemStack offHand = inventory.getItemInOffHand();
@@ -4312,9 +4365,7 @@ public final class SheepMergeManager {
             return 0;
         }
         int normalizedLevel = Math.max(0, level);
-        double scaled = baseCost * Math.pow(1.5D, normalizedLevel);
-        long rounded = Math.max(1L, Math.round(scaled));
-        return rounded >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rounded;
+        return getDoubledUpgradeCost(baseCost, normalizedLevel);
     }
 
     private static int addSaturated(int current, int delta) {
