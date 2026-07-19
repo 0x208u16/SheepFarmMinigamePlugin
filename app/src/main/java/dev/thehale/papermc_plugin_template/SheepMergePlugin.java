@@ -50,7 +50,11 @@ public class SheepMergePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         log = getLogger();
+        saveDefaultConfig();
+        reloadConfig();
+        SheepMergeConfiguration.initialize(this);
         SheepMergeManager.initialize(this);
+        SheepMergeManager.applyConfiguration(SheepMergeConfiguration.get());
         SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         setup();
         SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
@@ -67,13 +71,17 @@ public class SheepMergePlugin extends JavaPlugin {
     }
 
     private void scheduleLiveSheepCountUpdates() {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
         getServer().getScheduler().runTaskTimer(this,
                 () -> SheepMergeManager.refreshLiveSheepCounts(getServer().getWorlds()),
-                20L,
-                20L);
+                normalTickInterval,
+                normalTickInterval);
     }
 
     private void scheduleSheepNameUpdates() {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long fastTickInterval = configuration == null ? 2L : configuration.getSchedulerFastTickInterval();
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (World world : getServer().getWorlds()) {
                 if (!SheepMergeManager.isSheepFarmWorld(world)) {
@@ -86,7 +94,7 @@ public class SheepMergePlugin extends JavaPlugin {
             for (Player player : getServer().getOnlinePlayers()) {
                 SheepMergeManager.updateCarriedSheepPosition(player);
             }
-        }, 2L, 2L);
+        }, fastTickInterval, fastTickInterval);
     }
 
     private void setup() {
@@ -100,14 +108,18 @@ public class SheepMergePlugin extends JavaPlugin {
     }
 
     private void scheduleSheepEggDistribution() {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long fastTickInterval = configuration == null ? 2L : configuration.getSchedulerFastTickInterval();
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player player : getServer().getOnlinePlayers()) {
                 SheepMergeManager.tickEggDistribution(player);
             }
-        }, 2L, 2L);
+        }, fastTickInterval, fastTickInterval);
     }
 
     private void scheduleFarmLoadoutAndReminderUpdates() {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long reminderTickInterval = configuration == null ? 20L : configuration.getSchedulerReminderTickInterval();
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player player : getServer().getOnlinePlayers()) {
                 if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
@@ -122,30 +134,35 @@ public class SheepMergePlugin extends JavaPlugin {
                 SheepMergeManager.tickCombo(player);
                 SheepMergeManager.tickPointsGainOverlay(player);
             }
-        }, 20L, 20L);
+        }, reminderTickInterval, reminderTickInterval);
     }
 
     private void scheduleFarmSaturationUpdates() {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
         getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player player : getServer().getOnlinePlayers()) {
                 SheepMergeManager.applyFarmSaturation(player);
             }
-        }, 20L, 20L);
+        }, normalTickInterval, normalTickInterval);
     }
 
     private void scheduleRandomFarmEvents() {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
         getServer().getScheduler().runTaskTimer(this,
                 SheepMergeManager::tickRandomFarmEvents,
-                20L,
-                20L);
+                normalTickInterval,
+                normalTickInterval);
     }
 
     private void scheduleGameplayTips() {
-        long oneMinuteTicks = 60L * 20L;
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        long tipIntervalTicks = configuration == null ? 60L * 20L : configuration.getSchedulerTipIntervalTicks();
         getServer().getScheduler().runTaskTimer(this,
                 SheepMergeManager::broadcastRandomGameplayTip,
-                oneMinuteTicks,
-                oneMinuteTicks);
+                tipIntervalTicks,
+                tipIntervalTicks);
     }
 
     @Override

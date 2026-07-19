@@ -238,14 +238,14 @@ public final class SheepMergeManager {
     private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = SHEAR_WOOL_SAVE_CHANCE_CAP / SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL;
     private static final int SHEAR_TIER_BOOST_MAX_LEVEL = 25;
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
-    private static final long MERGE_REMINDER_DELAY_MS = 30_000L;
-    private static final long MERGE_REMINDER_REPEAT_MS = 60_000L;
-    private static final long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
-    private static final long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
-    private static final long TUTORIAL_TASK_TITLE_REPEAT_MS = 12_000L;
-    private static final long TUTORIAL_STATUS_FEED_REPEAT_MS = 12_000L;
-    private static final long TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS = 5_000L;
-    private static final long TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS = 15_000L;
+    private static long MERGE_REMINDER_DELAY_MS = 30_000L;
+    private static long MERGE_REMINDER_REPEAT_MS = 60_000L;
+    private static long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
+    private static long TUTORIAL_REMINDER_REPEAT_MS = 60_000L;
+    private static long TUTORIAL_TASK_TITLE_REPEAT_MS = 12_000L;
+    private static long TUTORIAL_STATUS_FEED_REPEAT_MS = 12_000L;
+    private static long TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS = 5_000L;
+    private static long TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS = 15_000L;
     private static final long RANDOM_EVENT_ROLL_INTERVAL_MS = 60_000L;
     private static final int RANDOM_EVENT_TRIGGER_CHANCE_DENOMINATOR = 10;
     private static final long SHEEP_RAIN_EVENT_DURATION_MS = 60_000L;
@@ -393,6 +393,20 @@ public final class SheepMergeManager {
         farmLayoutFile = new File(plugin.getDataFolder(), "farm-layout.yml");
         loadData();
         loadFarmLayout();
+    }
+
+    public static void applyConfiguration(SheepMergeConfiguration configuration) {
+        if (configuration == null) {
+            return;
+        }
+        MERGE_REMINDER_DELAY_MS = configuration.getMergeReminderDelayMs();
+        MERGE_REMINDER_REPEAT_MS = configuration.getMergeReminderRepeatMs();
+        TUTORIAL_REMINDER_DELAY_MS = configuration.getTutorialReminderDelayMs();
+        TUTORIAL_REMINDER_REPEAT_MS = configuration.getTutorialReminderRepeatMs();
+        TUTORIAL_TASK_TITLE_REPEAT_MS = configuration.getTutorialTaskTitleRepeatMs();
+        TUTORIAL_STATUS_FEED_REPEAT_MS = configuration.getTutorialStatusFeedRepeatMs();
+        TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS = configuration.getTutorialFocusNotificationCooldownMs();
+        TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS = configuration.getTutorialMergePointsReminderRepeatMs();
     }
 
     public static int getFarmRadius() {
@@ -1603,7 +1617,9 @@ public final class SheepMergeManager {
     }
 
     static long getCombinedRemainingWoolRegenMs(Sheep first, Sheep second) {
-        return getRemainingWoolRegenMs(first) + getRemainingWoolRegenMs(second);
+        long firstRemaining = getRemainingWoolRegenMs(first);
+        long secondRemaining = getRemainingWoolRegenMs(second);
+        return (firstRemaining + secondRemaining) / 2L;
     }
 
     public static void initializeMergedSheepAfterMerge(Sheep sheep, SheepTier tier, long remainingWoolRegenMs) {

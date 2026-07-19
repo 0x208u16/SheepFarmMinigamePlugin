@@ -1,0 +1,28 @@
+scheduling:
+  fastTickInterval: 2
+  normalTickInterval: 20
+  reminderTickInterval: 20
+  tipIntervalTicks: 1200
+
+farm:
+  teleport:
+    x: 0.5
+    y: 101.0
+    z: 0.5
+
+gameplay:
+  reminders:
+    merge:
+      delayMs: 30000
+      repeatMs: 60000
+    tutorial:
+      delayMs: 120000
+      repeatMs: 60000
+    tutorialTaskTitle:
+      repeatMs: 12000
+    tutorialStatusFeed:
+      repeatMs: 12000
+    tutorialFocus:
+      cooldownMs: 5000
+    tutorialMergePoints:
+      repeatMs: 15000

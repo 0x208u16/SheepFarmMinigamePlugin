@@ -15,10 +15,59 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.io.File;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
+
+    private interface CommandModule {
+        String root();
+
+        boolean execute(Player player, String[] args);
+
+        List<String> tabComplete(CommandSender sender, String[] args);
+    }
+
+    private static final class RootCommandModule implements CommandModule {
+        private final String root;
+        private final RootCommandExecutor executor;
+        private final RootTabCompleter tabCompleter;
+
+        private RootCommandModule(String root, RootCommandExecutor executor, RootTabCompleter tabCompleter) {
+            this.root = root;
+            this.executor = executor;
+            this.tabCompleter = tabCompleter;
+        }
+
+        @Override
+        public String root() {
+            return root;
+        }
+
+        @Override
+        public boolean execute(Player player, String[] args) {
+            return executor.execute(player, args);
+        }
+
+        @Override
+        public List<String> tabComplete(CommandSender sender, String[] args) {
+            return tabCompleter.complete(sender, args);
+        }
+    }
+
+    @FunctionalInterface
+    private interface RootCommandExecutor {
+        boolean execute(Player player, String[] args);
+    }
+
+    @FunctionalInterface
+    private interface RootTabCompleter {
+        List<String> complete(CommandSender sender, String[] args);
+    }
+
+    private static final Set<String> initializedManagedWorldNames = new HashSet<>();
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "help",
@@ -67,6 +116,34 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "checkpoints",
             "checkquestpoints",
             "checkprestige");
+
+    private final List<CommandModule> rootModules = List.of(
+            new RootCommandModule("help", this::handleHelpRootCommand, this::tabCompleteNone),
+            new RootCommandModule("-help", this::handleDashHelpRootCommand, this::tabCompleteNone),
+            new RootCommandModule("upgrade", this::handleUpgradeCommand, this::tabCompleteNone),
+            new RootCommandModule("prestige", this::handlePrestigeCommand, this::tabCompleteNone),
+            new RootCommandModule("shop", this::handleShopCommand, this::tabCompleteNone),
+            new RootCommandModule("visit", this::handleVisitCommand, this::tabCompleteVisit),
+            new RootCommandModule("kick", this::handleKickCommand, this::tabCompleteKick),
+            new RootCommandModule("status", this::handleStatusCommand, this::tabCompleteNone),
+            new RootCommandModule("storm", this::handleStormCommand, this::tabCompleteNone),
+            new RootCommandModule("combofrenzy", this::handleComboFrenzyCommand, this::tabCompleteNone),
+            new RootCommandModule("leaderboard", this::handleLeaderboardCommand, this::tabCompleteLeaderboard),
+            new RootCommandModule("resetdata", this::handleResetDataCommand, this::tabCompleteAdminPlayerTarget),
+            new RootCommandModule("stats", this::handleStatsCommand, this::tabCompleteAdminStatCheck),
+            new RootCommandModule("checkpoints", this::handleCheckpointsCommand, this::tabCompleteAdminStatCheck),
+            new RootCommandModule("checkquestpoints", this::handleCheckQuestPointsCommand,
+                    this::tabCompleteAdminStatCheck),
+            new RootCommandModule("checkprestige", this::handleCheckPrestigeCommand,
+                    this::tabCompleteAdminStatCheck),
+            new RootCommandModule("givepoints", this::handleGivePointsCommand, this::tabCompleteAdminAmountPlayer),
+            new RootCommandModule("setpoints", this::handleSetPointsCommand, this::tabCompleteAdminAmountPlayer),
+            new RootCommandModule("givequestpoints", this::handleGiveQuestPointsCommand,
+                    this::tabCompleteAdminAmountPlayer),
+            new RootCommandModule("setquestpoints", this::handleSetQuestPointsCommand,
+                    this::tabCompleteAdminAmountPlayer),
+            new RootCommandModule("setprestige", this::handleSetPrestigeCommand, this::tabCompleteAdminAmountPlayer),
+            new RootCommandModule("world", this::handleWorldCommand, this::tabCompleteWorld));
 
     public static String getWorldName(java.util.UUID playerId) {
         return "sheepfarm_" + playerId.toString().replace("-", "");
@@ -201,6 +278,59 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (handleHelpFlags(player, args)) {
+            return true;
+        }
+
+        if (shouldBlockTutorialCommand(player, args)) {
+            return true;
+        }
+
+        if (args.length > 0 && dispatchRootCommand(player, args)) {
+            return true;
+        }
+
+        if (args.length > 0) {
+            sendInvalidCommandMessage(player, args);
+            return true;
+        }
+
+        if (!SheepMergeManager.hasUnlockedFarm(player)) {
+            SheepMergeManager.startTutorial(player, false);
+            return true;
+        }
+
+        String worldName = getWorldName(player.getUniqueId());
+        World world = ensureFarmWorld(worldName);
+
+        if (world == null) {
+            player.sendMessage("Unable to create your sheep farm world right now.");
+            return true;
+        }
+
+        applyConfiguredSpawn(world);
+        player.teleportAsync(getConfiguredFarmTeleportLocation(world));
+        player.sendMessage("You were teleported to your sheep farm world.");
+        return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            return filterSuggestions(ROOT_SUBCOMMANDS, args[0]);
+        }
+
+        if (args.length > 0) {
+            CommandModule module = findRootModule(args[0]);
+            if (module != null) {
+                return module.tabComplete(sender, args);
+            }
+        }
+
+        return List.of();
+    }
+
+    private boolean handleHelpFlags(Player player, String[] args) {
         String helpTopic = null;
         for (String arg : args) {
             if (isHelpFlag(arg)) {
@@ -216,45 +346,75 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
         }
+        return false;
+    }
 
-        if (shouldBlockTutorialCommand(player, args)) {
+    private boolean dispatchRootCommand(Player player, String[] args) {
+        CommandModule module = findRootModule(args[0]);
+        return module != null && module.execute(player, args);
+    }
+
+    private CommandModule findRootModule(String root) {
+        if (root == null) {
+            return null;
+        }
+        for (CommandModule module : rootModules) {
+            if (module.root().equalsIgnoreCase(root)) {
+                return module;
+            }
+        }
+        return null;
+    }
+
+    private boolean handleHelpRootCommand(Player player, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("help")) {
+            sendCommandHelp(player, args.length >= 2 ? args[1] : null);
             return true;
         }
+        return false;
+    }
 
+    private boolean handleDashHelpRootCommand(Player player, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("-help")) {
+            sendCommandHelp(player, args.length >= 2 ? args[1] : null);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleUpgradeCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("upgrade")) {
             SheepMergeManager.openUpgradeMenu(player);
             return true;
         }
+        return false;
+    }
 
+    private boolean handleShopCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("shop")) {
             SheepMergeManager.openShopMenu(player);
             return true;
         }
+        return false;
+    }
 
+    private boolean handlePrestigeCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("prestige")) {
             SheepMergeManager.openPrestigeMenu(player);
             return true;
         }
+        return false;
+    }
 
+    private boolean handleStatusCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
             sendDetailedStats(player, player, "Status");
             return true;
         }
+        return false;
+    }
 
-        if (args.length == 1 && args[0].equalsIgnoreCase("leaderboard")) {
-            if (!player.isOp()) {
-                player.sendMessage("Only server operators can use this command.");
-                return true;
-            }
-            boolean createdOrMoved = SheepMergeManager.spawnOrMoveTopPointsDisplay(player);
-            if (createdOrMoved) {
-                player.sendMessage("Leaderboard moved to your position.");
-            } else {
-                player.sendMessage("Unable to move leaderboard right now.");
-            }
-            return true;
-        }
-
+    private boolean handleStatsCommand(Player player, String[] args) {
         if (args.length >= 1 && args[0].equalsIgnoreCase("stats")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -268,7 +428,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             sendDetailedStats(player, target, "Admin Stats");
             return true;
         }
+        return false;
+    }
 
+    private boolean handleCheckpointsCommand(Player player, String[] args) {
         if (args.length >= 1 && args[0].equalsIgnoreCase("checkpoints")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -286,7 +449,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + value(SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target))));
             return true;
         }
+        return false;
+    }
 
+    private boolean handleCheckQuestPointsCommand(Player player, String[] args) {
         if (args.length >= 1 && args[0].equalsIgnoreCase("checkquestpoints")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -304,7 +470,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + value(SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target))));
             return true;
         }
+        return false;
+    }
 
+    private boolean handleCheckPrestigeCommand(Player player, String[] args) {
         if (args.length >= 1 && args[0].equalsIgnoreCase("checkprestige")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -324,102 +493,125 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target))));
             return true;
         }
+        return false;
+    }
 
-        if (args.length >= 1 && args[0].equalsIgnoreCase("visit")) {
-            if (args.length >= 2 && args[1].equalsIgnoreCase("-toggle")) {
-                Player target = player;
-                if (args.length >= 3) {
-                    if (!player.isOp()) {
-                        player.sendMessage("Only server operators can toggle another player's farm access.");
-                        return true;
-                    }
-                    target = resolveTargetPlayer(player, args, 2);
-                    if (target == null) {
-                        player.sendMessage("That player is not online.");
-                        return true;
-                    }
+    private boolean handleVisitCommand(Player player, String[] args) {
+        if (!(args.length >= 1 && args[0].equalsIgnoreCase("visit"))) {
+            return false;
+        }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("-toggle")) {
+            Player target = player;
+            if (args.length >= 3) {
+                if (!player.isOp()) {
+                    player.sendMessage("Only server operators can toggle another player's farm access.");
+                    return true;
                 }
-
-                boolean nowOpen = SheepMergeManager.toggleFarmVisitable(target);
-                player.sendMessage(
-                        target.getName() + "'s farm is now " + (nowOpen ? "open" : "closed") + " to visitors.");
-                return true;
+                target = resolveTargetPlayer(player, args, 2);
+                if (target == null) {
+                    player.sendMessage("That player is not online.");
+                    return true;
+                }
             }
 
-            if (args.length < 2) {
-                player.sendMessage("Usage: /sheepmerge visit <player> or /sheepmerge visit -toggle [player]");
-                return true;
-            }
-
-            Player owner = Bukkit.getPlayerExact(args[1]);
-            if (owner == null) {
-                player.sendMessage("That player is not online.");
-                return true;
-            }
-
-            java.util.UUID ownerId = owner.getUniqueId();
-            if (!player.isOp()
-                    && !ownerId.equals(player.getUniqueId())
-                    && !SheepMergeManager.isFarmVisitable(ownerId)) {
-                player.sendMessage("That farm is closed to visitors.");
-                return true;
-            }
-
-            String ownerWorldName = getWorldName(ownerId);
-            World ownerWorld = ensureFarmWorld(ownerWorldName);
-            if (ownerWorld == null) {
-                player.sendMessage("Unable to open that farm world right now.");
-                return true;
-            }
-
-            ownerWorld.setSpawnLocation(0, 101, 0);
-            player.teleport(new Location(ownerWorld, 0.5, 101, 0.5));
-            player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
-            player.sendMessage("Use /sheepmerge to return to your own farm.");
-            player.sendTitle(
-                    SheepMergeManager.color("&eVisiting " + owner.getName()),
-                    SheepMergeManager.color("&7Use /sheepmerge to return home"),
-                    10,
-                    60,
-                    10);
+            boolean nowOpen = SheepMergeManager.toggleFarmVisitable(target);
+            player.sendMessage(
+                    target.getName() + "'s farm is now " + (nowOpen ? "open" : "closed") + " to visitors.");
             return true;
         }
 
-        if (args.length >= 1 && args[0].equalsIgnoreCase("kick")) {
-            if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())
-                    || !SheepMergeManager.isFarmOwner(player, player.getWorld())) {
-                player.sendMessage("You can only use this in your own sheep farm world.");
-                return true;
-            }
-            if (args.length < 2) {
-                player.sendMessage("Usage: /sheepmerge kick <player>");
-                return true;
-            }
+        if (args.length < 2) {
+            player.sendMessage("Usage: /sheepmerge visit <player> or /sheepmerge visit -toggle [player]");
+            return true;
+        }
 
-            Player target = Bukkit.getPlayerExact(args[1]);
-            if (target == null || !target.getWorld().equals(player.getWorld())) {
-                player.sendMessage("That player is not in your farm right now.");
-                return true;
-            }
-            if (target.equals(player)) {
-                player.sendMessage("You cannot kick yourself.");
-                return true;
-            }
-            if (target.isOp()) {
-                player.sendMessage("You cannot kick operators from your farm.");
-                return true;
-            }
+        Player owner = Bukkit.getPlayerExact(args[1]);
+        if (owner == null) {
+            player.sendMessage("That player is not online.");
+            return true;
+        }
 
-            World fallbackWorld = Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
-            if (fallbackWorld == null) {
-                player.sendMessage("No safe world is available to move that player.");
+        java.util.UUID ownerId = owner.getUniqueId();
+        if (!player.isOp()
+                && !ownerId.equals(player.getUniqueId())
+                && !SheepMergeManager.isFarmVisitable(ownerId)) {
+            player.sendMessage("That farm is closed to visitors.");
+            return true;
+        }
+
+        String ownerWorldName = getWorldName(ownerId);
+        World ownerWorld = ensureFarmWorld(ownerWorldName);
+        if (ownerWorld == null) {
+            player.sendMessage("Unable to open that farm world right now.");
+            return true;
+        }
+
+        applyConfiguredSpawn(ownerWorld);
+        player.teleportAsync(getConfiguredFarmTeleportLocation(ownerWorld));
+        player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
+        player.sendMessage("Use /sheepmerge to return to your own farm.");
+        player.sendTitle(
+                SheepMergeManager.color("&eVisiting " + owner.getName()),
+                SheepMergeManager.color("&7Use /sheepmerge to return home"),
+                10,
+                60,
+                10);
+        return true;
+    }
+
+    private boolean handleKickCommand(Player player, String[] args) {
+        if (!(args.length >= 1 && args[0].equalsIgnoreCase("kick"))) {
+            return false;
+        }
+        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())
+                || !SheepMergeManager.isFarmOwner(player, player.getWorld())) {
+            player.sendMessage("You can only use this in your own sheep farm world.");
+            return true;
+        }
+        if (args.length < 2) {
+            player.sendMessage("Usage: /sheepmerge kick <player>");
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null || !target.getWorld().equals(player.getWorld())) {
+            player.sendMessage("That player is not in your farm right now.");
+            return true;
+        }
+        if (target.equals(player)) {
+            player.sendMessage("You cannot kick yourself.");
+            return true;
+        }
+        if (target.isOp()) {
+            player.sendMessage("You cannot kick operators from your farm.");
+            return true;
+        }
+
+        World fallbackWorld = Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
+        if (fallbackWorld == null) {
+            player.sendMessage("No safe world is available to move that player.");
+            return true;
+        }
+
+        Location spawn = fallbackWorld.getSpawnLocation().clone().add(0.5, 0, 0.5);
+        target.teleport(spawn);
+        target.sendMessage("You were removed from " + player.getName() + "'s sheep farm.");
+        player.sendMessage("You removed " + target.getName() + " from your farm.");
+        return true;
+    }
+
+    private boolean handleLeaderboardCommand(Player player, String[] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("leaderboard")) {
+            if (!player.isOp()) {
+                player.sendMessage("Only server operators can use this command.");
                 return true;
             }
-
-            Location spawn = fallbackWorld.getSpawnLocation().clone().add(0.5, 0, 0.5);
-            target.teleport(spawn);
-            target.sendMessage("You were removed from " + player.getName() + "'s sheep farm.");
-            player.sendMessage("You removed " + target.getName() + " from your farm.");
+            boolean createdOrMoved = SheepMergeManager.spawnOrMoveTopPointsDisplay(player);
+            if (createdOrMoved) {
+                player.sendMessage("Leaderboard moved to your position.");
+            } else {
+                player.sendMessage("Unable to move leaderboard right now.");
+            }
             return true;
         }
 
@@ -471,7 +663,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
         }
+        return false;
+    }
 
+    private boolean handleStormCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("storm")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -484,7 +679,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             return true;
         }
+        return false;
+    }
 
+    private boolean handleComboFrenzyCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("combofrenzy")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -497,7 +695,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             return true;
         }
+        return false;
+    }
 
+    private boolean handleWorldCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("world")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -508,8 +709,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Unable to open the farm build world right now.");
                 return true;
             }
-            buildWorld.setSpawnLocation(0, 101, 0);
-            player.teleport(new Location(buildWorld, 0.5, 101, 0.5));
+            applyConfiguredSpawn(buildWorld);
+            player.teleportAsync(getConfiguredFarmTeleportLocation(buildWorld));
             player.sendMessage("Teleported to the shared farm build world.");
             return true;
         }
@@ -551,6 +752,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        return false;
+    }
+
+    private boolean handleResetDataCommand(Player player, String[] args) {
         if (args.length >= 1 && args[0].equalsIgnoreCase("resetdata")) {
             if (!player.isOp()) {
                 player.sendMessage("Only server operators can use this command.");
@@ -568,7 +773,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             SheepMergeManager.startTutorial(target, false);
             return true;
         }
+        return false;
+    }
 
+    private boolean handleGivePointsCommand(Player player, String[] args) {
         if (args.length >= 2 && args[0].equalsIgnoreCase("givepoints")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -598,7 +806,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     updated));
             return true;
         }
+        return false;
+    }
 
+    private boolean handleSetPointsCommand(Player player, String[] args) {
         if (args.length >= 2 && args[0].equalsIgnoreCase("setpoints")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -628,7 +839,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     updated));
             return true;
         }
+        return false;
+    }
 
+    private boolean handleGiveQuestPointsCommand(Player player, String[] args) {
         if (args.length >= 2 && args[0].equalsIgnoreCase("givequestpoints")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -657,7 +871,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     updated));
             return true;
         }
+        return false;
+    }
 
+    private boolean handleSetQuestPointsCommand(Player player, String[] args) {
         if (args.length >= 2 && args[0].equalsIgnoreCase("setquestpoints")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -686,7 +903,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     updated));
             return true;
         }
+        return false;
+    }
 
+    private boolean handleSetPrestigeCommand(Player player, String[] args) {
         if (args.length >= 2 && args[0].equalsIgnoreCase("setprestige")) {
             if (!player.isOp()) {
                 player.sendMessage(error("Only server operators can use this command."));
@@ -719,46 +939,21 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     updated));
             return true;
         }
-
-        if (args.length > 0) {
-            sendInvalidCommandMessage(player, args);
-            return true;
-        }
-
-        if (!SheepMergeManager.hasUnlockedFarm(player)) {
-            SheepMergeManager.startTutorial(player, false);
-            return true;
-        }
-
-        String worldName = getWorldName(player.getUniqueId());
-        World world = ensureFarmWorld(worldName);
-
-        if (world == null) {
-            player.sendMessage("Unable to create your sheep farm world right now.");
-            return true;
-        }
-
-        world.setSpawnLocation(0, 101, 0);
-        Location teleportLocation = new Location(world, 0.5, 101, 0.5);
-        player.teleport(teleportLocation);
-        player.sendMessage("You were teleported to your sheep farm world.");
-        return true;
+        return false;
     }
 
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) {
-            return filterSuggestions(ROOT_SUBCOMMANDS, args[0]);
-        }
+    private List<String> tabCompleteNone(CommandSender sender, String[] args) {
+        return List.of();
+    }
 
-        if (args.length == 1 && args[0].equalsIgnoreCase("world")) {
-            return filterSuggestions(WORLD_SUBCOMMANDS, "");
-        }
-
+    private List<String> tabCompleteWorld(CommandSender sender, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("world")) {
             return filterSuggestions(WORLD_SUBCOMMANDS, args[1]);
         }
+        return List.of();
+    }
 
+    private List<String> tabCompleteVisit(CommandSender sender, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("visit")) {
             List<String> visitOptions = new ArrayList<>(HELP_FLAGS);
             visitOptions.add("-toggle");
@@ -769,7 +964,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             return filterSuggestions(visitOptions, args[1]);
         }
+        return List.of();
+    }
 
+    private List<String> tabCompleteLeaderboard(CommandSender sender, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("leaderboard")) {
             List<String> suggestions = new ArrayList<>(LEADERBOARD_SUBCOMMANDS);
             suggestions.addAll(HELP_FLAGS);
@@ -789,6 +987,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(appendHelpFlags(List.of("[world]", "remove"), args[4]), args[4]);
         }
 
+        return List.of();
+    }
+
+    private List<String> tabCompleteKick(CommandSender sender, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("kick") && sender instanceof Player player) {
             List<String> kickTargets = new ArrayList<>();
             for (Player online : Bukkit.getOnlinePlayers()) {
@@ -801,19 +1003,33 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             return filterSuggestions(kickTargets, args[1]);
         }
+        return List.of();
+    }
 
+    private List<String> tabCompleteAdminPlayerTarget(CommandSender sender, String[] args) {
         if (!sender.isOp()) {
             return List.of();
         }
-
         if (args.length == 2 && matchesSubcommand(ADMIN_PLAYER_TARGET_SUBCOMMANDS, args[0])) {
             return appendHelpFlags(onlinePlayerNameSuggestions(args[1]), args[1]);
         }
+        return List.of();
+    }
 
+    private List<String> tabCompleteAdminStatCheck(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            return List.of();
+        }
         if (args.length == 2 && matchesSubcommand(ADMIN_STAT_CHECK_SUBCOMMANDS, args[0])) {
             return appendHelpFlags(onlinePlayerNameSuggestions(args[1]), args[1]);
         }
+        return List.of();
+    }
 
+    private List<String> tabCompleteAdminAmountPlayer(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            return List.of();
+        }
         if (args.length == 2 && matchesSubcommand(ADMIN_AMOUNT_PLAYER_SUBCOMMANDS, args[0])) {
             List<String> suggestions = new ArrayList<>(HELP_FLAGS);
             suggestions.addAll(AMOUNT_HINTS);
@@ -1114,8 +1330,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (world == null) {
             return false;
         }
-        world.setSpawnLocation(0, 101, 0);
-        player.teleport(new Location(world, 0.5, 101, 0.5));
+        applyConfiguredSpawn(world);
+        player.teleportAsync(getConfiguredFarmTeleportLocation(world));
         return true;
     }
 
@@ -1127,8 +1343,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (world == null) {
             return false;
         }
-        world.setSpawnLocation(0, 101, 0);
-        player.teleport(new Location(world, 0.5, 101, 0.5));
+        applyConfiguredSpawn(world);
+        player.teleportAsync(getConfiguredFarmTeleportLocation(world));
         return true;
     }
 
@@ -1162,6 +1378,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         applyFarmWorldRules(world);
         ensureWorldStorageFolders(world);
 
+        String managedWorldName = world.getName();
+        if (managedWorldName == null || managedWorldName.isBlank()) {
+            return;
+        }
+        if (initializedManagedWorldNames.contains(managedWorldName) && !applyDefaultLayoutWhenMissing) {
+            return;
+        }
+
         if (SheepMergeManager.isSheepFarmWorld(world)) {
             if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
                 SheepMergeManager.applyFarmLayout(world);
@@ -1174,6 +1398,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 SheepMergeManager.applyFarmLayout(world);
             }
         }
+
+        initializedManagedWorldNames.add(managedWorldName);
     }
 
     private static void ensureWorldStorageFolders(World world) {
@@ -1198,5 +1424,24 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
         world.setPVP(false);
         world.setDifficulty(Difficulty.PEACEFUL);
+    }
+
+    private static Location getConfiguredFarmTeleportLocation(World world) {
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        double x = configuration == null ? 0.5D : configuration.getFarmTeleportX();
+        double y = configuration == null ? 101.0D : configuration.getFarmTeleportY();
+        double z = configuration == null ? 0.5D : configuration.getFarmTeleportZ();
+        return new Location(world, x, y, z);
+    }
+
+    private static void applyConfiguredSpawn(World world) {
+        if (world == null) {
+            return;
+        }
+        SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
+        double x = configuration == null ? 0.5D : configuration.getFarmTeleportX();
+        double y = configuration == null ? 101.0D : configuration.getFarmTeleportY();
+        double z = configuration == null ? 0.5D : configuration.getFarmTeleportZ();
+        world.setSpawnLocation((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
     }
 }
