@@ -5975,13 +5975,11 @@ public final class SheepMergeManager {
         }
         Inventory inventory = Bukkit.createInventory(null, 27, AUTOMATION_MENU_TITLE);
         inventory.setItem(4, MenuItemFactory.create(
-                Material.BOOK,
-                "Automation Rules",
+                Material.EXPERIENCE_BOTTLE,
+                "Automation Points",
                 List.of(
-                        "Points reserve: " + formatPoints(AUTOMATION_CONDITION_MIN_POINTS_RESERVE),
-                        "Min quest points: " + formatPoints(AUTOMATION_CONDITION_MIN_QUEST_POINTS),
-                        "Merge needs: " + AUTOMATION_CONDITION_MIN_SHEEP_FOR_MERGE + " matching sheep",
-                        "Shear needs: " + AUTOMATION_CONDITION_MIN_READY_SHEEP_FOR_SHEAR + " ready sheep")));
+                        "Current: " + formatPoints(getAutomationPoints(player)),
+                        "Earned over time while playing")));
 
         inventory.setItem(AUTOMATION_AUTO_BUY_SLOT, MenuItemFactory.create(
                 Material.HOPPER,
@@ -6077,9 +6075,7 @@ public final class SheepMergeManager {
         inventory.setItem(AUTOMATION_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
-                List.of(
-                        "Automation points: " + formatPoints(getAutomationPoints(player)),
-                        "Click to go back")));
+                List.of("Click to go back")));
         player.openInventory(inventory);
     }
 
