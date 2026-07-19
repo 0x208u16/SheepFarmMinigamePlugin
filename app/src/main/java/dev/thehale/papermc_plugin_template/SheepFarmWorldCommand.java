@@ -745,12 +745,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Use this command while standing in the shared farm build world.");
                 return true;
             }
-            int updated = SheepMergeManager.commitFarmBuildWorldToLoadedFarms();
+            if (SheepMergeManager.isFarmBuildCommitInProgress()) {
+                player.sendMessage("A farm refresh is already in progress.");
+                return true;
+            }
+            int updated = SheepMergeManager.startCommitFarmBuildWorldToLoadedFarms(player);
             if (updated <= 0) {
                 player.sendMessage("Unable to commit the shared farm build world right now.");
                 return true;
             }
-            player.sendMessage("Committed the shared farm build world into " + updated + " loaded farm world(s).");
+            player.sendMessage("Refreshing " + updated + " loaded farm world(s). Players will be able to return shortly.");
             return true;
         }
 

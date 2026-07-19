@@ -3,6 +3,7 @@ package dev.thehale.papermc_plugin_template;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -330,6 +331,7 @@ public final class SheepMergeManager {
     private static long comboFrenzyEventEndsAtMs = 0L;
     private static BossBar sheepRainBossBar;
     private static int lastGameplayTipIndex = -1;
+    private static boolean farmCommitInProgress = false;
 
     private static final class SheepSnapshot {
         private final int tierLevel;
@@ -487,11 +489,17 @@ public final class SheepMergeManager {
         farmLayoutConfig.set("chunks", null);
         farmLayoutConfig.set("blocks", null);
 
-        int minY = sourceWorld.getMinHeight();
-        int maxY = sourceWorld.getMaxHeight();
+        int minY = Math.max(sourceWorld.getMinHeight(), FARM_MIN_Y);
+        int maxY = Math.min(sourceWorld.getMaxHeight(), FARM_MAX_Y + 1);
+        if (minY >= maxY) {
+            return false;
+        }
         for (org.bukkit.Chunk chunk : sourceWorld.getLoadedChunks()) {
             int chunkX = chunk.getX();
             int chunkZ = chunk.getZ();
+            if (!isFarmChunk(chunkX, chunkZ)) {
+                continue;
+            }
             String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
             farmLayoutConfig.set(chunkPath + ".x", chunkX);
             farmLayoutConfig.set(chunkPath + ".z", chunkZ);
@@ -594,8 +602,12 @@ public final class SheepMergeManager {
             return;
         }
 
-        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
-        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
+        int minY = Math.max(
+                Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight())),
+                FARM_MIN_Y);
+        int maxY = Math.min(
+                Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight())),
+                FARM_MAX_Y + 1);
         if (minY >= maxY) {
             return;
         }
@@ -605,6 +617,9 @@ public final class SheepMergeManager {
             int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
             int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                continue;
+            }
+            if (!isFarmChunk(chunkX, chunkZ)) {
                 continue;
             }
 
@@ -736,7 +751,7 @@ public final class SheepMergeManager {
     }
 
     public static int commitFarmBuildWorldToLoadedFarms() {
-        if (plugin == null) {
+        if (plugin == null || farmCommitInProgress) {
             return 0;
         }
         World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
@@ -744,19 +759,84 @@ public final class SheepMergeManager {
             return 0;
         }
 
-        World fallbackWorld = plugin.getServer().getWorlds().isEmpty() ? null : plugin.getServer().getWorlds().get(0);
-        int updated = 0;
+        List<World> farmWorlds = new ArrayList<>();
         for (World world : plugin.getServer().getWorlds()) {
-            if (!isSheepFarmWorld(world)) {
-                continue;
+            if (isSheepFarmWorld(world)) {
+                farmWorlds.add(world);
             }
+        }
+        if (farmWorlds.isEmpty()) {
+            saveData();
+            return 0;
+        }
+
+        World fallbackWorld = plugin.getServer().getWorlds().isEmpty() ? null : plugin.getServer().getWorlds().get(0);
+        farmCommitInProgress = true;
+        processFarmCommitBatch(farmWorlds, fallbackWorld, null, 0, 0);
+        return farmWorlds.size();
+    }
+
+    public static boolean isFarmBuildCommitInProgress() {
+        return farmCommitInProgress;
+    }
+
+    public static int startCommitFarmBuildWorldToLoadedFarms(Player initiator) {
+        if (plugin == null || farmCommitInProgress) {
+            return 0;
+        }
+
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (buildWorld == null || !isFarmBuildWorld(buildWorld) || !saveSharedFarmLayoutFromWorld(buildWorld)) {
+            return 0;
+        }
+
+        List<World> farmWorlds = new ArrayList<>();
+        for (World world : plugin.getServer().getWorlds()) {
+            if (isSheepFarmWorld(world)) {
+                farmWorlds.add(world);
+            }
+        }
+        if (farmWorlds.isEmpty()) {
+            saveData();
+            return 0;
+        }
+
+        World fallbackWorld = plugin.getServer().getWorlds().isEmpty() ? null : plugin.getServer().getWorlds().get(0);
+        farmCommitInProgress = true;
+        processFarmCommitBatch(farmWorlds, fallbackWorld, initiator, 0, 0);
+        return farmWorlds.size();
+    }
+
+    private static void processFarmCommitBatch(List<World> farmWorlds, World fallbackWorld, Player initiator, int index,
+            int updatedCount) {
+        if (plugin == null) {
+            farmCommitInProgress = false;
+            return;
+        }
+
+        if (index >= farmWorlds.size()) {
+            saveData();
+            farmCommitInProgress = false;
+            if (initiator != null && initiator.isOnline()) {
+                initiator.sendMessage(action("Committed the shared farm build world into " + updatedCount
+                        + " loaded farm world(s)."));
+            }
+            return;
+        }
+
+        World world = farmWorlds.get(index);
+        if (world != null) {
             teleportPlayersOutOfWorld(world, fallbackWorld);
             saveSheepSnapshotForWorld(world);
             rebuildFarmWorld(world);
-            updated++;
+            updatedCount++;
         }
-        saveData();
-        return updated;
+
+        final int nextIndex = index + 1;
+        final int nextUpdatedCount = updatedCount;
+        plugin.getServer().getScheduler().runTaskLater(plugin,
+                () -> processFarmCommitBatch(farmWorlds, fallbackWorld, initiator, nextIndex, nextUpdatedCount),
+                1L);
     }
 
     public static void saveBuildWorldIfIdle() {
@@ -3814,9 +3894,7 @@ public final class SheepMergeManager {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
             return;
         }
-        if (player.isOp() || isFarmBuildWorld(player.getWorld())) {
-            return;
-        }
+        boolean shouldClearNonLoadoutItems = !player.isOp() && !isFarmBuildWorld(player.getWorld());
 
         var inventory = player.getInventory();
         ItemStack[] storageContents = inventory.getStorageContents();
@@ -3847,6 +3925,9 @@ public final class SheepMergeManager {
             if (itemStack == null) {
                 continue;
             }
+            if (!shouldClearNonLoadoutItems) {
+                continue;
+            }
             if (isForcedFarmLoadoutItem(itemStack)) {
                 storageContents[slot] = null;
                 storageChanged = true;
@@ -3861,23 +3942,31 @@ public final class SheepMergeManager {
             inventory.setStorageContents(storageContents);
         }
 
-        boolean armorChanged = false;
-        ItemStack[] armorContents = inventory.getArmorContents();
-        for (int index = 0; index < armorContents.length; index++) {
-            if (armorContents[index] == null) {
-                continue;
+        if (shouldClearNonLoadoutItems) {
+            boolean armorChanged = false;
+            ItemStack[] armorContents = inventory.getArmorContents();
+            for (int index = 0; index < armorContents.length; index++) {
+                if (armorContents[index] == null) {
+                    continue;
+                }
+                armorContents[index] = null;
+                armorChanged = true;
             }
-            armorContents[index] = null;
-            armorChanged = true;
-        }
-        if (armorChanged) {
-            inventory.setArmorContents(armorContents);
+            if (armorChanged) {
+                inventory.setArmorContents(armorContents);
+            }
         }
 
         ItemStack offHand = inventory.getItemInOffHand();
         if (offHand == null || offHand.getType() != Material.SHEARS || offHand.getAmount() != 1) {
             inventory.setItemInOffHand(getSheepMergeShears());
         }
+    }
+
+    private static boolean isFarmChunk(int chunkX, int chunkZ) {
+        int minChunk = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxChunk = Math.floorDiv(FARM_MAX_XZ, 16);
+        return chunkX >= minChunk && chunkX <= maxChunk && chunkZ >= minChunk && chunkZ <= maxChunk;
     }
 
     public static void applyFarmSaturation(Player player) {
