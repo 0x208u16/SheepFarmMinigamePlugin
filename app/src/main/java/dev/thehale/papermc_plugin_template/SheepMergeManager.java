@@ -2418,7 +2418,9 @@ public final class SheepMergeManager {
         lastTutorialMergePointsReminderTimestampByPlayer.put(playerId, now);
         player.sendMessage(warning("Current tutorial task needs " + formatPoints(requiredPoints)
                 + " points (" + formatPoints(missing) + " more)."));
-        player.sendMessage(hint("Merge sheep to earn points faster, then complete: " + taskLabel + "."));
+        player.sendMessage(hint(
+                "Merge sheep with SHIFT + RIGHT-CLICK then RIGHT-CLICK on another sheep of the same tier to earn points faster, then complete: "
+                        + taskLabel + "."));
     }
 
     private static boolean isTutorialActionAllowed(TutorialStep step, TutorialAction action) {
