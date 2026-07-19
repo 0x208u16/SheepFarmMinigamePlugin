@@ -59,6 +59,20 @@ public final class SheepMergeConfiguration {
     private final int comboGainBaseCost;
     private final int comboMaxBasePrestigeCost;
 
+    private final int automationAutoBuyBaseCost;
+    private final int automationAutoAbilityBaseCost;
+    private final int automationSlowAutoMergeBaseCost;
+    private final int automationSlowAutoShearBaseCost;
+    private final long automationPointIntervalMs;
+    private final long automationAutoBuyIntervalMs;
+    private final long automationAutoAbilityIntervalMs;
+    private final long automationSlowAutoMergeIntervalMs;
+    private final long automationSlowAutoShearIntervalMs;
+    private final long automationConditionMinPointsReserve;
+    private final int automationConditionMinQuestPoints;
+    private final int automationConditionMinSheepForMerge;
+    private final int automationConditionMinReadySheepForShear;
+
     private final long startingPlayerPoints;
     private final int tutorialShearTarget;
     private final int tutorialSpawnTarget;
@@ -128,6 +142,27 @@ public final class SheepMergeConfiguration {
         comboDecayBaseCost = getInt(configuration, "gameplay.combo.decayBaseCost", 75, 1);
         comboGainBaseCost = getInt(configuration, "gameplay.combo.gainBaseCost", 90, 1);
         comboMaxBasePrestigeCost = getInt(configuration, "gameplay.combo.maxBasePrestigeCost", 3, 1);
+
+        automationAutoBuyBaseCost = getInt(configuration, "gameplay.automation.costs.autoBuy", 10, 1);
+        automationAutoAbilityBaseCost = getInt(configuration, "gameplay.automation.costs.autoAbility", 14, 1);
+        automationSlowAutoMergeBaseCost = getInt(configuration, "gameplay.automation.costs.slowAutoMerge", 16, 1);
+        automationSlowAutoShearBaseCost = getInt(configuration, "gameplay.automation.costs.slowAutoShear", 12, 1);
+        automationPointIntervalMs = getLong(configuration, "gameplay.automation.intervals.pointGainMs", 60_000L, 1L);
+        automationAutoBuyIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoBuyMs", 5_000L, 1L);
+        automationAutoAbilityIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoAbilityMs", 5_000L,
+                1L);
+        automationSlowAutoMergeIntervalMs = getLong(configuration, "gameplay.automation.intervals.slowAutoMergeMs",
+                3_000L, 1L);
+        automationSlowAutoShearIntervalMs = getLong(configuration, "gameplay.automation.intervals.slowAutoShearMs",
+                3_000L, 1L);
+        automationConditionMinPointsReserve = getLong(configuration, "gameplay.automation.conditions.minPointsReserve",
+                0L, 0L);
+        automationConditionMinQuestPoints = getInt(configuration, "gameplay.automation.conditions.minQuestPoints", 0,
+                0);
+        automationConditionMinSheepForMerge = getInt(configuration, "gameplay.automation.conditions.minSheepForMerge",
+                2, 2);
+        automationConditionMinReadySheepForShear = getInt(configuration,
+                "gameplay.automation.conditions.minReadySheepForShear", 1, 1);
 
         startingPlayerPoints = getLong(configuration, "gameplay.starting.points", 1_000L, 0L);
         tutorialShearTarget = getInt(configuration, "gameplay.tutorial.targets.shears", 3, 1);
@@ -318,6 +353,58 @@ public final class SheepMergeConfiguration {
 
     public int getComboMaxBasePrestigeCost() {
         return comboMaxBasePrestigeCost;
+    }
+
+    public int getAutomationAutoBuyBaseCost() {
+        return automationAutoBuyBaseCost;
+    }
+
+    public int getAutomationAutoAbilityBaseCost() {
+        return automationAutoAbilityBaseCost;
+    }
+
+    public int getAutomationSlowAutoMergeBaseCost() {
+        return automationSlowAutoMergeBaseCost;
+    }
+
+    public int getAutomationSlowAutoShearBaseCost() {
+        return automationSlowAutoShearBaseCost;
+    }
+
+    public long getAutomationPointIntervalMs() {
+        return automationPointIntervalMs;
+    }
+
+    public long getAutomationAutoBuyIntervalMs() {
+        return automationAutoBuyIntervalMs;
+    }
+
+    public long getAutomationAutoAbilityIntervalMs() {
+        return automationAutoAbilityIntervalMs;
+    }
+
+    public long getAutomationSlowAutoMergeIntervalMs() {
+        return automationSlowAutoMergeIntervalMs;
+    }
+
+    public long getAutomationSlowAutoShearIntervalMs() {
+        return automationSlowAutoShearIntervalMs;
+    }
+
+    public long getAutomationConditionMinPointsReserve() {
+        return automationConditionMinPointsReserve;
+    }
+
+    public int getAutomationConditionMinQuestPoints() {
+        return automationConditionMinQuestPoints;
+    }
+
+    public int getAutomationConditionMinSheepForMerge() {
+        return automationConditionMinSheepForMerge;
+    }
+
+    public int getAutomationConditionMinReadySheepForShear() {
+        return automationConditionMinReadySheepForShear;
     }
 
     public long getStartingPlayerPoints() {

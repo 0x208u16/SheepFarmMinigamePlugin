@@ -139,7 +139,8 @@ public class SheepMergeWorldListener implements Listener {
                 && !SheepMergeManager.isQuestMenuTitle(title)
                 && !SheepMergeManager.isQuestUpgradesMenuTitle(title)
                 && !SheepMergeManager.isShopMenuTitle(title)
-                && !SheepMergeManager.isComboShopMenuTitle(title)) {
+                && !SheepMergeManager.isComboShopMenuTitle(title)
+                && !SheepMergeManager.isAutomationMenuTitle(title)) {
             return;
         }
 
@@ -162,6 +163,10 @@ public class SheepMergeWorldListener implements Listener {
         }
         if (SheepMergeManager.isShopMenuTitle(title)) {
             SheepMergeManager.handleShopMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isAutomationMenuTitle(title)) {
+            SheepMergeManager.handleAutomationMenuClick(player, event.getRawSlot());
             return;
         }
         SheepMergeManager.handleComboShopMenuClick(player, event.getRawSlot());

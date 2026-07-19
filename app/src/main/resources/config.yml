@@ -57,6 +57,23 @@ gameplay:
     decayBaseCost: 75
     gainBaseCost: 90
     maxBasePrestigeCost: 3
+  automation:
+    costs:
+      autoBuy: 10
+      autoAbility: 14
+      slowAutoMerge: 16
+      slowAutoShear: 12
+    intervals:
+      pointGainMs: 60000
+      autoBuyMs: 5000
+      autoAbilityMs: 5000
+      slowAutoMergeMs: 3000
+      slowAutoShearMs: 3000
+    conditions:
+      minPointsReserve: 0
+      minQuestPoints: 0
+      minSheepForMerge: 2
+      minReadySheepForShear: 1
   tutorial:
     targets:
       shears: 3
