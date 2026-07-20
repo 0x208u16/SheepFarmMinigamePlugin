@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -179,6 +180,31 @@ public class SheepMergeWorldListener implements Listener {
         if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityPickupItem(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        World world = player.getWorld();
+        if (!SheepMergeManager.isSheepFarmWorld(world) || SheepMergeManager.isFarmBuildWorld(world)) {
+            return;
+        }
+
+        ItemStack pickedItem = event.getItem() == null ? null : event.getItem().getItemStack();
+        if (SheepMergeManager.isForcedFarmLoadoutItem(pickedItem) && pickedItem.getAmount() == 1) {
+            return;
+        }
+
+        event.setCancelled(true);
+        if (event.getItem() != null && event.getItem().isValid()) {
+            event.getItem().remove();
+        }
+        player.getInventory().clear();
+        SheepMergeManager.enforceFarmLoadout(player);
+        player.sendMessage(SheepMergeManager.warning("You picked up an invalid item for this world. Inventory reset."));
     }
 
     @EventHandler

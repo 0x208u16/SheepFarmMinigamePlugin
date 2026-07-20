@@ -12,6 +12,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -29,11 +30,19 @@ public class SheepFarmGameListener implements Listener {
 
     @EventHandler
     public void onCreatureSpawn(CreatureSpawnEvent event) {
+        World world = event.getLocation().getWorld();
+        if (world != null
+                && SheepMergeManager.isSheepFarmWorld(world)
+                && !SheepMergeManager.isTutorialWorld(world)
+                && event.getSpawnReason() == SpawnReason.NATURAL) {
+            event.setCancelled(true);
+            return;
+        }
+
         if (event.getEntityType() != EntityType.SHEEP) {
             return;
         }
 
-        World world = event.getLocation().getWorld();
         if (SheepMergeManager.isFarmBuildWorld(world)
                 && (world != null && (world.hasStorm() || world.isThundering()))) {
             event.setCancelled(true);

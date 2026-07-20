@@ -22,6 +22,7 @@ import dev.thehale.papermc_plugin_template.commands.ShopCommandModule;
 import dev.thehale.papermc_plugin_template.commands.StatsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.StatusCommandModule;
 import dev.thehale.papermc_plugin_template.commands.StormCommandModule;
+import dev.thehale.papermc_plugin_template.commands.SummonCommandModule;
 import dev.thehale.papermc_plugin_template.commands.UpgradeCommandModule;
 import dev.thehale.papermc_plugin_template.commands.VisitCommandModule;
 import dev.thehale.papermc_plugin_template.commands.WorldCommandModule;
@@ -38,6 +39,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Sheep;
 
 import java.util.ArrayList;
 import java.io.File;
@@ -60,6 +62,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "kick",
             "status",
             "storm",
+            "summon",
             "combofrenzy",
             "reload",
             "leaderboard",
@@ -111,6 +114,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new KickCommandModule(this::handleKickCommand, this::tabCompleteKick),
             new StatusCommandModule(this::handleStatusCommand, this::tabCompleteNone),
             new StormCommandModule(this::handleStormCommand, this::tabCompleteNone),
+            new SummonCommandModule(this::handleSummonCommand, this::tabCompleteSummon),
             new ComboFrenzyCommandModule(this::handleComboFrenzyCommand, this::tabCompleteNone),
             new ReloadCommandModule(this::handleReloadCommand, this::tabCompleteNone),
             new LeaderboardCommandModule(this::handleLeaderboardCommand, this::tabCompleteLeaderboard),
@@ -161,6 +165,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard remove")
                 + ": remove the leaderboard display");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon [tier]")
+            + ": operator summon a sheep (optional tier level)");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge reload")
                 + ": reload plugin configuration values live");
@@ -226,6 +232,15 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + ": commit the shared build world into all loaded farm worlds");
             return;
         }
+
+            if (topic.equalsIgnoreCase("summon")) {
+                player.sendMessage(ChatColor.DARK_AQUA + "Summon hints:");
+                player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon")
+                    + ": spawn a sheep using normal egg tier roll logic");
+                player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon <tier>")
+                    + ": spawn an exact tier (0-" + SheepTier.RAINBOW.getLevel() + ")");
+                return;
+            }
 
         if (topic.equalsIgnoreCase("resetdata")) {
             player.sendMessage(ChatColor.DARK_AQUA + "Reset hints:");
@@ -670,6 +685,58 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return false;
     }
 
+    private boolean handleSummonCommand(Player player, String[] args) {
+        if (!(args.length >= 1 && args[0].equalsIgnoreCase("summon"))) {
+            return false;
+        }
+
+        if (!player.isOp()) {
+            player.sendMessage(error("Only server operators can use this command."));
+            return true;
+        }
+
+        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld()) || SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
+            player.sendMessage(error("Use this command in a farm or tutorial world (not the build world)."));
+            return true;
+        }
+
+        if (args.length > 2) {
+            player.sendMessage(error("Usage: /sheepmerge summon [tier]"));
+            return true;
+        }
+
+        if (SheepMergeManager.isWorldAtLimit(player.getWorld())) {
+            player.sendMessage(error("Farm full. Merge sheep or increase the sheep limit first."));
+            return true;
+        }
+
+        SheepTier tier;
+        boolean autoRolled = args.length == 1;
+        if (autoRolled) {
+            tier = SheepMergeManager.rollSpawnTier(player.getWorld());
+        } else {
+            int requestedLevel;
+            try {
+                requestedLevel = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage(error("Invalid tier. Usage: /sheepmerge summon [tier]"));
+                return true;
+            }
+
+            if (requestedLevel < 0 || requestedLevel > SheepTier.RAINBOW.getLevel()) {
+                player.sendMessage(error("Tier must be between 0 and " + SheepTier.RAINBOW.getLevel() + "."));
+                return true;
+            }
+            tier = SheepTier.byLevel(requestedLevel);
+        }
+
+        Sheep spawned = player.getWorld().spawn(player.getLocation().clone().add(0.0D, 0.15D, 0.0D), Sheep.class);
+        SheepMergeManager.setSheepTier(spawned, tier);
+        player.sendMessage(adminHeader("Summon") + " " + value("Spawned ") + label(tier.getDisplayName())
+                + (autoRolled ? value(" using egg roll logic.") : value(" at tier level " + tier.getLevel() + ".")));
+        return true;
+    }
+
     private boolean handleComboFrenzyCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("combofrenzy")) {
             if (!player.isOp()) {
@@ -1000,6 +1067,20 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return List.of();
     }
 
+    private List<String> tabCompleteSummon(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            return List.of();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("summon")) {
+            return filterSuggestions(List.of(
+                    "<tier>",
+                    "0",
+                    "1",
+                    String.valueOf(SheepTier.RAINBOW.getLevel())), args[1]);
+        }
+        return List.of();
+    }
+
     private List<String> tabCompleteVisit(CommandSender sender, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("visit")) {
             List<String> visitOptions = new ArrayList<>(HELP_FLAGS);
@@ -1182,7 +1263,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 || root.equals("checkquestpoints") || root.equals("checkprestige") || root.equals("givepoints")
                 || root.equals("setpoints") || root.equals("givequestpoints") || root.equals("setquestpoints")
                 || root.equals("reload")
-                || root.equals("setprestige")) {
+                || root.equals("setprestige")
+                || root.equals("summon")) {
             player.sendMessage(error("Invalid admin command syntax for /sheepmerge " + root
                     + ". Use /sheepmerge help -help for command hints."));
             sendCommandHelp(player, root);
