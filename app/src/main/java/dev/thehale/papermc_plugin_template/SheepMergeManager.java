@@ -4542,6 +4542,7 @@ public final class SheepMergeManager {
             return null;
         }
 
+        captureLiveSheepSnapshotsForLoadedWorlds();
         saveData();
         if (hasSavedFarmLayout()) {
             saveFarmLayout();
@@ -4603,6 +4604,7 @@ public final class SheepMergeManager {
             return null;
         }
 
+        captureLiveSheepSnapshotsForLoadedWorlds();
         saveData();
         if (hasSavedFarmLayout()) {
             saveFarmLayout();
@@ -4623,6 +4625,19 @@ public final class SheepMergeManager {
         markLastBufferBackupNow();
         pruneBufferBackups(backupDir);
         return destination;
+    }
+
+    private static void captureLiveSheepSnapshotsForLoadedWorlds() {
+        if (plugin == null || plugin.getServer() == null) {
+            return;
+        }
+
+        for (World world : plugin.getServer().getWorlds()) {
+            if (!isSheepFarmWorld(world)) {
+                continue;
+            }
+            saveSheepSnapshotForWorld(world);
+        }
     }
 
     private static void pruneBufferBackups(File backupDir) {
