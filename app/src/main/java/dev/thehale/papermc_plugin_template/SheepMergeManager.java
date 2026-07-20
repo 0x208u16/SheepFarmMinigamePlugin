@@ -4151,6 +4151,8 @@ public final class SheepMergeManager {
             return false;
         }
 
+        removeNearbyUnmarkedTopPointsTextDisplays(location);
+        removeLegacyTopPointsArmorStands(location);
         saveTopPointsDisplayLocation(location);
         TextDisplay display = ensureTopPointsDisplay(location);
         configureTopPointsDisplay(display);
@@ -4224,9 +4226,12 @@ public final class SheepMergeManager {
 
     private static void refreshTopPointsDisplays() {
         String topPointsText = buildTopPointsText(10);
+        Location savedLocation = getSavedTopPointsDisplayLocation();
+        if (savedLocation != null && savedLocation.getWorld() != null) {
+            removeNearbyUnmarkedTopPointsTextDisplays(savedLocation);
+        }
         List<TextDisplay> displays = findTopPointsDisplays();
         if (displays.isEmpty()) {
-            Location savedLocation = getSavedTopPointsDisplayLocation();
             TextDisplay restored = ensureTopPointsDisplay(savedLocation);
             if (restored != null) {
                 displays.add(restored);
@@ -4345,6 +4350,31 @@ public final class SheepMergeManager {
         }
 
         removeLegacyTopPointsArmorStands(savedLocation);
+    }
+
+    private static void removeNearbyUnmarkedTopPointsTextDisplays(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return;
+        }
+
+        World world = location.getWorld();
+        Collection<Entity> nearby = world.getNearbyEntities(location, 1.25D, 6.0D, 1.25D);
+        for (Entity entity : nearby) {
+            if (!(entity instanceof TextDisplay display) || !display.isValid()) {
+                continue;
+            }
+
+            Byte marker = display.getPersistentDataContainer().get(getTopPointsDisplayKey(), PersistentDataType.BYTE);
+            if (marker != null && marker == (byte) 1) {
+                continue;
+            }
+
+            String text = display.getText();
+            String stripped = text == null ? null : ChatColor.stripColor(text);
+            if (stripped != null && stripped.toLowerCase(Locale.ROOT).contains("top sheep merge points")) {
+                display.remove();
+            }
+        }
     }
 
     private static void removeLegacyTopPointsArmorStands(Location savedLocation) {
