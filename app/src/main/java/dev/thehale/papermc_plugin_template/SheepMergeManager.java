@@ -29,7 +29,9 @@ import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.TextDisplay;
@@ -4309,13 +4311,46 @@ public final class SheepMergeManager {
                 continue;
             }
 
-            String text = display.getText();
-            boolean looksLikeLeaderboard = text != null && text.startsWith("Top Sheep Merge Points");
-            Byte marker = display.getPersistentDataContainer().get(getTopPointsDisplayKey(), PersistentDataType.BYTE);
-            boolean markedLeaderboard = marker != null && marker == (byte) 1;
-            if (looksLikeLeaderboard || markedLeaderboard) {
-                display.remove();
+            // At the saved spawn point, treat all text displays as stale leaderboard
+            // artifacts.
+            display.remove();
+        }
+
+        removeLegacyTopPointsArmorStands(savedLocation);
+    }
+
+    private static void removeLegacyTopPointsArmorStands(Location savedLocation) {
+        if (savedLocation == null || savedLocation.getWorld() == null) {
+            return;
+        }
+
+        World world = savedLocation.getWorld();
+        Collection<Entity> nearby = world.getNearbyEntities(savedLocation, 1.25D, 6.0D, 1.25D);
+        boolean hasLegacyHeader = false;
+        for (Entity entity : nearby) {
+            if (!(entity instanceof ArmorStand armorStand)) {
+                continue;
             }
+            String customName = armorStand.getCustomName();
+            String stripped = customName == null ? null : ChatColor.stripColor(customName);
+            if (stripped != null && stripped.toLowerCase(Locale.ROOT).contains("top sheep merge points")) {
+                hasLegacyHeader = true;
+                break;
+            }
+        }
+
+        if (!hasLegacyHeader) {
+            return;
+        }
+
+        for (Entity entity : nearby) {
+            if (!(entity instanceof ArmorStand armorStand)) {
+                continue;
+            }
+            if (armorStand.getCustomName() == null || armorStand.getCustomName().isBlank()) {
+                continue;
+            }
+            armorStand.remove();
         }
     }
 
@@ -8689,9 +8724,6 @@ public final class SheepMergeManager {
                     // Ignore invalid UUIDs.
                 }
             });
-        }
-        if (dataConfig.contains(TOP_POINTS_DISPLAY_WORLD_KEY)) {
-            restoreTopPointsDisplayIfPossible();
         }
     }
 
