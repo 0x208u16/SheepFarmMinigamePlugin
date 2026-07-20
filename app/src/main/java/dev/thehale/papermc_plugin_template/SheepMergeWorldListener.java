@@ -49,7 +49,7 @@ public class SheepMergeWorldListener implements Listener {
         if (world == null) {
             return;
         }
-        SheepMergeManager.restoreTopPointsDisplayIfPossible();
+        SheepMergeManager.restoreTopPointsDisplayAfterRestart(world);
     }
 
     @EventHandler

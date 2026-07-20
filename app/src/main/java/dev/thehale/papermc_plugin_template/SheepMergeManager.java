@@ -4181,6 +4181,42 @@ public final class SheepMergeManager {
         refreshTopPointsDisplays();
     }
 
+    public static void restoreTopPointsDisplayAfterRestart(World loadedWorld) {
+        if (plugin == null || dataConfig == null) {
+            return;
+        }
+
+        String savedWorldName = dataConfig.getString(TOP_POINTS_DISPLAY_WORLD_KEY, null);
+        if (savedWorldName == null || savedWorldName.isBlank()) {
+            return;
+        }
+
+        if (loadedWorld != null && !savedWorldName.equals(loadedWorld.getName())) {
+            return;
+        }
+
+        World targetWorld = Bukkit.getWorld(savedWorldName);
+        if (targetWorld == null) {
+            return;
+        }
+
+        Location savedLocation = getSavedTopPointsDisplayLocation();
+        if (savedLocation == null) {
+            return;
+        }
+
+        for (TextDisplay display : findTopPointsDisplays()) {
+            if (display != null) {
+                display.remove();
+            }
+        }
+
+        TextDisplay restored = targetWorld.spawn(savedLocation, TextDisplay.class);
+        restored.getPersistentDataContainer().set(getTopPointsDisplayKey(), PersistentDataType.BYTE, (byte) 1);
+        configureTopPointsDisplay(restored);
+        restored.setText(buildTopPointsText(10));
+    }
+
     private static void refreshTopPointsDisplays() {
         String topPointsText = buildTopPointsText(10);
         List<TextDisplay> displays = findTopPointsDisplays();

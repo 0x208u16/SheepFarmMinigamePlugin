@@ -58,7 +58,7 @@ public class SheepMergePlugin extends JavaPlugin {
         SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         setup();
         SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
-        SheepMergeManager.restoreTopPointsDisplayIfPossible();
+        SheepMergeManager.restoreTopPointsDisplayAfterRestart(null);
         scheduleSheepEggDistribution();
         scheduleSheepNameUpdates();
         scheduleLiveSheepCountUpdates();
