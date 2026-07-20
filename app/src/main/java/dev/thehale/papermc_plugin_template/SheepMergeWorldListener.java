@@ -6,6 +6,7 @@ import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
@@ -53,8 +54,25 @@ public class SheepMergeWorldListener implements Listener {
     }
 
     @EventHandler
+    public void onChunkLoad(ChunkLoadEvent event) {
+        World world = event.getWorld();
+        if (world == null) {
+            return;
+        }
+        SheepMergePlugin.instance.getServer().getScheduler().runTaskLater(SheepMergePlugin.instance,
+                () -> SheepMergeManager.reconcileTopPointsDisplayForChunk(
+                        world,
+                        event.getChunk().getX(),
+                        event.getChunk().getZ()),
+                1L);
+    }
+
+    @EventHandler
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
+        player.getServer().getScheduler().runTaskLater(SheepMergePlugin.instance,
+                () -> SheepMergeManager.reconcileTopPointsDisplayForLocation(player.getLocation()),
+                1L);
         if (SheepMergeManager.isFarmBuildWorld(player.getWorld()) && !player.isOp()) {
             World fallbackWorld = player.getServer().getWorlds().isEmpty() ? null
                     : player.getServer().getWorlds().get(0);

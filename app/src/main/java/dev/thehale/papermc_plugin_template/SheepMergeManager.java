@@ -4224,6 +4224,37 @@ public final class SheepMergeManager {
         restored.setText(buildTopPointsText(10));
     }
 
+    public static void reconcileTopPointsDisplayForChunk(World world, int chunkX, int chunkZ) {
+        if (!isSavedTopPointsDisplayChunk(world, chunkX, chunkZ)) {
+            return;
+        }
+        restoreTopPointsDisplayAfterRestart(world);
+    }
+
+    public static void reconcileTopPointsDisplayForLocation(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return;
+        }
+        reconcileTopPointsDisplayForChunk(location.getWorld(), location.getChunk().getX(), location.getChunk().getZ());
+    }
+
+    private static boolean isSavedTopPointsDisplayChunk(World world, int chunkX, int chunkZ) {
+        if (world == null || dataConfig == null) {
+            return false;
+        }
+
+        String savedWorldName = dataConfig.getString(TOP_POINTS_DISPLAY_WORLD_KEY, null);
+        if (savedWorldName == null || savedWorldName.isBlank() || !savedWorldName.equals(world.getName())) {
+            return false;
+        }
+
+        double savedX = dataConfig.getDouble(TOP_POINTS_DISPLAY_X_KEY, 0.0D);
+        double savedZ = dataConfig.getDouble(TOP_POINTS_DISPLAY_Z_KEY, 0.0D);
+        int savedChunkX = (int) Math.floor(savedX / 16.0D);
+        int savedChunkZ = (int) Math.floor(savedZ / 16.0D);
+        return savedChunkX == chunkX && savedChunkZ == chunkZ;
+    }
+
     private static void refreshTopPointsDisplays() {
         String topPointsText = buildTopPointsText(10);
         Location savedLocation = getSavedTopPointsDisplayLocation();
