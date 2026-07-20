@@ -462,39 +462,28 @@ public final class SheepMergeManager {
     }
 
     private static final List<String> GAMEPLAY_TIPS = List.of(
-            "&7Use &e/sheepmerge &7to jump straight to your personal farm.",
-            "&7When visiting another farm, use &e/sheepmerge &7again to return home quickly.",
-            "&7Run &e/sheepmerge status &7to check points, prestige, quests, and combo progress.",
-            "&7Open &e/sheepmerge upgrade &7to boost limit, egg speed, wool regen, and tier chance.",
-            "&7Bigger &eSheep Limit &7means more sheep alive and more merge options at once.",
-            "&7Faster &eEgg Speed &7generates spawn eggs more often for steady farm growth.",
-            "&7Your egg count is your XP level; the XP bar shows time until the next egg.",
-            "&7Use the spawn egg in hotbar slot 8 to place sheep inside your farm.",
-            "&7Higher &eWool Regen &7cuts downtime so sheep become shear-ready faster.",
-            "&7Higher-Tier Chance improves egg rolls, but chance-based upgrades stop before Rainbow.",
-            "&7Sneak-right-click a sheep to carry it, then right-click a same-tier sheep to merge.",
-            "&7Rainbow sheep merge with rainbow sheep to increase &eRainbow Tier&7 infinitely.",
-            "&7Shearing and merging are your core point engines, so keep both loops active.",
-            "&7Run &e/sheepmerge shop &7to improve shearing value and quality-of-life procs.",
-            "&7Wool Keeper gives a chance to keep wool after shearing for smoother cycles.",
-            "&7Tier Booster gives a chance to upgrade sheep by one tier when shearing.",
-            "&7Run &e/sheepmerge prestige &7to reset normal progress for permanent bonuses.",
-            "&7Prestige points buy long-term boosts like double points chance and bigger egg cap.",
-            "&7Higher Maximum Levels raises caps for several upgrade tracks.",
-            "&7Base Spawn Tier can directly unlock higher starting egg results, including Rainbow.",
-            "&7Prestige refund lets you respec spent prestige points after the cooldown.",
-            "&7Quest objectives reset over time, and completions grant quest points.",
-            "&7Quest abilities include Lucky Burst, Wool Rush, Jackpot Shears, Auto Merge, and Auto Shear.",
-            "&7Quest Upgrades improve ability duration and reduce ability point costs.",
-            "&7Automation points are earned over playtime and spent in &eAutomation Upgrades&7.",
-            "&7Automation tracks start disabled by default, so toggle each one on when ready.",
-            "&7Auto Spawn consumes eggs and can be upgraded down to instant spawn checks.",
-            "&7Open or close farm visits with &e/sheepmerge visit -toggle&7.",
-            "&7Visit another open farm with &e/sheepmerge visit <player>&7.",
-            "&7Remove visitors from your own farm with &e/sheepmerge kick <player>&7.",
-            "&7Random &eSheep Storm &7events can flood farms with sheep from above.",
-            "&7Combo Frenzy massively boosts combo gain for a short burst window.",
-            "&7Storm and Combo Frenzy roll independently, so both can overlap.");
+            "&7Use &e/sheepmerge &7to jump to your farm. Use it again while visiting to return home.",
+            "&7Your upgrade item is the &bNether Star &7in hotbar slot 9. Right-click it to open upgrades.",
+            "&7Eggs are shown as your XP level. The XP bar shows time until the next egg.",
+            "&7Spawn eggs are in hotbar slot 8. No eggs? Wait for the timer or raise egg speed.",
+            "&7Merge faster: sneak-right-click a sheep to carry it, then right-click a same-tier sheep.",
+            "&7Shearing and merging together are your main point income. Keep both loops active.",
+            "&7Rainbow sheep can merge with matching rainbow tier to push rainbow tiers higher forever.",
+            "&7Shear Shop boosts shear value and adds procs like Wool Keeper and Tier Booster.",
+            "&7Quest objectives reset over time. Finish them to earn quest points for active abilities.",
+            "&7Quest Upgrades increase ability duration and lower ability costs.",
+            "&7Combo score multiplies your gains. Keep merging to avoid decay and maintain high value.",
+            "&7Combo Upgrades improve decay, gain, and max combo cap.",
+            "&7Prestige resets normal progress and grants prestige points for permanent account upgrades.",
+            "&7Prestige upgrades can raise egg cap, base spawn tier, and several maximum upgrade caps.",
+            "&7Prestige refund lets you respec prestige upgrades after cooldown.",
+            "&7Automation points are earned over playtime. Spend them in Automation Upgrades.",
+            "&7Automation tracks start disabled. Buy and toggle each track on when you are ready.",
+            "&7Auto Spawn uses eggs and can be upgraded down to near-instant checks.",
+            "&7Auto Prestige can run automatically once unlocked and toggled on.",
+            "&7Use &e/sheepmerge visit <player> &7to visit open farms and &e/sheepmerge visit -toggle &7to manage access.",
+            "&7Use &e/sheepmerge status &7to quickly check your points, quests, combo, and prestige progress.",
+            "&7Admins: &e/sheepmerge backup list/load/delete/recover &7manage compressed backups safely.");
 
     private SheepMergeManager() {
         throw new UnsupportedOperationException("Utility class");
@@ -2950,7 +2939,7 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         if (!tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Step: Run /sheepmerge upgrade";
+            return "Step: Use your upgrade item (Nether Star)";
         }
         if (!tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
             return "Step: Buy any regular upgrade";
@@ -2971,7 +2960,7 @@ public final class SheepMergeManager {
             return "Step: In Upgrades, click Prestige";
         }
         if (!tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
-            return "Step: Prestige once from /sheepmerge prestige";
+            return "Step: In Prestige menu, click Prestige once";
         }
         return "Step: Tutorial complete";
     }
@@ -3218,14 +3207,14 @@ public final class SheepMergeManager {
             case SPAWN -> "Spawn sheep";
             case SHEAR -> "Shear sheep";
             case MERGE -> "Merge same-tier sheep";
-            case OPEN_UPGRADES -> "Run /sheepmerge upgrade";
+            case OPEN_UPGRADES -> "Use your upgrade item (Nether Star)";
             case BUY_REGULAR_UPGRADE -> "Buy one regular upgrade";
             case OPEN_QUESTS -> "In Upgrades, click Quests";
             case USE_ABILITY -> "Activate any quest ability";
             case OPEN_QUEST_UPGRADES -> "In Quests, click Quest Upgrades";
             case BUY_SHEAR_UPGRADE -> "Buy one Shear Shop upgrade";
             case OPEN_PRESTIGE -> "In Upgrades, click Prestige";
-            case PRESTIGE_ONCE -> "Prestige once from /sheepmerge prestige";
+            case PRESTIGE_ONCE -> "In Prestige menu, click Prestige once";
             case COMPLETE -> "Tutorial complete";
         };
     }
@@ -6924,7 +6913,7 @@ public final class SheepMergeManager {
         switch (slot) {
             case PRESTIGE_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 int gained = prestige(player);
@@ -6937,7 +6926,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_DOUBLE_POINTS_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 if (getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL) {
@@ -6953,7 +6942,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_HIGHER_MAX_LEVEL_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 if (upgradePrestigeHigherMaxLevel(player)) {
@@ -6965,7 +6954,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_START_EGGS_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 if (upgradePrestigeStartEggs(player)) {
@@ -6977,7 +6966,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_EGG_CAP_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 if (upgradePrestigeEggCap(player)) {
@@ -6989,7 +6978,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_BASE_SPAWN_TIER_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 if (getBaseSpawnTierLevel(player) >= SheepTier.RAINBOW.getLevel()) {
@@ -7005,7 +6994,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_QUEST_REWARD_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 if (getPrestigeQuestRewardLevel(player) >= PRESTIGE_QUEST_REWARD_MAX_LEVEL) {
@@ -7024,7 +7013,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_REFUND_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "Prestige once from /sheepmerge prestige")) {
+                        "In Prestige menu, click Prestige once")) {
                     break;
                 }
                 long refundRemaining = getPrestigeRefundRemainingMs(player);
