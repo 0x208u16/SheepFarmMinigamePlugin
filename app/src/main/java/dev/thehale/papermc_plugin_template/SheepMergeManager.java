@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -351,7 +353,9 @@ public final class SheepMergeManager {
     private static final String BACKUP_ROLLING_FILE_NAME = "rolling-auto-latest.zip";
     private static final String BACKUP_INDEX_LAST_PERMANENT_AT_KEY = "lastPermanentAt";
     private static final String BACKUP_INDEX_LAST_BUFFER_AT_KEY = "lastBufferAt";
+    private static final String BACKUP_INDEX_MARKED_FOR_DELETION_KEY = "markedForDeletion";
     private static final String BACKUP_BUFFER_FILE_PREFIX = "buffer-24h-";
+    private static final long BACKUP_SOFT_DELETE_GRACE_MS = 24L * 60L * 60L * 1000L;
     private static final DateTimeFormatter BACKUP_TIMESTAMP_FORMATTER = DateTimeFormatter
             .ofPattern("yyyyMMdd-HHmmss")
             .withZone(ZoneOffset.UTC);
@@ -4680,6 +4684,87 @@ public final class SheepMergeManager {
         return names;
     }
 
+    public static synchronized boolean markBackupForDeletion(String backupName) {
+        if (plugin == null || backupName == null || backupName.isBlank()) {
+            return false;
+        }
+        if (BACKUP_ROLLING_FILE_NAME.equals(backupName)) {
+            return false;
+        }
+
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        File source = new File(backupDir, backupName);
+        if (!source.exists() || !source.isFile() || !source.getName().endsWith(".zip")) {
+            return false;
+        }
+
+        Map<String, Long> marks = getMarkedBackupsMap();
+        marks.put(backupName, System.currentTimeMillis());
+        saveMarkedBackupsMap(marks);
+        return true;
+    }
+
+    public static synchronized boolean recoverBackupMarkedForDeletion(String backupName) {
+        if (plugin == null || backupName == null || backupName.isBlank()) {
+            return false;
+        }
+        Map<String, Long> marks = getMarkedBackupsMap();
+        Long removed = marks.remove(backupName);
+        if (removed == null) {
+            return false;
+        }
+        saveMarkedBackupsMap(marks);
+        return true;
+    }
+
+    public static synchronized boolean isBackupMarkedForDeletion(String backupName) {
+        if (backupName == null || backupName.isBlank()) {
+            return false;
+        }
+        return getMarkedBackupsMap().containsKey(backupName);
+    }
+
+    public static synchronized int purgeMarkedBackupsIfEligibleOnStartup() {
+        if (plugin == null) {
+            return 0;
+        }
+
+        Map<String, Long> marks = getMarkedBackupsMap();
+        if (marks.isEmpty()) {
+            return 0;
+        }
+
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        long now = System.currentTimeMillis();
+        int deleted = 0;
+        boolean changed = false;
+
+        var iterator = marks.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Long> entry = iterator.next();
+            long markedAt = Math.max(0L, entry.getValue());
+            if (now - markedAt < BACKUP_SOFT_DELETE_GRACE_MS) {
+                continue;
+            }
+
+            File target = new File(backupDir, entry.getKey());
+            if (!target.exists() || target.delete()) {
+                if (target.exists()) {
+                    // No-op fallback; delete may fail and file still exists.
+                } else {
+                    deleted++;
+                    iterator.remove();
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            saveMarkedBackupsMap(marks);
+        }
+        return deleted;
+    }
+
     public static synchronized File loadBackup(String backupName) {
         if (plugin == null || backupName == null || backupName.isBlank()) {
             return null;
@@ -4887,6 +4972,75 @@ public final class SheepMergeManager {
         }
         String cleaned = token.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]+", "-");
         return cleaned.isBlank() ? "auto" : cleaned;
+    }
+
+    private static Map<String, Long> getMarkedBackupsMap() {
+        File indexFile = getBackupIndexFile();
+        if (indexFile == null || !indexFile.exists()) {
+            return new HashMap<>();
+        }
+
+        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
+        if (!indexConfig.isConfigurationSection(BACKUP_INDEX_MARKED_FOR_DELETION_KEY)) {
+            return new HashMap<>();
+        }
+
+        Map<String, Long> marks = new HashMap<>();
+        var section = indexConfig.getConfigurationSection(BACKUP_INDEX_MARKED_FOR_DELETION_KEY);
+        for (String encodedName : section.getKeys(false)) {
+            String backupName = decodeBackupName(encodedName);
+            if (backupName == null || backupName.isBlank()) {
+                continue;
+            }
+            long markedAt = Math.max(0L,
+                    indexConfig.getLong(BACKUP_INDEX_MARKED_FOR_DELETION_KEY + "." + encodedName, 0L));
+            if (markedAt > 0L) {
+                marks.put(backupName, markedAt);
+            }
+        }
+        return marks;
+    }
+
+    private static void saveMarkedBackupsMap(Map<String, Long> marks) {
+        File indexFile = getBackupIndexFile();
+        if (indexFile == null) {
+            return;
+        }
+        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
+        indexConfig.set(BACKUP_INDEX_MARKED_FOR_DELETION_KEY, null);
+        if (marks != null) {
+            for (Map.Entry<String, Long> entry : marks.entrySet()) {
+                String key = encodeBackupName(entry.getKey());
+                if (key == null) {
+                    continue;
+                }
+                indexConfig.set(BACKUP_INDEX_MARKED_FOR_DELETION_KEY + "." + key, Math.max(0L, entry.getValue()));
+            }
+        }
+        try {
+            indexConfig.save(indexFile);
+        } catch (IOException ignored) {
+            // Best effort metadata write.
+        }
+    }
+
+    private static String encodeBackupName(String backupName) {
+        if (backupName == null || backupName.isBlank()) {
+            return null;
+        }
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(backupName.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String decodeBackupName(String encodedBackupName) {
+        if (encodedBackupName == null || encodedBackupName.isBlank()) {
+            return null;
+        }
+        try {
+            byte[] decoded = Base64.getUrlDecoder().decode(encodedBackupName);
+            return new String(decoded, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private static long getLastPermanentBackupAt() {

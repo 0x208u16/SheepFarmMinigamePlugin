@@ -82,7 +82,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "world");
 
     private static final List<String> WORLD_SUBCOMMANDS = List.of("help", "-help", "save", "load");
-    private static final List<String> BACKUP_SUBCOMMANDS = List.of("help", "-help", "create", "list", "load");
+    private static final List<String> BACKUP_SUBCOMMANDS = List.of(
+            "help",
+            "-help",
+            "create",
+            "list",
+            "load",
+            "delete",
+            "recover");
     private static final List<String> LEADERBOARD_SUBCOMMANDS = List.of(
             "help",
             "-help",
@@ -200,6 +207,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": admin set prestige level");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup")
                 + ": create a permanent compressed backup");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup delete <file>")
+                + ": mark a backup for deletion (removed on a future restart after 24h)");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup recover <file>")
+                + ": unmark a backup that was marked for deletion");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup load <file>")
                 + ": restore backup data and create a post-load permanent backup");
 
@@ -247,6 +258,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + ": create a permanent compressed backup now");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup list")
                     + ": show recent backup archive names");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup delete <file>")
+                    + ": mark one backup for deferred deletion");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup recover <file>")
+                    + ": cancel deferred deletion mark");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup load <file>")
                     + ": restore one backup archive");
             return;
@@ -884,7 +899,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             player.sendMessage(adminHeader("Backups") + " " + value("Available archives:"));
             for (int i = 0; i < Math.min(15, backups.size()); i++) {
-                player.sendMessage(ChatColor.GRAY + "- " + backups.get(i));
+                String backupName = backups.get(i);
+                boolean marked = SheepMergeManager.isBackupMarkedForDeletion(backupName);
+                player.sendMessage(ChatColor.GRAY + "- " + backupName
+                        + (marked ? ChatColor.RED + " [marked for deletion]" : ""));
             }
             return true;
         }
@@ -903,7 +921,29 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage(error("Usage: /sheepmerge backup [create|list|load <file>]."));
+        if (args.length >= 3 && args[1].equalsIgnoreCase("delete")) {
+            String backupName = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+            if (!SheepMergeManager.markBackupForDeletion(backupName)) {
+                player.sendMessage(error("Unable to mark backup '" + backupName + "' for deletion."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Backup") + " " + value("Marked '") + label(backupName)
+                    + value("' for deletion after 24h on a future restart."));
+            return true;
+        }
+
+        if (args.length >= 3 && args[1].equalsIgnoreCase("recover")) {
+            String backupName = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+            if (!SheepMergeManager.recoverBackupMarkedForDeletion(backupName)) {
+                player.sendMessage(error("Backup '" + backupName + "' is not marked for deletion."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Backup") + " " + value("Recovered '") + label(backupName)
+                    + value("' from deletion queue."));
+            return true;
+        }
+
+        player.sendMessage(error("Usage: /sheepmerge backup [create|list|load|delete|recover <file>]."));
         return true;
     }
 
@@ -1147,6 +1187,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[0].equalsIgnoreCase("backup") && args[1].equalsIgnoreCase("load")) {
             return filterSuggestions(SheepMergeManager.listBackups(), args[2]);
         }
+        if (args.length == 3 && args[0].equalsIgnoreCase("backup") && args[1].equalsIgnoreCase("delete")) {
+            return filterSuggestions(SheepMergeManager.listBackups(), args[2]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("backup") && args[1].equalsIgnoreCase("recover")) {
+            return filterSuggestions(SheepMergeManager.listBackups(), args[2]);
+        }
         return List.of();
     }
 
@@ -1313,7 +1359,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (root.equals("backup")) {
             player.sendMessage(error(
-                    "Invalid backup command. Use /sheepmerge backup, /sheepmerge backup list, or /sheepmerge backup load <file>."));
+                    "Invalid backup command. Use /sheepmerge backup, /sheepmerge backup list, /sheepmerge backup load <file>, /sheepmerge backup delete <file>, or /sheepmerge backup recover <file>."));
             sendCommandHelp(player, "backup");
             return;
         }

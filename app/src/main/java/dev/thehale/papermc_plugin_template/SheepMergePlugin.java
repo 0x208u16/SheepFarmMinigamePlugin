@@ -55,6 +55,7 @@ public class SheepMergePlugin extends JavaPlugin {
         SheepMergeConfiguration.initialize(this);
         SheepMergeManager.initialize(this);
         SheepMergeManager.applyConfiguration(SheepMergeConfiguration.get());
+        SheepMergeManager.purgeMarkedBackupsIfEligibleOnStartup();
         SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         setup();
         SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
