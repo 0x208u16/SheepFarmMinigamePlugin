@@ -4183,7 +4183,15 @@ public final class SheepMergeManager {
 
     private static void refreshTopPointsDisplays() {
         String topPointsText = buildTopPointsText(10);
-        for (TextDisplay display : findTopPointsDisplays()) {
+        List<TextDisplay> displays = findTopPointsDisplays();
+        if (displays.isEmpty()) {
+            Location savedLocation = getSavedTopPointsDisplayLocation();
+            TextDisplay restored = ensureTopPointsDisplay(savedLocation);
+            if (restored != null) {
+                displays.add(restored);
+            }
+        }
+        for (TextDisplay display : displays) {
             configureTopPointsDisplay(display);
             display.setText(topPointsText);
         }
@@ -7643,12 +7651,6 @@ public final class SheepMergeManager {
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
-            dataConfig.set(TOP_POINTS_DISPLAY_WORLD_KEY, null);
-            dataConfig.set(TOP_POINTS_DISPLAY_X_KEY, null);
-            dataConfig.set(TOP_POINTS_DISPLAY_Y_KEY, null);
-            dataConfig.set(TOP_POINTS_DISPLAY_Z_KEY, null);
-            dataConfig.set(TOP_POINTS_DISPLAY_YAW_KEY, null);
-            dataConfig.set(TOP_POINTS_DISPLAY_PITCH_KEY, null);
             for (Map.Entry<UUID, BigInteger> entry : pointsByPlayer.entrySet()) {
                 dataConfig.set("points." + entry.getKey().toString(), entry.getValue().toString());
             }
