@@ -4205,6 +4205,8 @@ public final class SheepMergeManager {
             return;
         }
 
+        removeTopPointsDisplaysAtSavedLocation(savedLocation);
+
         for (TextDisplay display : findTopPointsDisplays()) {
             if (display != null) {
                 display.remove();
@@ -4280,6 +4282,41 @@ public final class SheepMergeManager {
             }
         }
         return displays;
+    }
+
+    private static void removeTopPointsDisplaysAtSavedLocation(Location savedLocation) {
+        if (savedLocation == null || savedLocation.getWorld() == null) {
+            return;
+        }
+
+        World world = savedLocation.getWorld();
+        for (TextDisplay display : world.getEntitiesByClass(TextDisplay.class)) {
+            if (display == null || !display.isValid()) {
+                continue;
+            }
+
+            Location displayLocation = display.getLocation();
+            if (displayLocation == null || displayLocation.getWorld() == null
+                    || !displayLocation.getWorld().equals(world)) {
+                continue;
+            }
+
+            double dx = Math.abs(displayLocation.getX() - savedLocation.getX());
+            double dy = Math.abs(displayLocation.getY() - savedLocation.getY());
+            double dz = Math.abs(displayLocation.getZ() - savedLocation.getZ());
+            boolean samePlacement = dx <= 0.25D && dy <= 0.25D && dz <= 0.25D;
+            if (!samePlacement) {
+                continue;
+            }
+
+            String text = display.getText();
+            boolean looksLikeLeaderboard = text != null && text.startsWith("Top Sheep Merge Points");
+            Byte marker = display.getPersistentDataContainer().get(getTopPointsDisplayKey(), PersistentDataType.BYTE);
+            boolean markedLeaderboard = marker != null && marker == (byte) 1;
+            if (looksLikeLeaderboard || markedLeaderboard) {
+                display.remove();
+            }
+        }
     }
 
     private static void saveTopPointsDisplayLocation(Location location) {
