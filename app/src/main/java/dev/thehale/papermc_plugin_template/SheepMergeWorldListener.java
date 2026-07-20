@@ -42,6 +42,7 @@ public class SheepMergeWorldListener implements Listener {
         SheepMergeManager.updatePointsScoreboard(player);
         SheepMergeManager.resetEggTimer(player);
         SheepMergeManager.resetMergeReminder(player);
+        SheepMergeManager.updateVisitFarmBossBar(player);
     }
 
     @EventHandler
@@ -103,6 +104,7 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
             SheepMergeManager.resetMergeReminder(player);
+            SheepMergeManager.updateVisitFarmBossBar(player);
             if (!SheepMergeManager.isFarmOwner(player, player.getWorld())) {
                 player.sendMessage(SheepMergeManager
                         .hint("You are visiting another farm. Use /sheepmerge to return to your own farm."));
@@ -123,6 +125,7 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
             SheepMergeManager.resetMergeReminder(player);
+            SheepMergeManager.updateVisitFarmBossBar(player);
         } else if (fromManagedWorld && !toManagedWorld) {
             SheepMergeManager.saveData();
             SheepMergeManager.restorePlayerInventory(player);
@@ -133,6 +136,9 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.clearMergeReminder(player);
             SheepMergeManager.clearPrestigeReminder(player);
             SheepMergeManager.clearComboRuntime(player);
+            SheepMergeManager.clearVisitFarmBossBar(player);
+        } else if (fromManagedWorld && toManagedWorld) {
+            SheepMergeManager.updateVisitFarmBossBar(player);
         }
     }
 
@@ -143,6 +149,12 @@ public class SheepMergeWorldListener implements Listener {
             return;
         }
         if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            if (event.getClick() == org.bukkit.event.inventory.ClickType.SWAP_OFFHAND
+                    || event.getRawSlot() == 45
+                    || event.getSlot() == 40) {
+                event.setCancelled(true);
+                return;
+            }
             Inventory clickedInventory = event.getClickedInventory();
             if (clickedInventory != null && clickedInventory.equals(player.getInventory())) {
                 ItemStack currentItem = event.getCurrentItem();

@@ -166,6 +166,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> pointsOverlayExpiresAtByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> lastPointsOverlayByPlayer = new HashMap<>();
     private static final Map<UUID, BossBar> comboBossBarByPlayer = new HashMap<>();
+    private static final Map<UUID, BossBar> visitFarmBossBarByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
     private static final Map<UUID, org.bukkit.Location> sheepRescueOriginByEntity = new HashMap<>();
@@ -1139,6 +1140,52 @@ public final class SheepMergeManager {
         return ownerId != null && ownerId.equals(player.getUniqueId());
     }
 
+    public static void updateVisitFarmBossBar(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        World world = player.getWorld();
+        if (!isSheepFarmWorld(world) || isFarmOwner(player, world)) {
+            clearVisitFarmBossBar(player);
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        BossBar bar = visitFarmBossBarByPlayer.get(playerId);
+        if (bar == null) {
+            bar = Bukkit.createBossBar("Visiting Farm", BarColor.BLUE, BarStyle.SOLID);
+            visitFarmBossBarByPlayer.put(playerId, bar);
+        }
+
+        UUID ownerId = getFarmOwnerId(world);
+        String ownerName = null;
+        if (ownerId != null) {
+            Player ownerPlayer = Bukkit.getPlayer(ownerId);
+            ownerName = ownerPlayer == null ? Bukkit.getOfflinePlayer(ownerId).getName() : ownerPlayer.getName();
+        }
+        if (ownerName == null || ownerName.isBlank()) {
+            ownerName = "another player's farm";
+        }
+
+        bar.setTitle(color("&e" + ownerName + " &7| &fUse /sheepmerge to return"));
+        bar.setProgress(1.0D);
+        bar.setVisible(true);
+        bar.addPlayer(player);
+    }
+
+    public static void clearVisitFarmBossBar(Player player) {
+        if (player == null) {
+            return;
+        }
+        BossBar bar = visitFarmBossBarByPlayer.remove(player.getUniqueId());
+        if (bar == null) {
+            return;
+        }
+        bar.removeAll();
+        bar.setVisible(false);
+    }
+
     public static boolean isFarmVisitable(UUID ownerId) {
         if (ownerId == null) {
             return false;
@@ -1805,6 +1852,10 @@ public final class SheepMergeManager {
         nextRandomEventRollAtMs = now + RANDOM_EVENT_ROLL_INTERVAL_MS;
         startSheepRainEvent(now);
         return true;
+    }
+
+    public static boolean isSheepStormActive() {
+        return sheepRainEventEndsAtMs > System.currentTimeMillis();
     }
 
     public static boolean triggerComboFrenzyEvent() {
@@ -4862,6 +4913,13 @@ public final class SheepMergeManager {
         automationSlowAutoShearEnabledByPlayer.clear();
         automationAutoSpawnEnabledByPlayer.clear();
         automationAutoPrestigeEnabledByPlayer.clear();
+        for (BossBar bar : visitFarmBossBarByPlayer.values()) {
+            if (bar != null) {
+                bar.removeAll();
+                bar.setVisible(false);
+            }
+        }
+        visitFarmBossBarByPlayer.clear();
         savedFarmSheepByPlayer.clear();
         savedTutorialSheepByPlayer.clear();
         savedInventories.clear();
@@ -5201,6 +5259,7 @@ public final class SheepMergeManager {
         pointsOverlayExpiresAtByPlayer.remove(playerId);
         lastAbilityAuraSoundTimestampByPlayer.remove(playerId);
         removeComboBossBar(playerId);
+        clearVisitFarmBossBar(player);
     }
 
     public static void clearPrestigeReminder(Player player) {

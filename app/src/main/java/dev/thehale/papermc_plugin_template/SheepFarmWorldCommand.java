@@ -479,11 +479,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("That player is not online."));
                 return true;
             }
-            player.sendMessage(adminHeader("Stat Check")
-                    + " " + label("Player") + ": " + value(target.getName())
-                    + ChatColor.DARK_GRAY + " | "
-                    + label("Points") + ": "
-                    + value(SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target))));
+            sendDetailedStats(player, target, "Checkpoints");
             return true;
         }
         return false;
@@ -500,11 +496,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("That player is not online."));
                 return true;
             }
-            player.sendMessage(adminHeader("Stat Check")
-                    + " " + label("Player") + ": " + value(target.getName())
-                    + ChatColor.DARK_GRAY + " | "
-                    + label("Quest Points") + ": "
-                    + value(SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target))));
+            sendDetailedStats(player, target, "Check Quest Points");
             return true;
         }
         return false;
@@ -521,13 +513,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("That player is not online."));
                 return true;
             }
-            player.sendMessage(adminHeader("Stat Check")
-                    + " " + label("Player") + ": " + value(target.getName())
-                    + ChatColor.DARK_GRAY + " | "
-                    + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
-                    + ChatColor.DARK_GRAY + " | "
-                    + label("Prestige Points") + ": "
-                    + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target))));
+            sendDetailedStats(player, target, "Check Prestige");
             return true;
         }
         return false;
@@ -587,6 +573,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.teleportAsync(getConfiguredFarmTeleportLocation(ownerWorld));
         player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
         player.sendMessage("Use /sheepmerge to return to your own farm.");
+        Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
+                () -> SheepMergeManager.updateVisitFarmBossBar(player),
+                2L);
         player.sendTitle(
                 SheepMergeManager.color("&eVisiting " + owner.getName()),
                 SheepMergeManager.color("&7Use /sheepmerge to return home"),
@@ -1488,7 +1477,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
                 + ChatColor.DARK_GRAY + " | "
                 + label("Prestige Points") + ": "
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target))));
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Automation Points") + ": "
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getAutomationPoints(target))));
         sender.sendMessage(ChatColor.GRAY + "- " + label("Sheep Limit") + ": "
                 + value(String.valueOf(SheepMergeManager.getPlayerLimit(target)))
                 + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getLimitUpgradeLevel(target)))
@@ -1509,6 +1501,86 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + label("Egg Cap") + ": " + value(String.valueOf(SheepMergeManager.getEggCap(target)))
                 + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getPrestigeEggCapLevel(target)))
                 + ChatColor.GRAY + ")");
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Shear Shop") + ": Lv."
+                + value(String.valueOf(SheepMergeManager.getShearShopLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Wool Keeper") + ": Lv."
+                + value(String.valueOf(SheepMergeManager.getShearWoolSaveLevel(target)))
+                + ChatColor.GRAY + " (" + value(String.valueOf(SheepMergeManager.getShearWoolSaveChancePercent(target)))
+                + ChatColor.GRAY + "%)"
+                + ChatColor.DARK_GRAY + " | "
+                + label("Tier Booster") + ": Lv."
+                + value(String.valueOf(SheepMergeManager.getShearTierBoostLevel(target)))
+                + ChatColor.GRAY + " ("
+                + value(String.valueOf(SheepMergeManager.getShearTierBoostChancePercent(target)))
+                + ChatColor.GRAY + "%)");
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Quest Upgrades") + ": Duration Lv."
+                + value(String.valueOf(SheepMergeManager.getQuestUpgradeDurationLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Power Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getQuestUpgradePowerLevel(target))));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Combo Upgrades") + ": Decay Lv."
+                + value(String.valueOf(SheepMergeManager.getComboDecayUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Gain Lv") + ": " + value(String.valueOf(SheepMergeManager.getComboGainUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Max Lv") + ": " + value(String.valueOf(SheepMergeManager.getComboMaxUpgradeLevel(target))));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Prestige Upgrades") + ": Double Points Lv."
+                + value(String.valueOf(SheepMergeManager.getPrestigeDoublePointsChanceLevel(target)))
+                + ChatColor.GRAY + " (" + value(String.valueOf(SheepMergeManager.getDoublePointsChancePercent(target)))
+                + ChatColor.GRAY + "%)"
+                + ChatColor.DARK_GRAY + " | "
+                + label("Higher Max Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getPrestigeHigherMaxLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Start Eggs Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getPrestigeStartEggsLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Base Tier Lv") + ": " + value(String.valueOf(SheepMergeManager.getBaseSpawnTierLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Quest Reward Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getPrestigeQuestRewardLevel(target))));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Automation Upgrades") + ": Auto Buy Lv."
+                + value(String.valueOf(SheepMergeManager.getAutomationAutoBuyUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Auto Ability Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getAutomationAutoAbilityUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Slow Merge Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getAutomationSlowAutoMergeUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Slow Shear Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getAutomationSlowAutoShearUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Auto Spawn Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getAutomationAutoSpawnUpgradeLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Auto Prestige Lv") + ": "
+                + value(String.valueOf(SheepMergeManager.getAutomationAutoPrestigeUpgradeLevel(target))));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Automation Enabled") + ": "
+                + label("Auto Buy") + "="
+                + (SheepMergeManager.isAutomationAutoBuyEnabled(target) ? ChatColor.GREEN + "ON"
+                        : ChatColor.RED + "OFF")
+                + ChatColor.DARK_GRAY + " | "
+                + label("Auto Ability") + "="
+                + (SheepMergeManager.isAutomationAutoAbilityEnabled(target) ? ChatColor.GREEN + "ON"
+                        : ChatColor.RED + "OFF")
+                + ChatColor.DARK_GRAY + " | "
+                + label("Slow Merge") + "="
+                + (SheepMergeManager.isAutomationSlowAutoMergeEnabled(target) ? ChatColor.GREEN + "ON"
+                        : ChatColor.RED + "OFF")
+                + ChatColor.DARK_GRAY + " | "
+                + label("Slow Shear") + "="
+                + (SheepMergeManager.isAutomationSlowAutoShearEnabled(target) ? ChatColor.GREEN + "ON"
+                        : ChatColor.RED + "OFF")
+                + ChatColor.DARK_GRAY + " | "
+                + label("Auto Spawn") + "="
+                + (SheepMergeManager.isAutomationAutoSpawnEnabled(target) ? ChatColor.GREEN + "ON"
+                        : ChatColor.RED + "OFF")
+                + ChatColor.DARK_GRAY + " | "
+                + label("Auto Prestige") + "="
+                + (SheepMergeManager.isAutomationAutoPrestigeEnabled(target) ? ChatColor.GREEN + "ON"
+                        : ChatColor.RED + "OFF"));
         sender.sendMessage(ChatColor.GRAY + "- " + label("Farm Visit Access") + ": "
                 + (SheepMergeManager.isFarmVisitable(target.getUniqueId())
                         ? ChatColor.GREEN + "open"

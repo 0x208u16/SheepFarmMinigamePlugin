@@ -68,6 +68,11 @@ public class SheepFarmGameListener implements Listener {
         if (!SheepMergeManager.isSheepFarmWorld(world) && !SheepMergeManager.isFarmBuildWorld(world)) {
             return;
         }
+        if (SheepMergeManager.isSheepFarmWorld(world)
+                && SheepMergeManager.isSheepStormActive()
+                && event.toWeatherState()) {
+            return;
+        }
         if (event.toWeatherState()) {
             event.setCancelled(true);
             world.setStorm(false);
@@ -83,6 +88,11 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
         if (!SheepMergeManager.isSheepFarmWorld(world) && !SheepMergeManager.isFarmBuildWorld(world)) {
+            return;
+        }
+        if (SheepMergeManager.isSheepFarmWorld(world)
+                && SheepMergeManager.isSheepStormActive()
+                && event.toThunderState()) {
             return;
         }
         if (event.toThunderState()) {
