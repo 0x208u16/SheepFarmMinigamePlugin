@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -4292,6 +4293,11 @@ public final class SheepMergeManager {
         }
 
         World world = savedLocation.getWorld();
+        Chunk chunk = world.getChunkAt(savedLocation);
+        if (!chunk.isLoaded()) {
+            chunk.load();
+        }
+
         for (TextDisplay display : world.getEntitiesByClass(TextDisplay.class)) {
             if (display == null || !display.isValid()) {
                 continue;
@@ -4306,13 +4312,35 @@ public final class SheepMergeManager {
             double dx = Math.abs(displayLocation.getX() - savedLocation.getX());
             double dy = Math.abs(displayLocation.getY() - savedLocation.getY());
             double dz = Math.abs(displayLocation.getZ() - savedLocation.getZ());
-            boolean samePlacement = dx <= 0.25D && dy <= 0.25D && dz <= 0.25D;
+            boolean samePlacement = dx <= 1.25D && dy <= 6.0D && dz <= 1.25D;
             if (!samePlacement) {
                 continue;
             }
 
             // At the saved spawn point, treat all text displays as stale leaderboard
             // artifacts.
+            display.remove();
+        }
+
+        for (Entity entity : chunk.getEntities()) {
+            if (!(entity instanceof TextDisplay display) || !display.isValid()) {
+                continue;
+            }
+
+            Location displayLocation = display.getLocation();
+            if (displayLocation == null || displayLocation.getWorld() == null
+                    || !displayLocation.getWorld().equals(world)) {
+                continue;
+            }
+
+            double dx = Math.abs(displayLocation.getX() - savedLocation.getX());
+            double dy = Math.abs(displayLocation.getY() - savedLocation.getY());
+            double dz = Math.abs(displayLocation.getZ() - savedLocation.getZ());
+            boolean nearSavedPlacement = dx <= 1.25D && dy <= 6.0D && dz <= 1.25D;
+            if (!nearSavedPlacement) {
+                continue;
+            }
+
             display.remove();
         }
 
