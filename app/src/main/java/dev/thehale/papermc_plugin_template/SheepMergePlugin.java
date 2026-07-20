@@ -58,6 +58,7 @@ public class SheepMergePlugin extends JavaPlugin {
         SheepFarmWorldCleanupListener.cleanupFarmWorldsOnStartup();
         setup();
         SheepFarmWorldCommand.applyFarmRulesToLoadedWorlds();
+        SheepMergeManager.maybeCreateAutomaticBackup("restart");
         SheepMergeManager.restoreTopPointsDisplayAfterRestart(null);
         scheduleSheepEggDistribution();
         scheduleSheepNameUpdates();
@@ -66,6 +67,7 @@ public class SheepMergePlugin extends JavaPlugin {
         scheduleFarmSaturationUpdates();
         scheduleRandomFarmEvents();
         scheduleGameplayTips();
+        scheduleAutomaticBackups();
         getServer().getPluginManager().registerEvents(new SheepMergeWorldListener(), this);
         log.info("Ready!");
     }
@@ -164,6 +166,14 @@ public class SheepMergePlugin extends JavaPlugin {
                 SheepMergeManager::broadcastRandomGameplayTip,
                 tipIntervalTicks,
                 tipIntervalTicks);
+    }
+
+    private void scheduleAutomaticBackups() {
+        long intervalTicks = SheepMergeManager.getAutomaticBackupIntervalTicks();
+        getServer().getScheduler().runTaskTimer(this,
+                () -> SheepMergeManager.maybeCreateAutomaticBackup("hourly"),
+                intervalTicks,
+                intervalTicks);
     }
 
     @Override

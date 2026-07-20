@@ -23,6 +23,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.event.weather.ThunderChangeEvent;
+import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
@@ -55,6 +57,38 @@ public class SheepFarmGameListener implements Listener {
 
         Sheep sheep = (Sheep) event.getEntity();
         SheepMergeManager.setSheepTier(sheep, SheepMergeManager.rollSpawnTier(world));
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onWeatherChange(WeatherChangeEvent event) {
+        World world = event.getWorld();
+        if (world == null) {
+            return;
+        }
+        if (!SheepMergeManager.isSheepFarmWorld(world) && !SheepMergeManager.isFarmBuildWorld(world)) {
+            return;
+        }
+        if (event.toWeatherState()) {
+            event.setCancelled(true);
+            world.setStorm(false);
+            world.setWeatherDuration(0);
+            world.setClearWeatherDuration(Integer.MAX_VALUE);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onThunderChange(ThunderChangeEvent event) {
+        World world = event.getWorld();
+        if (world == null) {
+            return;
+        }
+        if (!SheepMergeManager.isSheepFarmWorld(world) && !SheepMergeManager.isFarmBuildWorld(world)) {
+            return;
+        }
+        if (event.toThunderState()) {
+            event.setCancelled(true);
+            world.setThundering(false);
+        }
     }
 
     @EventHandler
@@ -189,7 +223,9 @@ public class SheepFarmGameListener implements Listener {
 
         org.bukkit.Location spawnLocation = clickedBlock.getRelative(blockFace).getLocation().add(0.5D, 0.0D, 0.5D);
         if (!SheepMergeManager.spawnSheepFromEgg(player, spawnLocation)) {
-            player.sendMessage(SheepMergeManager.warning("No eggs available. Wait for your egg timer."));
+            if (SheepMergeManager.shouldNotifyOutOfEggs(player)) {
+                player.sendMessage(SheepMergeManager.warning("No eggs available. Wait for your egg timer."));
+            }
             return;
         }
 

@@ -63,7 +63,7 @@ gameplay:
       autoAbility: 14
       slowAutoMerge: 16
       slowAutoShear: 12
-      autoSpawn: 20
+      autoSpawn: 10
     intervals:
       pointGainMs: 60000
       autoBuyMs: 5000

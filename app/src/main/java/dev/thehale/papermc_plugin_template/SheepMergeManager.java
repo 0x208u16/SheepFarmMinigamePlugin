@@ -1,10 +1,18 @@
 package dev.thehale.papermc_plugin_template;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +23,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -161,6 +173,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastOutOfEggWarningTimestampByPlayer = new HashMap<>();
     private static final String TOP_POINTS_DISPLAY_WORLD_KEY = "topPointsDisplay.world";
     private static final String TOP_POINTS_DISPLAY_X_KEY = "topPointsDisplay.x";
     private static final String TOP_POINTS_DISPLAY_Y_KEY = "topPointsDisplay.y";
@@ -271,6 +284,7 @@ public final class SheepMergeManager {
     private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = SHEAR_WOOL_SAVE_CHANCE_CAP / SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL;
     private static final int SHEAR_TIER_BOOST_MAX_LEVEL = 25;
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
+    private static final long OUT_OF_EGGS_WARNING_COOLDOWN_MS = 2_500L;
     private static long MERGE_REMINDER_DELAY_MS = 30_000L;
     private static long MERGE_REMINDER_REPEAT_MS = 60_000L;
     private static long TUTORIAL_REMINDER_DELAY_MS = 2L * 60L * 1000L;
@@ -309,7 +323,7 @@ public final class SheepMergeManager {
     private static int AUTOMATION_AUTO_ABILITY_BASE_COST = 14;
     private static int AUTOMATION_SLOW_AUTO_MERGE_BASE_COST = 16;
     private static int AUTOMATION_SLOW_AUTO_SHEAR_BASE_COST = 12;
-    private static int AUTOMATION_AUTO_SPAWN_BASE_COST = 20;
+    private static int AUTOMATION_AUTO_SPAWN_BASE_COST = 10;
     private static final int AUTOMATION_SINGLE_LEVEL_MAX = 1;
     private static final int AUTOMATION_AUTO_SPAWN_MAX_LEVEL = 10;
     private static int AUTOMATION_AUTO_PRESTIGE_BASE_COST = 64;
@@ -328,6 +342,19 @@ public final class SheepMergeManager {
     private static int AUTOMATION_CONDITION_MIN_READY_SHEEP_FOR_SHEAR = 1;
     private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
     private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
+    private static final long BACKUP_AUTOMATIC_PERMANENT_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L;
+    private static final long BACKUP_AUTOMATIC_BUFFER_INTERVAL_MS = 24L * 60L * 60L * 1000L;
+    private static final int BACKUP_AUTOMATIC_BUFFER_MAX_FILES = 7;
+    private static final long BACKUP_AUTOMATIC_ROLLING_INTERVAL_TICKS = 20L * 60L * 60L;
+    private static final String BACKUP_DIR_NAME = "backups";
+    private static final String BACKUP_INDEX_FILE_NAME = "backup-index.yml";
+    private static final String BACKUP_ROLLING_FILE_NAME = "rolling-auto-latest.zip";
+    private static final String BACKUP_INDEX_LAST_PERMANENT_AT_KEY = "lastPermanentAt";
+    private static final String BACKUP_INDEX_LAST_BUFFER_AT_KEY = "lastBufferAt";
+    private static final String BACKUP_BUFFER_FILE_PREFIX = "buffer-24h-";
+    private static final DateTimeFormatter BACKUP_TIMESTAMP_FORMATTER = DateTimeFormatter
+            .ofPattern("yyyyMMdd-HHmmss")
+            .withZone(ZoneOffset.UTC);
     private static long STARTING_PLAYER_POINTS = 1_000L;
     private static int TUTORIAL_SHEAR_TARGET = 3;
     private static int TUTORIAL_SPAWN_TARGET = 3;
@@ -513,7 +540,7 @@ public final class SheepMergeManager {
         AUTOMATION_AUTO_ABILITY_BASE_COST = configuration.getAutomationAutoAbilityBaseCost();
         AUTOMATION_SLOW_AUTO_MERGE_BASE_COST = configuration.getAutomationSlowAutoMergeBaseCost();
         AUTOMATION_SLOW_AUTO_SHEAR_BASE_COST = configuration.getAutomationSlowAutoShearBaseCost();
-        AUTOMATION_AUTO_SPAWN_BASE_COST = configuration.getAutomationAutoSpawnBaseCost();
+        AUTOMATION_AUTO_SPAWN_BASE_COST = Math.max(1, configuration.getAutomationAutoSpawnBaseCost() / 2);
         AUTOMATION_POINT_INTERVAL_MS = configuration.getAutomationPointIntervalMs();
         AUTOMATION_AUTO_BUY_INTERVAL_MS = configuration.getAutomationAutoBuyIntervalMs();
         AUTOMATION_AUTO_ABILITY_INTERVAL_MS = configuration.getAutomationAutoAbilityIntervalMs();
@@ -1148,6 +1175,20 @@ public final class SheepMergeManager {
             return false;
         }
         lastSpawnLimitWarningTimestampByPlayer.put(playerId, now);
+        return true;
+    }
+
+    public static boolean shouldNotifyOutOfEggs(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long last = lastOutOfEggWarningTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - last < OUT_OF_EGGS_WARNING_COOLDOWN_MS) {
+            return false;
+        }
+        lastOutOfEggWarningTimestampByPlayer.put(playerId, now);
         return true;
     }
 
@@ -3444,6 +3485,7 @@ public final class SheepMergeManager {
         tutorialShearTaskRewardGrantedByPlayer.remove(id);
         tutorialPrestigePrepRewardGrantedByPlayer.remove(id);
         farmVisitEnabledByPlayer.remove(id);
+        lastOutOfEggWarningTimestampByPlayer.remove(id);
         questPointsByPlayer.remove(id);
         nextQuestResetTimestampByPlayer.remove(id);
         questShearsByPlayer.remove(id);
@@ -4493,6 +4535,400 @@ public final class SheepMergeManager {
         float yaw = (float) dataConfig.getDouble(TOP_POINTS_DISPLAY_YAW_KEY, 0.0D);
         float pitch = (float) dataConfig.getDouble(TOP_POINTS_DISPLAY_PITCH_KEY, 0.0D);
         return new Location(world, x, y, z, yaw, pitch);
+    }
+
+    public static synchronized File createBackup(boolean permanent, String trigger) {
+        if (plugin == null) {
+            return null;
+        }
+
+        saveData();
+        if (hasSavedFarmLayout()) {
+            saveFarmLayout();
+        }
+
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        if (!backupDir.exists() && !backupDir.mkdirs()) {
+            return null;
+        }
+
+        if (permanent) {
+            String timestamp = BACKUP_TIMESTAMP_FORMATTER.format(Instant.now());
+            String suffix = trigger == null || trigger.isBlank() ? "manual" : sanitizeBackupToken(trigger);
+            File destination = new File(backupDir, "permanent-" + timestamp + "-" + suffix + ".zip");
+            if (!writeBackupArchive(destination)) {
+                return null;
+            }
+            markLastPermanentBackupNow();
+            return destination;
+        }
+
+        File rolling = new File(backupDir, BACKUP_ROLLING_FILE_NAME);
+        if (!writeBackupArchive(rolling)) {
+            return null;
+        }
+        return rolling;
+    }
+
+    public static synchronized boolean maybeCreateAutomaticBackup(String trigger) {
+        if (plugin == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        long lastPermanentAt = getLastPermanentBackupAt();
+        long lastBufferAt = getLastBufferBackupAt();
+        boolean duePermanent = now - lastPermanentAt >= BACKUP_AUTOMATIC_PERMANENT_INTERVAL_MS;
+        if (duePermanent) {
+            return createBackup(true, trigger == null ? "auto-weekly" : trigger + "-weekly") != null;
+        }
+
+        boolean dueBuffer = now - lastBufferAt >= BACKUP_AUTOMATIC_BUFFER_INTERVAL_MS;
+        if (dueBuffer) {
+            return createBufferBackup(trigger == null ? "auto-24h" : trigger + "-24h") != null;
+        }
+
+        return createBackup(false, trigger == null ? "auto" : trigger + "-rolling") != null;
+    }
+
+    public static long getAutomaticBackupIntervalTicks() {
+        return BACKUP_AUTOMATIC_ROLLING_INTERVAL_TICKS;
+    }
+
+    public static synchronized File createManualBackup() {
+        return createBackup(true, "manual");
+    }
+
+    private static synchronized File createBufferBackup(String trigger) {
+        if (plugin == null) {
+            return null;
+        }
+
+        saveData();
+        if (hasSavedFarmLayout()) {
+            saveFarmLayout();
+        }
+
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        if (!backupDir.exists() && !backupDir.mkdirs()) {
+            return null;
+        }
+
+        String timestamp = BACKUP_TIMESTAMP_FORMATTER.format(Instant.now());
+        String suffix = trigger == null || trigger.isBlank() ? "auto-24h" : sanitizeBackupToken(trigger);
+        File destination = new File(backupDir, BACKUP_BUFFER_FILE_PREFIX + timestamp + "-" + suffix + ".zip");
+        if (!writeBackupArchive(destination)) {
+            return null;
+        }
+
+        markLastBufferBackupNow();
+        pruneBufferBackups(backupDir);
+        return destination;
+    }
+
+    private static void pruneBufferBackups(File backupDir) {
+        if (backupDir == null || !backupDir.exists() || !backupDir.isDirectory()) {
+            return;
+        }
+
+        File[] bufferFiles = backupDir
+                .listFiles(file -> file != null && file.isFile() && file.getName().startsWith(BACKUP_BUFFER_FILE_PREFIX)
+                        && file.getName().endsWith(".zip"));
+        if (bufferFiles == null || bufferFiles.length <= BACKUP_AUTOMATIC_BUFFER_MAX_FILES) {
+            return;
+        }
+
+        List<File> sorted = new ArrayList<>(List.of(bufferFiles));
+        sorted.sort((left, right) -> Long.compare(right.lastModified(), left.lastModified()));
+        for (int index = BACKUP_AUTOMATIC_BUFFER_MAX_FILES; index < sorted.size(); index++) {
+            sorted.get(index).delete();
+        }
+    }
+
+    public static synchronized List<String> listBackups() {
+        if (plugin == null) {
+            return List.of();
+        }
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        if (!backupDir.exists() || !backupDir.isDirectory()) {
+            return List.of();
+        }
+        File[] files = backupDir.listFiles(file -> file != null && file.isFile() && file.getName().endsWith(".zip"));
+        if (files == null || files.length == 0) {
+            return List.of();
+        }
+        List<String> names = new ArrayList<>();
+        for (File file : files) {
+            names.add(file.getName());
+        }
+        Collections.sort(names);
+        Collections.reverse(names);
+        return names;
+    }
+
+    public static synchronized File loadBackup(String backupName) {
+        if (plugin == null || backupName == null || backupName.isBlank()) {
+            return null;
+        }
+
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        File source = new File(backupDir, backupName);
+        if (!source.exists() || !source.isFile() || !source.getName().endsWith(".zip")) {
+            return null;
+        }
+
+        if (!restoreBackupArchive(source)) {
+            return null;
+        }
+
+        plugin.reloadConfig();
+        SheepMergeConfiguration.initialize(plugin);
+        applyConfiguration(SheepMergeConfiguration.get());
+
+        clearStateBeforeDataLoad();
+        loadData();
+        loadFarmLayout();
+
+        for (World world : plugin.getServer().getWorlds()) {
+            if (isSheepFarmWorld(world)) {
+                rebuildFarmWorld(world);
+            }
+        }
+
+        restoreTopPointsDisplayAfterRestart(null);
+
+        File postLoadBackup = createBackup(true, "post-load");
+        return postLoadBackup == null ? source : postLoadBackup;
+    }
+
+    private static void clearStateBeforeDataLoad() {
+        pointsByPlayer.clear();
+        extraLimitByPlayer.clear();
+        eggSpeedLevelByPlayer.clear();
+        woolRegenLevelByPlayer.clear();
+        higherTierChanceLevelByPlayer.clear();
+        prestigeLevelByPlayer.clear();
+        prestigePointsByPlayer.clear();
+        prestigeDoublePointsChanceByPlayer.clear();
+        prestigeHigherMaxLevelByPlayer.clear();
+        prestigeStartEggsByPlayer.clear();
+        prestigeEggCapByPlayer.clear();
+        prestigeBaseSpawnTierByPlayer.clear();
+        prestigeQuestRewardByPlayer.clear();
+        nextPrestigeRefundTimestampByPlayer.clear();
+        highestAnnouncedTierByPlayer.clear();
+        highestAnnouncedRainbowTierByPlayer.clear();
+        shearShopLevelByPlayer.clear();
+        shearWoolSaveLevelByPlayer.clear();
+        shearTierBoostLevelByPlayer.clear();
+        tutorialCompletedByPlayer.clear();
+        tutorialBypassedByPlayer.clear();
+        tutorialShearsByPlayer.clear();
+        tutorialSpawnsByPlayer.clear();
+        tutorialMergesByPlayer.clear();
+        tutorialUpgradeOpenedByPlayer.clear();
+        tutorialQuestOpenedByPlayer.clear();
+        tutorialQuestUpgradesOpenedByPlayer.clear();
+        tutorialPrestigeOpenedByPlayer.clear();
+        tutorialAbilityUsedByPlayer.clear();
+        tutorialShearUpgradedByPlayer.clear();
+        tutorialRegularUpgradesBoughtByPlayer.clear();
+        tutorialShearTaskRewardGrantedByPlayer.clear();
+        tutorialPrestigePrepRewardGrantedByPlayer.clear();
+        tutorialPrestigedOnceByPlayer.clear();
+        tutorialShearShopOpenedByPlayer.clear();
+        farmVisitEnabledByPlayer.clear();
+        questPointsByPlayer.clear();
+        nextQuestResetTimestampByPlayer.clear();
+        questShearsByPlayer.clear();
+        questSpawnsByPlayer.clear();
+        questMergesByPlayer.clear();
+        questShearsCompleteByPlayer.clear();
+        questSpawnsCompleteByPlayer.clear();
+        questMergesCompleteByPlayer.clear();
+        questUpgradeDurationByPlayer.clear();
+        questUpgradePowerByPlayer.clear();
+        activeLuckyBurstUntilByPlayer.clear();
+        activeWoolRushUntilByPlayer.clear();
+        activeJackpotShearsUntilByPlayer.clear();
+        activeAutoMergeUntilByPlayer.clear();
+        activeAutoShearUntilByPlayer.clear();
+        pausedLuckyBurstRemainingMsByPlayer.clear();
+        pausedWoolRushRemainingMsByPlayer.clear();
+        pausedJackpotShearsRemainingMsByPlayer.clear();
+        pausedAutoMergeRemainingMsByPlayer.clear();
+        pausedAutoShearRemainingMsByPlayer.clear();
+        comboDecayUpgradeByPlayer.clear();
+        comboMaxUpgradeByPlayer.clear();
+        comboGainUpgradeByPlayer.clear();
+        automationPointsByPlayer.clear();
+        automationAutoBuyUpgradeByPlayer.clear();
+        automationAutoAbilityUpgradeByPlayer.clear();
+        automationSlowAutoMergeUpgradeByPlayer.clear();
+        automationSlowAutoShearUpgradeByPlayer.clear();
+        automationAutoSpawnUpgradeByPlayer.clear();
+        automationAutoPrestigeUpgradeByPlayer.clear();
+        automationAutoBuyEnabledByPlayer.clear();
+        automationAutoAbilityEnabledByPlayer.clear();
+        automationSlowAutoMergeEnabledByPlayer.clear();
+        automationSlowAutoShearEnabledByPlayer.clear();
+        automationAutoSpawnEnabledByPlayer.clear();
+        automationAutoPrestigeEnabledByPlayer.clear();
+        savedFarmSheepByPlayer.clear();
+        savedTutorialSheepByPlayer.clear();
+        savedInventories.clear();
+        savedScoreboards.clear();
+        carriedSheepByPlayer.clear();
+        liveSheepCountByWorld.clear();
+        lastOutOfEggWarningTimestampByPlayer.clear();
+    }
+
+    private static boolean writeBackupArchive(File destination) {
+        if (plugin == null || destination == null) {
+            return false;
+        }
+
+        File dataFolder = plugin.getDataFolder();
+        if (!dataFolder.exists() && !dataFolder.mkdirs()) {
+            return false;
+        }
+
+        File scores = new File(dataFolder, "scores.yml");
+        File layout = new File(dataFolder, "farm-layout.yml");
+        File config = new File(dataFolder, "config.yml");
+
+        try (FileOutputStream fileOut = new FileOutputStream(destination);
+                ZipOutputStream zipOut = new ZipOutputStream(fileOut)) {
+            zipOut.setLevel(Deflater.BEST_COMPRESSION);
+            addFileToZip(zipOut, scores, "scores.yml");
+            addFileToZip(zipOut, layout, "farm-layout.yml");
+            addFileToZip(zipOut, config, "config.yml");
+            return true;
+        } catch (IOException exception) {
+            if (plugin != null) {
+                plugin.getLogger().warning("Unable to create backup archive: " + exception.getMessage());
+            }
+            return false;
+        }
+    }
+
+    private static boolean restoreBackupArchive(File source) {
+        if (plugin == null || source == null || !source.exists()) {
+            return false;
+        }
+
+        File dataFolder = plugin.getDataFolder();
+        if (!dataFolder.exists() && !dataFolder.mkdirs()) {
+            return false;
+        }
+
+        try (FileInputStream fileIn = new FileInputStream(source);
+                ZipInputStream zipIn = new ZipInputStream(fileIn)) {
+            ZipEntry entry;
+            while ((entry = zipIn.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (!("scores.yml".equals(name) || "farm-layout.yml".equals(name) || "config.yml".equals(name))) {
+                    zipIn.closeEntry();
+                    continue;
+                }
+                File target = new File(dataFolder, name);
+                try (FileOutputStream out = new FileOutputStream(target)) {
+                    copyStream(zipIn, out);
+                }
+                zipIn.closeEntry();
+            }
+            return true;
+        } catch (IOException exception) {
+            if (plugin != null) {
+                plugin.getLogger().warning("Unable to restore backup archive: " + exception.getMessage());
+            }
+            return false;
+        }
+    }
+
+    private static void addFileToZip(ZipOutputStream zipOut, File source, String entryName) throws IOException {
+        if (zipOut == null || source == null || entryName == null || !source.exists() || !source.isFile()) {
+            return;
+        }
+        ZipEntry entry = new ZipEntry(entryName);
+        entry.setTime(source.lastModified());
+        zipOut.putNextEntry(entry);
+        try (FileInputStream in = new FileInputStream(source)) {
+            copyStream(in, zipOut);
+        }
+        zipOut.closeEntry();
+    }
+
+    private static void copyStream(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = in.read(buffer)) >= 0) {
+            out.write(buffer, 0, read);
+        }
+    }
+
+    private static String sanitizeBackupToken(String token) {
+        if (token == null || token.isBlank()) {
+            return "auto";
+        }
+        String cleaned = token.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]+", "-");
+        return cleaned.isBlank() ? "auto" : cleaned;
+    }
+
+    private static long getLastPermanentBackupAt() {
+        File indexFile = getBackupIndexFile();
+        if (indexFile == null || !indexFile.exists()) {
+            return 0L;
+        }
+        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
+        return Math.max(0L, indexConfig.getLong(BACKUP_INDEX_LAST_PERMANENT_AT_KEY, 0L));
+    }
+
+    private static long getLastBufferBackupAt() {
+        File indexFile = getBackupIndexFile();
+        if (indexFile == null || !indexFile.exists()) {
+            return 0L;
+        }
+        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
+        return Math.max(0L, indexConfig.getLong(BACKUP_INDEX_LAST_BUFFER_AT_KEY, 0L));
+    }
+
+    private static void markLastPermanentBackupNow() {
+        File indexFile = getBackupIndexFile();
+        if (indexFile == null) {
+            return;
+        }
+        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
+        indexConfig.set(BACKUP_INDEX_LAST_PERMANENT_AT_KEY, System.currentTimeMillis());
+        try {
+            indexConfig.save(indexFile);
+        } catch (IOException ignored) {
+            // Best effort metadata write; backup file has already been created.
+        }
+    }
+
+    private static void markLastBufferBackupNow() {
+        File indexFile = getBackupIndexFile();
+        if (indexFile == null) {
+            return;
+        }
+        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
+        indexConfig.set(BACKUP_INDEX_LAST_BUFFER_AT_KEY, System.currentTimeMillis());
+        try {
+            indexConfig.save(indexFile);
+        } catch (IOException ignored) {
+            // Best effort metadata write; backup file has already been created.
+        }
+    }
+
+    private static File getBackupIndexFile() {
+        if (plugin == null) {
+            return null;
+        }
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        if (!backupDir.exists() && !backupDir.mkdirs()) {
+            return null;
+        }
+        return new File(backupDir, BACKUP_INDEX_FILE_NAME);
     }
 
     public static void addPoints(Player player, int points) {

@@ -5,6 +5,7 @@ import dev.thehale.papermc_plugin_template.commands.CheckQuestPointsCommandModul
 import dev.thehale.papermc_plugin_template.commands.CheckpointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.ComboFrenzyCommandModule;
 import dev.thehale.papermc_plugin_template.commands.DashHelpCommandModule;
+import dev.thehale.papermc_plugin_template.commands.BackupCommandModule;
 import dev.thehale.papermc_plugin_template.commands.GiveAutomationPointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.GivePointsCommandModule;
 import dev.thehale.papermc_plugin_template.commands.GiveQuestPointsCommandModule;
@@ -77,9 +78,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "givequestpoints",
             "setquestpoints",
             "setprestige",
+            "backup",
             "world");
 
     private static final List<String> WORLD_SUBCOMMANDS = List.of("help", "-help", "save", "load");
+    private static final List<String> BACKUP_SUBCOMMANDS = List.of("help", "-help", "create", "list", "load");
     private static final List<String> LEADERBOARD_SUBCOMMANDS = List.of(
             "help",
             "-help",
@@ -130,6 +133,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new GiveQuestPointsCommandModule(this::handleGiveQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
             new SetQuestPointsCommandModule(this::handleSetQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
             new SetPrestigeCommandModule(this::handleSetPrestigeCommand, this::tabCompleteAdminAmountPlayer),
+            new BackupCommandModule(this::handleBackupCommand, this::tabCompleteBackup),
             new WorldCommandModule(this::handleWorldCommand, this::tabCompleteWorld));
 
     public static String getWorldName(java.util.UUID playerId) {
@@ -166,7 +170,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": remove the leaderboard display");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge storm") + ": trigger a sheep storm");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon [tier]")
-            + ": operator summon a sheep (optional tier level)");
+                + ": operator summon a sheep (optional tier level)");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge reload")
                 + ": reload plugin configuration values live");
@@ -194,6 +198,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": admin set quest points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge setprestige <level> [player]")
                 + ": admin set prestige level");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup")
+                + ": create a permanent compressed backup");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup load <file>")
+                + ": restore backup data and create a post-load permanent backup");
 
         if (topic == null || topic.isBlank()) {
             return;
@@ -233,14 +241,25 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-            if (topic.equalsIgnoreCase("summon")) {
-                player.sendMessage(ChatColor.DARK_AQUA + "Summon hints:");
-                player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon")
+        if (topic.equalsIgnoreCase("backup")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Backup hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup")
+                    + ": create a permanent compressed backup now");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup list")
+                    + ": show recent backup archive names");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup load <file>")
+                    + ": restore one backup archive");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("summon")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Summon hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon")
                     + ": spawn a sheep using normal egg tier roll logic");
-                player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon <tier>")
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon <tier>")
                     + ": spawn an exact tier (0-" + SheepTier.RAINBOW.getLevel() + ")");
-                return;
-            }
+            return;
+        }
 
         if (topic.equalsIgnoreCase("resetdata")) {
             player.sendMessage(ChatColor.DARK_AQUA + "Reset hints:");
@@ -695,7 +714,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld()) || SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
+        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())
+                || SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
             player.sendMessage(error("Use this command in a farm or tutorial world (not the build world)."));
             return true;
         }
@@ -835,6 +855,56 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         return false;
+    }
+
+    private boolean handleBackupCommand(Player player, String[] args) {
+        if (args.length < 1 || !args[0].equalsIgnoreCase("backup")) {
+            return false;
+        }
+        if (!player.isOp()) {
+            player.sendMessage(error("Only server operators can use this command."));
+            return true;
+        }
+
+        if (args.length == 1 || (args.length == 2 && args[1].equalsIgnoreCase("create"))) {
+            File created = SheepMergeManager.createManualBackup();
+            if (created == null) {
+                player.sendMessage(error("Unable to create backup."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Backup") + " " + value("Created ") + label(created.getName()));
+            return true;
+        }
+
+        if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
+            List<String> backups = SheepMergeManager.listBackups();
+            if (backups.isEmpty()) {
+                player.sendMessage(error("No backups found."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Backups") + " " + value("Available archives:"));
+            for (int i = 0; i < Math.min(15, backups.size()); i++) {
+                player.sendMessage(ChatColor.GRAY + "- " + backups.get(i));
+            }
+            return true;
+        }
+
+        if (args.length >= 3 && args[1].equalsIgnoreCase("load")) {
+            String backupName = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+            File postLoadBackup = SheepMergeManager.loadBackup(backupName);
+            if (postLoadBackup == null) {
+                player.sendMessage(error("Unable to load backup '" + backupName + "'."));
+                return true;
+            }
+            player.sendMessage(adminHeader("Backup") + " " + value("Loaded backup '") + label(backupName)
+                    + value("'."));
+            player.sendMessage(adminHeader("Backup") + " " + value("Created post-load permanent backup '")
+                    + label(postLoadBackup.getName()) + value("'."));
+            return true;
+        }
+
+        player.sendMessage(error("Usage: /sheepmerge backup [create|list|load <file>]."));
+        return true;
     }
 
     private boolean handleResetDataCommand(Player player, String[] args) {
@@ -1067,6 +1137,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return List.of();
     }
 
+    private List<String> tabCompleteBackup(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            return List.of();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("backup")) {
+            return filterSuggestions(BACKUP_SUBCOMMANDS, args[1]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("backup") && args[1].equalsIgnoreCase("load")) {
+            return filterSuggestions(SheepMergeManager.listBackups(), args[2]);
+        }
+        return List.of();
+    }
+
     private List<String> tabCompleteSummon(CommandSender sender, String[] args) {
         if (!sender.isOp()) {
             return List.of();
@@ -1225,6 +1308,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(error(
                     "Invalid world command. Use /sheepmerge world, /sheepmerge world save, or /sheepmerge world load."));
             sendCommandHelp(player, "world");
+            return;
+        }
+
+        if (root.equals("backup")) {
+            player.sendMessage(error(
+                    "Invalid backup command. Use /sheepmerge backup, /sheepmerge backup list, or /sheepmerge backup load <file>."));
+            sendCommandHelp(player, "backup");
             return;
         }
 
@@ -1554,6 +1644,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
         world.setPVP(false);
         world.setDifficulty(Difficulty.PEACEFUL);
+        world.setStorm(false);
+        world.setThundering(false);
+        world.setWeatherDuration(0);
+        world.setClearWeatherDuration(Integer.MAX_VALUE);
     }
 
     private static Location getConfiguredFarmTeleportLocation(World world) {

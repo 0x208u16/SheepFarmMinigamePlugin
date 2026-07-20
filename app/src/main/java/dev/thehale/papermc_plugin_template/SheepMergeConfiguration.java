@@ -151,7 +151,7 @@ public final class SheepMergeConfiguration {
         automationAutoAbilityBaseCost = getInt(configuration, "gameplay.automation.costs.autoAbility", 14, 1);
         automationSlowAutoMergeBaseCost = getInt(configuration, "gameplay.automation.costs.slowAutoMerge", 16, 1);
         automationSlowAutoShearBaseCost = getInt(configuration, "gameplay.automation.costs.slowAutoShear", 12, 1);
-        automationAutoSpawnBaseCost = getInt(configuration, "gameplay.automation.costs.autoSpawn", 20, 1);
+        automationAutoSpawnBaseCost = getInt(configuration, "gameplay.automation.costs.autoSpawn", 10, 1);
         automationPointIntervalMs = getLong(configuration, "gameplay.automation.intervals.pointGainMs", 60_000L, 1L);
         automationAutoBuyIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoBuyMs", 5_000L, 1L);
         automationAutoAbilityIntervalMs = getLong(configuration, "gameplay.automation.intervals.autoAbilityMs", 5_000L,
