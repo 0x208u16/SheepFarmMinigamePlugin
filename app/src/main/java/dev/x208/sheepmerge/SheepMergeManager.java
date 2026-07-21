@@ -189,6 +189,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillPendingMaskByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> nextRebirthRespecTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
@@ -264,6 +265,7 @@ public final class SheepMergeManager {
     private static final int PRESTIGE_QUEST_REWARD_MAX_LEVEL = 36;
     private static final double PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL = 0.25D;
     private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
+    private static final long REBIRTH_RESPEC_COOLDOWN_MS = 30L * 60L * 1000L;
     private static final String FARM_BUILD_WORLD_NAME = "sheepfarm_build";
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
@@ -471,6 +473,7 @@ public final class SheepMergeManager {
     public static final int REBIRTH_ACTION_SLOT = 11;
     public static final int REBIRTH_OPEN_TREE_SLOT = 15;
     public static final int REBIRTH_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int REBIRTH_TREE_RESPEC_SLOT = 46;
     public static final int REBIRTH_TREE_BACK_SLOT = 53;
     public static final int SCOREBOARD_LAYOUT_SLOT = 10;
     public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
@@ -1660,6 +1663,14 @@ public final class SheepMergeManager {
             }
         }
         return Math.max(0, getRebirthPoints(player) - spent);
+    }
+
+    public static long getRebirthRespecRemainingMs(Player player) {
+        if (player == null) {
+            return 0L;
+        }
+        long nextRespec = nextRebirthRespecTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        return Math.max(0L, nextRespec - System.currentTimeMillis());
     }
 
     private static int getRebirthCostInPrestigeLevels(int rebirthLevel) {
@@ -4354,6 +4365,7 @@ public final class SheepMergeManager {
         rebirthPointsByPlayer.remove(id);
         rebirthSkillUnlockMaskByPlayer.remove(id);
         rebirthSkillPendingMaskByPlayer.remove(id);
+        nextRebirthRespecTimestampByPlayer.remove(id);
         nextAutomationPointAtByPlayer.remove(id);
         nextAutomationAutoBuyAtByPlayer.remove(id);
         nextAutomationAutoAbilityAtByPlayer.remove(id);
@@ -5899,6 +5911,7 @@ public final class SheepMergeManager {
         rebirthPointsByPlayer.clear();
         rebirthSkillUnlockMaskByPlayer.clear();
         rebirthSkillPendingMaskByPlayer.clear();
+        nextRebirthRespecTimestampByPlayer.clear();
         for (BossBar bar : visitFarmBossBarByPlayer.values()) {
             if (bar != null) {
                 bar.removeAll();
@@ -7540,6 +7553,40 @@ public final class SheepMergeManager {
         prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), refund));
         resetPrestigeUpgrades(playerId, false);
         nextPrestigeRefundTimestampByPlayer.put(playerId, now + PRESTIGE_REFUND_COOLDOWN_MS);
+        saveData();
+        return true;
+    }
+
+    private static int getRebirthRespecRefundAmount(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int spent = 0;
+        int mask = getRebirthSkillUnlockMask(player.getUniqueId());
+        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+            if ((mask & getRebirthSkillBit(node.id)) != 0) {
+                spent += getRebirthSkillCost(node);
+            }
+        }
+        return Math.max(0, spent);
+    }
+
+    private static boolean tryRespecRebirthSkills(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long nextRespec = nextRebirthRespecTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now < nextRespec) {
+            return false;
+        }
+        if (getRebirthSkillUnlockMask(playerId) == 0) {
+            return false;
+        }
+        rebirthSkillUnlockMaskByPlayer.remove(playerId);
+        rebirthSkillPendingMaskByPlayer.remove(playerId);
+        nextRebirthRespecTimestampByPlayer.put(playerId, now + REBIRTH_RESPEC_COOLDOWN_MS);
         saveData();
         return true;
     }
@@ -9589,6 +9636,8 @@ public final class SheepMergeManager {
         }
         Inventory inventory = Bukkit.createInventory(null, 54, REBIRTH_TREE_MENU_TITLE);
         int unspent = getUnspentRebirthPoints(player);
+        int refundAmount = getRebirthRespecRefundAmount(player);
+        long respecRemaining = getRebirthRespecRemainingMs(player);
         inventory.setItem(4, MenuItemFactory.create(
                 Material.BOOK,
                 "Tree Overview",
@@ -9597,7 +9646,7 @@ public final class SheepMergeManager {
                         "&dRebirth points: &f" + formatPoints(getRebirthPoints(player)),
                         "&aUnspent: &f" + formatPoints(unspent),
                         "&aAll unlocked skills are active immediately",
-                        "&aUnlocks are permanent and non-refundable",
+                        "&7Respec available every 30 minutes",
                         "&7Root starts at the bottom",
                         "&7Unlock nodes upward from the root")));
 
@@ -9628,6 +9677,18 @@ public final class SheepMergeManager {
             inventory.setItem(node.slot, MenuItemFactory.create(node.material, node.name, lore));
         }
 
+        inventory.setItem(REBIRTH_TREE_RESPEC_SLOT, MenuItemFactory.create(
+                Material.BARRIER,
+                "Respec Rebirth Skills",
+                List.of(
+                        "&dRefund amount: &f" + formatPoints(refundAmount) + " rebirth points",
+                        respecRemaining > 0L
+                                ? "&7Cooldown: &f" + formatDuration(respecRemaining)
+                                : "&7Cooldown: &aready",
+                        "&cResets all rebirth skill unlocks",
+                        "&7Rebirth level and rebirth points are kept",
+                        "&aClick to respec")));
+
         inventory.setItem(REBIRTH_TREE_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Rebirth",
@@ -9641,6 +9702,28 @@ public final class SheepMergeManager {
         }
         if (slot == REBIRTH_TREE_BACK_SLOT) {
             openRebirthMenu(player);
+            return;
+        }
+        if (slot == REBIRTH_TREE_RESPEC_SLOT) {
+            long respecRemaining = getRebirthRespecRemainingMs(player);
+            if (respecRemaining > 0L) {
+                player.sendMessage(warning("Respec cooldown: " + formatDuration(respecRemaining)));
+                openRebirthTreeMenu(player);
+                return;
+            }
+            int refundAmount = getRebirthRespecRefundAmount(player);
+            if (refundAmount <= 0) {
+                player.sendMessage(warning("No rebirth skills to respec."));
+                openRebirthTreeMenu(player);
+                return;
+            }
+            if (tryRespecRebirthSkills(player)) {
+                playUpgradeSound(player);
+                player.sendMessage(action("Refunded " + formatPoints(refundAmount) + " rebirth points."));
+            } else {
+                player.sendMessage(warning("Respec is not available right now."));
+            }
+            openRebirthTreeMenu(player);
             return;
         }
         RebirthSkillNode clicked = null;
@@ -10710,6 +10793,7 @@ public final class SheepMergeManager {
             dataConfig.set("rebirthPoints", null);
             dataConfig.set("rebirthSkillUnlockMask", null);
             dataConfig.set("rebirthSkillPendingMask", null);
+            dataConfig.set("rebirthRespecCooldown", null);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
@@ -10965,6 +11049,9 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : rebirthSkillPendingMaskByPlayer.entrySet()) {
                 dataConfig.set("rebirthSkillPendingMask." + entry.getKey().toString(),
                         entry.getValue() & rebirthTreeMask);
+            }
+            for (Map.Entry<UUID, Long> entry : nextRebirthRespecTimestampByPlayer.entrySet()) {
+                dataConfig.set("rebirthRespecCooldown." + entry.getKey().toString(), entry.getValue());
             }
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
@@ -11907,6 +11994,17 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     rebirthSkillPendingMaskByPlayer.put(uuid,
                             dataConfig.getInt("rebirthSkillPendingMask." + key, 0) & rebirthTreeMask);
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("rebirthRespecCooldown")) {
+            dataConfig.getConfigurationSection("rebirthRespecCooldown").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    nextRebirthRespecTimestampByPlayer.put(uuid,
+                            Math.max(0L, dataConfig.getLong("rebirthRespecCooldown." + key, 0L)));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
