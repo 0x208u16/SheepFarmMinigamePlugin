@@ -108,6 +108,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastTutorialFocusNotificationTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialMergePointsReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
+    private static final Object TOP_POINTS_REFRESH_LOCK = new Object();
+    private static long topPointsRefreshVersion = 0L;
     private static final Map<UUID, List<SheepSnapshot>> savedFarmSheepByPlayer = new HashMap<>();
     private static final Map<UUID, List<SheepSnapshot>> savedTutorialSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
@@ -170,7 +172,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> nextAutomationAutoSpawnAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutomationAutoPrestigeAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> pointsOverlayExpiresAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> lastPointsOverlayByPlayer = new HashMap<>();
+    private static final Map<UUID, BigInteger> lastPointsOverlayByPlayer = new HashMap<>();
     private static final Map<UUID, BossBar> comboBossBarByPlayer = new HashMap<>();
     private static final Map<UUID, BossBar> visitFarmBossBarByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
@@ -4665,23 +4667,21 @@ public final class SheepMergeManager {
     }
 
     public static String buildTopPointsText(int maxEntries) {
+        return buildTopPointsText(new HashMap<>(pointsByPlayer), snapshotOnlinePlayerNames(), maxEntries);
+    }
+
+    private static String buildTopPointsText(Map<UUID, BigInteger> pointsSnapshot, Map<UUID, String> nameSnapshot,
+            int maxEntries) {
         StringBuilder builder = new StringBuilder("Top Sheep Merge Points");
-        pointsByPlayer.entrySet().stream()
+        pointsSnapshot.entrySet().stream()
                 .sorted((left, right) -> {
                     int pointsCompare = right.getValue().compareTo(left.getValue());
                     if (pointsCompare != 0) {
                         return pointsCompare;
                     }
 
-                    String leftName = Bukkit.getOfflinePlayer(left.getKey()).getName();
-                    String rightName = Bukkit.getOfflinePlayer(right.getKey()).getName();
-                    String leftSafeName = leftName == null || leftName.isBlank()
-                            ? left.getKey().toString().substring(0, 8)
-                            : leftName;
-                    String rightSafeName = rightName == null || rightName.isBlank()
-                            ? right.getKey().toString().substring(0, 8)
-                            : rightName;
-
+                    String leftSafeName = getSafeTopPointsName(left.getKey(), nameSnapshot);
+                    String rightSafeName = getSafeTopPointsName(right.getKey(), nameSnapshot);
                     int nameCompare = leftSafeName.compareToIgnoreCase(rightSafeName);
                     if (nameCompare != 0) {
                         return nameCompare;
@@ -4689,17 +4689,39 @@ public final class SheepMergeManager {
                     return left.getKey().compareTo(right.getKey());
                 })
                 .limit(Math.max(1, maxEntries))
-                .forEach(entry -> {
-                    String name = Bukkit.getOfflinePlayer(entry.getKey()).getName();
-                    if (name == null || name.isBlank()) {
-                        name = entry.getKey().toString().substring(0, 8);
-                    }
-                    builder.append("\n").append(name).append(": ").append(formatPoints(entry.getValue()));
-                });
+                .forEach(entry -> builder.append("\n")
+                        .append(getSafeTopPointsName(entry.getKey(), nameSnapshot))
+                        .append(": ")
+                        .append(formatPoints(entry.getValue())));
         if (builder.toString().equals("Top Sheep Merge Points")) {
             builder.append("\nNo scores yet");
         }
         return builder.toString();
+    }
+
+    private static Map<UUID, String> snapshotOnlinePlayerNames() {
+        Map<UUID, String> names = new HashMap<>();
+        if (plugin == null || plugin.getServer() == null) {
+            return names;
+        }
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null) {
+                continue;
+            }
+            String name = online.getName();
+            if (name != null && !name.isBlank()) {
+                names.put(online.getUniqueId(), name);
+            }
+        }
+        return names;
+    }
+
+    private static String getSafeTopPointsName(UUID playerId, Map<UUID, String> nameSnapshot) {
+        if (playerId == null) {
+            return "unknown";
+        }
+        String name = nameSnapshot == null ? null : nameSnapshot.get(playerId);
+        return name == null || name.isBlank() ? playerId.toString().substring(0, 8) : name;
     }
 
     public static List<String> getTopPointsLines(int maxEntries) {
@@ -4863,8 +4885,32 @@ public final class SheepMergeManager {
     }
 
     private static void refreshTopPointsDisplays() {
-        String topPointsText = buildTopPointsText(10);
+        if (plugin == null || plugin.getServer() == null) {
+            return;
+        }
+
+        Map<UUID, BigInteger> pointsSnapshot = new HashMap<>(pointsByPlayer);
+        Map<UUID, String> nameSnapshot = snapshotOnlinePlayerNames();
         Location savedLocation = getSavedTopPointsDisplayLocation();
+        long requestVersion;
+        synchronized (TOP_POINTS_REFRESH_LOCK) {
+            requestVersion = ++topPointsRefreshVersion;
+        }
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            String topPointsText = buildTopPointsText(pointsSnapshot, nameSnapshot, 10);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                synchronized (TOP_POINTS_REFRESH_LOCK) {
+                    if (requestVersion != topPointsRefreshVersion) {
+                        return;
+                    }
+                }
+                applyTopPointsText(savedLocation, topPointsText);
+            });
+        });
+    }
+
+    private static void applyTopPointsText(Location savedLocation, String topPointsText) {
         if (savedLocation != null && savedLocation.getWorld() != null) {
             removeNearbyUnmarkedTopPointsTextDisplays(savedLocation);
         }
@@ -5697,14 +5743,13 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         pointsByPlayer.put(playerId, getPlayerPointsBig(player).add(points));
         refreshTopPointsDisplays();
-        queuePointsGainOverlay(player,
-                points.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 ? Integer.MAX_VALUE : points.intValue());
+        queuePointsGainOverlay(player, points);
         saveData();
         tickPrestigeReminder(player);
     }
 
-    private static void queuePointsGainOverlay(Player player, int points) {
-        if (player == null || points <= 0) {
+    private static void queuePointsGainOverlay(Player player, BigInteger points) {
+        if (player == null || points == null || points.signum() <= 0) {
             return;
         }
         UUID playerId = player.getUniqueId();
@@ -5717,8 +5762,8 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        Integer lastPoints = lastPointsOverlayByPlayer.get(playerId);
-        if (lastPoints == null || lastPoints <= 0) {
+        BigInteger lastPoints = lastPointsOverlayByPlayer.get(playerId);
+        if (lastPoints == null || lastPoints.signum() <= 0) {
             return;
         }
 
