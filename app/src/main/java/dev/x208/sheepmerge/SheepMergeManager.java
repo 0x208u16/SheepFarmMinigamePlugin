@@ -3488,6 +3488,7 @@ public final class SheepMergeManager {
         runPrestigeResetEffects(player, true);
         if (!hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
             sacrificePointsByPlayer.remove(playerId);
+            sacrificeUnlockState.remove(playerId);
         }
         int rebirthPendingClearMask = getRebirthSkillBit(REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE)
                 | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE)
