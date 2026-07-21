@@ -472,7 +472,7 @@ public final class SheepMergeManager {
     public static final int REBIRTH_ACTION_SLOT = 11;
     public static final int REBIRTH_OPEN_TREE_SLOT = 15;
     public static final int REBIRTH_BACK_TO_UPGRADES_SLOT = 26;
-    public static final int REBIRTH_TREE_BACK_SLOT = 49;
+    public static final int REBIRTH_TREE_BACK_SLOT = 53;
     public static final int SCOREBOARD_LAYOUT_SLOT = 10;
     public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
     public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 14;
@@ -560,58 +560,58 @@ public final class SheepMergeManager {
                     REBIRTH_SKILL_POINTS_X10_ROOT,
                     0,
                     1,
-                    22,
+                    49,
                     Material.NETHER_STAR,
-                    "Root: 10x Points",
-                    "Points gain x10"),
+                    "Point Surge",
+                    "x10 normal points"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_POINTS_X10_LEFT,
                     REBIRTH_SKILL_POINTS_X10_ROOT,
                     2,
-                    21,
+                    39,
                     Material.EMERALD,
-                    "10x Points II",
-                    "Additional points gain x10"),
+                    "Deep Surge",
+                    "x10 more normal points"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_QUEST_POINTS_X10,
                     REBIRTH_SKILL_POINTS_X10_LEFT,
                     3,
-                    20,
+                    29,
                     Material.BOOK,
-                    "10x Quest Points",
-                    "Quest point gains x10"),
+                    "Quest Tide",
+                    "x10 quest points"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_SACRIFICE_POINTS_X10,
                     REBIRTH_SKILL_POINTS_X10_LEFT,
                     3,
                     30,
                     Material.TOTEM_OF_UNDYING,
-                    "10x Sacrifice Points",
-                    "Sacrifice point gains x10"),
+                    "Sacrifice Tide",
+                    "x10 sacrifice points"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
                     REBIRTH_SKILL_POINTS_X10_ROOT,
                     2,
-                    23,
+                    41,
                     Material.CHEST,
-                    "Keep Points After Prestige",
-                    "Prestige no longer resets normal points"),
+                    "Keep Points",
+                    "Keep normal points after prestige"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH,
                     REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
                     3,
-                    32,
+                    31,
                     Material.MILK_BUCKET,
-                    "Keep Sacrifice Points After Rebirth",
-                    "Rebirth keeps sacrifice points"),
+                    "Keep Sacrifice",
+                    "Keep sacrifice points after rebirth"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE,
                     REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
                     3,
-                    24,
+                    32,
                     Material.SHEEP_SPAWN_EGG,
-                    "Keep Sheep After Prestige",
-                    "Prestige keeps sheep and disables sacrifice gain"));
+                    "Keep Sheep",
+                    "Keep sheep after prestige; no sacrifice gain"));
 
     private static final List<String> GAMEPLAY_TIPS = List.of(
             "&7Use &e/sheepmerge &7to jump to your farm. Use it again while visiting to return home.",
@@ -9003,36 +9003,36 @@ public final class SheepMergeManager {
                 Material.DRAGON_EGG,
                 "Rebirth Progress",
                 List.of(
-                        "Rebirth level: " + rebirthLevel,
-                        "Rebirth points: " + formatPoints(rebirthPoints),
-                        "Unspent rebirth points: " + formatPoints(unspent),
-                        "Next rebirth cost: " + nextCost + " prestige levels")));
+                        "&bLevel: &f" + rebirthLevel,
+                        "&dRebirth points: &f" + formatPoints(rebirthPoints),
+                        "&aUnspent: &f" + formatPoints(unspent),
+                        "&6Next cost: &f" + nextCost + " prestige levels")));
 
         inventory.setItem(REBIRTH_ACTION_SLOT, MenuItemFactory.create(
                 Material.NETHER_STAR,
                 "Rebirth Reset",
                 List.of(
                         affordable > 0
-                                ? "Buy now: +" + affordable + " rebirth level(s)"
-                                : "Buy now: +0 rebirth level(s)",
+                                ? "&aReady: +" + affordable + " rebirth level(s)"
+                                : "&cReady: +0 rebirth level(s)",
                         affordable > 0
-                                ? "Gain rebirth points: +" + formatPoints(reward)
-                                : "Gain rebirth points: +0",
-                        "Cost scales by +10 prestige levels per rebirth",
-                        "Resets all prestige levels/upgrades",
-                        "Also resets what prestige resets",
+                                ? "&dReward: +" + formatPoints(reward) + " rebirth points"
+                                : "&dReward: +0 rebirth points",
+                        "&7+10 prestige levels per rebirth",
+                        "&7Resets prestige progress",
                         hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
-                                ? "Sacrifice points are kept by skill"
-                                : "Sacrifice points are reset",
-                        "Click to rebirth multiple")));
+                                ? "&aKeeps sacrifice points"
+                                : "&cSacrifice points reset",
+                        "&aClick: Rebirth")));
 
         inventory.setItem(REBIRTH_OPEN_TREE_SLOT, MenuItemFactory.create(
                 Material.ENCHANTED_BOOK,
                 "Rebirth Skill Tree",
                 List.of(
-                        "Spend rebirth points on permanent effects",
-                        "Tree costs: 1 at root, +1 per layer",
-                        "Click to open")));
+                        "&7Spend rebirth points here",
+                        "&7Cost starts at 1 RP",
+                        "&7Builds upward from the root",
+                        "&aClick: Open")));
 
         inventory.setItem(REBIRTH_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -9081,11 +9081,11 @@ public final class SheepMergeManager {
                 Material.BOOK,
                 "Tree Overview",
                 List.of(
-                        "Rebirth level: " + getRebirthLevel(player),
-                        "Rebirth points: " + formatPoints(getRebirthPoints(player)),
-                        "Unspent: " + formatPoints(unspent),
-                        "Click unlocked skills to refund",
-                        "Refund removes connected descendants")));
+                        "&bLevel: &f" + getRebirthLevel(player),
+                        "&dRebirth points: &f" + formatPoints(getRebirthPoints(player)),
+                        "&aUnspent: &f" + formatPoints(unspent),
+                        "&7Root starts at the bottom",
+                        "&7Refunds clear the branch above")));
 
         for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
             boolean unlocked = hasRebirthSkill(player, node.id);
@@ -9093,23 +9093,22 @@ public final class SheepMergeManager {
             boolean parentUnlocked = node.parentId <= 0 || hasRebirthSkill(player, node.parentId);
             boolean inStock = !unlocked && parentUnlocked && unspent >= cost;
             List<String> lore = new ArrayList<>();
-            lore.add("Layer: " + node.layer + " (cost " + cost + " RP)");
-            lore.add("Status: " + (unlocked ? "UNLOCKED" : "LOCKED"));
-            lore.add(node.effectLine);
+            lore.add("&6Cost: &f" + cost + " RP");
+            lore.add("&e" + node.effectLine);
             if (node.parentId > 0) {
                 RebirthSkillNode parent = getRebirthSkillNode(node.parentId);
-                lore.add("Parent: " + (parent == null ? "Unknown" : parent.name));
+                lore.add("&7Requires: " + (parent == null ? "Root" : parent.name));
             }
-            lore.add("In stock: " + (inStock ? "yes" : "no"));
             if (unlocked) {
-                lore.add("MAXED");
-                lore.add("Click to refund this branch");
+                lore.add("&aUnlocked");
+                lore.add("&cClick to refund branch");
             } else if (!parentUnlocked) {
-                lore.add("Locked: unlock parent first");
+                lore.add("&cLocked: need parent first");
             } else if (!inStock) {
-                lore.add("Need more rebirth points");
+                lore.add("&cNeed " + (cost - unspent) + " more RP");
             } else {
-                lore.add("Click to unlock");
+                lore.add("&aReady");
+                lore.add("&aClick to unlock");
             }
             inventory.setItem(node.slot, MenuItemFactory.create(node.material, node.name, lore));
         }
