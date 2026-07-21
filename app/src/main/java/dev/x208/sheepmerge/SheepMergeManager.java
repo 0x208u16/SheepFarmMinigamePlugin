@@ -188,6 +188,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> rebirthLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> rebirthSkillPendingMaskByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextMenuStatRefreshAtByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
@@ -1499,6 +1500,13 @@ public final class SheepMergeManager {
         return rebirthSkillUnlockMaskByPlayer.getOrDefault(playerId, 0);
     }
 
+    private static int getRebirthSkillPendingMask(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
+        return rebirthSkillPendingMaskByPlayer.getOrDefault(playerId, 0);
+    }
+
     private static int getRebirthSkillBit(int skillId) {
         if (skillId <= 0 || skillId > REBIRTH_SKILL_NODES.size()) {
             return 0;
@@ -1516,6 +1524,31 @@ public final class SheepMergeManager {
         }
         int bit = getRebirthSkillBit(skillId);
         return bit != 0 && (getRebirthSkillUnlockMask(playerId) & bit) != 0;
+    }
+
+    private static boolean isRebirthKeepSkill(int skillId) {
+        return skillId == REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE
+                || skillId == REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE
+                || skillId == REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH;
+    }
+
+    private static boolean isRebirthSkillPending(UUID playerId, int skillId) {
+        int bit = getRebirthSkillBit(skillId);
+        return playerId != null
+                && bit != 0
+                && (getRebirthSkillPendingMask(playerId) & bit) != 0
+                && hasRebirthSkill(playerId, skillId);
+    }
+
+    private static boolean hasActiveRebirthSkill(UUID playerId, int skillId) {
+        return hasRebirthSkill(playerId, skillId) && !isRebirthSkillPending(playerId, skillId);
+    }
+
+    private static String getRebirthKeepSkillStatusLine(UUID playerId, int skillId) {
+        if (!hasRebirthSkill(playerId, skillId)) {
+            return "&cLocked";
+        }
+        return isRebirthSkillPending(playerId, skillId) ? "&6Pending (activates after next reset)" : "&aActive";
     }
 
     private static RebirthSkillNode getRebirthSkillNode(int skillId) {
@@ -3453,9 +3486,15 @@ public final class SheepMergeManager {
         clearPrestigeReminder(player);
 
         runPrestigeResetEffects(player, true);
-        if (!hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
+        if (!hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
             sacrificePointsByPlayer.remove(playerId);
         }
+        int rebirthPendingClearMask = getRebirthSkillBit(REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE)
+                | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE)
+                | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH);
+        rebirthSkillPendingMaskByPlayer.put(
+                playerId,
+                getRebirthSkillPendingMask(playerId) & ~rebirthPendingClearMask);
 
         saveData();
         return affordable;
@@ -3466,8 +3505,8 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        boolean keepPoints = hasRebirthSkill(player, REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE);
-        boolean keepSheep = hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE);
+        boolean keepPoints = hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE);
+        boolean keepSheep = hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE);
 
         BigInteger sacrificeGained = BigInteger.ZERO;
         World world = player.getWorld();
@@ -3502,6 +3541,13 @@ public final class SheepMergeManager {
         if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS) || forRebirth) {
             comboDecayUpgradeByPlayer.remove(playerId);
             comboGainUpgradeByPlayer.remove(playerId);
+        }
+        if (!forRebirth) {
+            int prestigePendingClearMask = getRebirthSkillBit(REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE)
+                    | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE);
+            rebirthSkillPendingMaskByPlayer.put(
+                    playerId,
+                    getRebirthSkillPendingMask(playerId) & ~prestigePendingClearMask);
         }
         clearMergeReminder(player);
         EGG_MODULE.clearRuntimeState(playerId);
@@ -4250,6 +4296,7 @@ public final class SheepMergeManager {
         rebirthLevelByPlayer.remove(id);
         rebirthPointsByPlayer.remove(id);
         rebirthSkillUnlockMaskByPlayer.remove(id);
+        rebirthSkillPendingMaskByPlayer.remove(id);
         nextAutomationPointAtByPlayer.remove(id);
         nextAutomationAutoBuyAtByPlayer.remove(id);
         nextAutomationAutoAbilityAtByPlayer.remove(id);
@@ -5759,6 +5806,7 @@ public final class SheepMergeManager {
         rebirthLevelByPlayer.clear();
         rebirthPointsByPlayer.clear();
         rebirthSkillUnlockMaskByPlayer.clear();
+        rebirthSkillPendingMaskByPlayer.clear();
         for (BossBar bar : visitFarmBossBarByPlayer.values()) {
             if (bar != null) {
                 bar.removeAll();
@@ -8993,9 +9041,12 @@ public final class SheepMergeManager {
                         "&7Cost scaling: +10 prestige levels per rebirth",
                         "&cConsumes prestige levels and prestige points",
                         "&cResets prestige upgrades",
-                        hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
+                        hasActiveRebirthSkill(player.getUniqueId(), REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
                                 ? "&aKeeps sacrifice points"
-                                : "&cSacrifice points reset",
+                                : isRebirthSkillPending(player.getUniqueId(),
+                                        REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
+                                                ? "&6Keep Sacrifice pending (applies after this rebirth)"
+                                                : "&cSacrifice points reset",
                         "&aClick: Rebirth")));
 
         inventory.setItem(REBIRTH_OPEN_TREE_SLOT, MenuItemFactory.create(
@@ -9074,6 +9125,9 @@ public final class SheepMergeManager {
             }
             if (unlocked) {
                 lore.add("&aUnlocked");
+                if (isRebirthKeepSkill(node.id)) {
+                    lore.add(getRebirthKeepSkillStatusLine(player.getUniqueId(), node.id));
+                }
                 lore.add("&cClick to refund branch");
             } else if (!parentUnlocked) {
                 lore.add("&cLocked: need parent first");
@@ -9152,6 +9206,11 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         int updatedMask = getRebirthSkillUnlockMask(playerId) | getRebirthSkillBit(skillId);
         rebirthSkillUnlockMaskByPlayer.put(playerId, updatedMask);
+        if (isRebirthKeepSkill(skillId)) {
+            rebirthSkillPendingMaskByPlayer.put(
+                    playerId,
+                    getRebirthSkillPendingMask(playerId) | getRebirthSkillBit(skillId));
+        }
         saveData();
         return true;
     }
@@ -9180,6 +9239,7 @@ public final class SheepMergeManager {
             nextMask &= ~bit;
         }
         rebirthSkillUnlockMaskByPlayer.put(playerId, nextMask);
+        rebirthSkillPendingMaskByPlayer.put(playerId, getRebirthSkillPendingMask(playerId) & nextMask);
         saveData();
         return refundedPoints;
     }
@@ -10201,6 +10261,7 @@ public final class SheepMergeManager {
             dataConfig.set("rebirthLevel", null);
             dataConfig.set("rebirthPoints", null);
             dataConfig.set("rebirthSkillUnlockMask", null);
+            dataConfig.set("rebirthSkillPendingMask", null);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
@@ -10451,6 +10512,10 @@ public final class SheepMergeManager {
             int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
             for (Map.Entry<UUID, Integer> entry : rebirthSkillUnlockMaskByPlayer.entrySet()) {
                 dataConfig.set("rebirthSkillUnlockMask." + entry.getKey().toString(),
+                        entry.getValue() & rebirthTreeMask);
+            }
+            for (Map.Entry<UUID, Integer> entry : rebirthSkillPendingMaskByPlayer.entrySet()) {
+                dataConfig.set("rebirthSkillPendingMask." + entry.getKey().toString(),
                         entry.getValue() & rebirthTreeMask);
             }
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
@@ -11387,6 +11452,20 @@ public final class SheepMergeManager {
                 }
             });
         }
+        if (dataConfig.isConfigurationSection("rebirthSkillPendingMask")) {
+            int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
+            dataConfig.getConfigurationSection("rebirthSkillPendingMask").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    rebirthSkillPendingMaskByPlayer.put(uuid,
+                            dataConfig.getInt("rebirthSkillPendingMask." + key, 0) & rebirthTreeMask);
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        rebirthSkillPendingMaskByPlayer
+                .replaceAll((uuid, pendingMask) -> pendingMask & getRebirthSkillUnlockMask(uuid));
         Set<UUID> playersToClamp = new HashSet<>();
         playersToClamp.addAll(extraLimitByPlayer.keySet());
         playersToClamp.addAll(eggSpeedLevelByPlayer.keySet());
