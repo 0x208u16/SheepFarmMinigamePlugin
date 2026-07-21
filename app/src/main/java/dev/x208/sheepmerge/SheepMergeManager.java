@@ -186,6 +186,10 @@ public final class SheepMergeManager {
     private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> sacrificeUnlocksBoughtByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> sacrificeUnlockMaskByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> rebirthLevelByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> nextMenuStatRefreshAtByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
@@ -331,6 +335,7 @@ public final class SheepMergeManager {
     private static final long COMBO_FRENZY_EVENT_DURATION_MS = 60_000L;
     private static final double COMBO_FRENZY_MULTIPLIER = 10.0D;
     private static final long POINTS_OVERLAY_DISPLAY_DURATION_MS = 1_400L;
+    private static final long MENU_STAT_REFRESH_INTERVAL_MS = 5_000L;
     private static final double BASE_COMBO_DECAY_PER_SECOND = 1.3D;
     private static final double COMBO_DECAY_HIGH_LEVEL_SCALING = 2.2D;
     private static final double COMBO_BASE_MAX_SCORE = 100.0D;
@@ -397,6 +402,8 @@ public final class SheepMergeManager {
     public static final String COMBO_SHOP_MENU_TITLE = "Combo Upgrades";
     public static final String AUTOMATION_MENU_TITLE = "Automation Upgrades";
     public static final String SACRIFICE_MENU_TITLE = "Sacrifice Unlocks";
+    public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
+    public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
     public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
@@ -408,6 +415,7 @@ public final class SheepMergeManager {
     public static final int COMBO_MENU_OPEN_SLOT = 18;
     public static final int AUTOMATION_MENU_OPEN_SLOT = 26;
     public static final int SACRIFICE_MENU_OPEN_SLOT = 8;
+    public static final int REBIRTH_MENU_OPEN_SLOT = 6;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
@@ -460,6 +468,11 @@ public final class SheepMergeManager {
     public static final int SACRIFICE_UNLOCK_MAX_SHEEP_SLOT = 15;
     public static final int SACRIFICE_REFUND_SLOT = 24;
     public static final int SACRIFICE_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int REBIRTH_PROGRESS_SLOT = 4;
+    public static final int REBIRTH_ACTION_SLOT = 11;
+    public static final int REBIRTH_OPEN_TREE_SLOT = 15;
+    public static final int REBIRTH_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int REBIRTH_TREE_BACK_SLOT = 49;
     public static final int SCOREBOARD_LAYOUT_SLOT = 10;
     public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
     public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 14;
@@ -475,6 +488,15 @@ public final class SheepMergeManager {
     private static final int SACRIFICE_UNLOCK_MAX_SHEEP_100 = 5;
     private static final int SACRIFICE_UNLOCK_MAX = SACRIFICE_UNLOCK_MAX_SHEEP_100;
     private static final BigInteger SACRIFICE_UNLOCK_COST_MULTIPLIER = BigInteger.valueOf(1000L);
+    private static final int REBIRTH_PRESTIGE_LEVEL_COST_STEP = 10;
+    private static final int REBIRTH_SKILL_ROOT_COST = 1;
+    private static final int REBIRTH_SKILL_POINTS_X10_ROOT = 1;
+    private static final int REBIRTH_SKILL_POINTS_X10_LEFT = 2;
+    private static final int REBIRTH_SKILL_QUEST_POINTS_X10 = 3;
+    private static final int REBIRTH_SKILL_SACRIFICE_POINTS_X10 = 4;
+    private static final int REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE = 5;
+    private static final int REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH = 6;
+    private static final int REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE = 7;
     private static final int FARM_EGG_ITEM_SLOT = 7;
 
     private static SheepMergePlugin plugin;
@@ -511,6 +533,85 @@ public final class SheepMergeManager {
             this.mergedCount = Math.max(1, mergedCount);
         }
     }
+
+    private static final class RebirthSkillNode {
+        private final int id;
+        private final int parentId;
+        private final int layer;
+        private final int slot;
+        private final Material material;
+        private final String name;
+        private final String effectLine;
+
+        private RebirthSkillNode(int id, int parentId, int layer, int slot, Material material, String name,
+                String effectLine) {
+            this.id = id;
+            this.parentId = parentId;
+            this.layer = layer;
+            this.slot = slot;
+            this.material = material;
+            this.name = name;
+            this.effectLine = effectLine;
+        }
+    }
+
+    private static final List<RebirthSkillNode> REBIRTH_SKILL_NODES = List.of(
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_POINTS_X10_ROOT,
+                    0,
+                    1,
+                    22,
+                    Material.NETHER_STAR,
+                    "Root: 10x Points",
+                    "Points gain x10"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_POINTS_X10_LEFT,
+                    REBIRTH_SKILL_POINTS_X10_ROOT,
+                    2,
+                    21,
+                    Material.EMERALD,
+                    "10x Points II",
+                    "Additional points gain x10"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_QUEST_POINTS_X10,
+                    REBIRTH_SKILL_POINTS_X10_LEFT,
+                    3,
+                    20,
+                    Material.BOOK,
+                    "10x Quest Points",
+                    "Quest point gains x10"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_SACRIFICE_POINTS_X10,
+                    REBIRTH_SKILL_POINTS_X10_LEFT,
+                    3,
+                    30,
+                    Material.TOTEM_OF_UNDYING,
+                    "10x Sacrifice Points",
+                    "Sacrifice point gains x10"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
+                    REBIRTH_SKILL_POINTS_X10_ROOT,
+                    2,
+                    23,
+                    Material.CHEST,
+                    "Keep Points After Prestige",
+                    "Prestige no longer resets normal points"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH,
+                    REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
+                    3,
+                    32,
+                    Material.MILK_BUCKET,
+                    "Keep Sacrifice Points After Rebirth",
+                    "Rebirth keeps sacrifice points"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE,
+                    REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
+                    3,
+                    24,
+                    Material.SHEEP_SPAWN_EGG,
+                    "Keep Sheep After Prestige",
+                    "Prestige keeps sheep and disables sacrifice gain"));
 
     private static final List<String> GAMEPLAY_TIPS = List.of(
             "&7Use &e/sheepmerge &7to jump to your farm. Use it again while visiting to return home.",
@@ -1384,12 +1485,150 @@ public final class SheepMergeManager {
         return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 10);
     }
 
+    public static int getRebirthLevel(Player player) {
+        return player == null ? 0 : rebirthLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public static int getRebirthPoints(Player player) {
+        return player == null ? 0 : rebirthPointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    private static int getRebirthSkillUnlockMask(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
+        return rebirthSkillUnlockMaskByPlayer.getOrDefault(playerId, 0);
+    }
+
+    private static int getRebirthSkillBit(int skillId) {
+        if (skillId <= 0 || skillId > REBIRTH_SKILL_NODES.size()) {
+            return 0;
+        }
+        return 1 << (skillId - 1);
+    }
+
+    private static boolean hasRebirthSkill(Player player, int skillId) {
+        return player != null && hasRebirthSkill(player.getUniqueId(), skillId);
+    }
+
+    private static boolean hasRebirthSkill(UUID playerId, int skillId) {
+        if (playerId == null) {
+            return false;
+        }
+        int bit = getRebirthSkillBit(skillId);
+        return bit != 0 && (getRebirthSkillUnlockMask(playerId) & bit) != 0;
+    }
+
+    private static RebirthSkillNode getRebirthSkillNode(int skillId) {
+        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+            if (node.id == skillId) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    private static int getRebirthSkillCost(RebirthSkillNode node) {
+        if (node == null) {
+            return Integer.MAX_VALUE;
+        }
+        return Math.max(1, REBIRTH_SKILL_ROOT_COST + (node.layer - 1));
+    }
+
+    private static int getUnspentRebirthPoints(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        UUID playerId = player.getUniqueId();
+        int spent = 0;
+        int mask = getRebirthSkillUnlockMask(playerId);
+        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+            if ((mask & getRebirthSkillBit(node.id)) != 0) {
+                spent += getRebirthSkillCost(node);
+            }
+        }
+        return Math.max(0, getRebirthPoints(player) - spent);
+    }
+
+    private static int getRebirthCostInPrestigeLevels(int rebirthLevel) {
+        return Math.max(REBIRTH_PRESTIGE_LEVEL_COST_STEP,
+                (Math.max(0, rebirthLevel) + 1) * REBIRTH_PRESTIGE_LEVEL_COST_STEP);
+    }
+
+    private static int getAffordableRebirthLevels(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int remainingPrestigeLevels = Math.max(0, getPrestigeLevel(player));
+        int rebirthLevel = Math.max(0, getRebirthLevel(player));
+        int affordable = 0;
+        while (remainingPrestigeLevels > 0) {
+            int cost = getRebirthCostInPrestigeLevels(rebirthLevel + affordable);
+            if (remainingPrestigeLevels < cost) {
+                break;
+            }
+            remainingPrestigeLevels -= cost;
+            affordable++;
+        }
+        return affordable;
+    }
+
+    private static int getRebirthPointsRewardForNextLevels(int currentRebirth, int levels) {
+        int total = 0;
+        for (int i = 1; i <= Math.max(0, levels); i++) {
+            total += currentRebirth + i;
+        }
+        return Math.max(0, total);
+    }
+
+    private static Set<Integer> collectRebirthSkillRefundIds(int rootSkillId) {
+        Set<Integer> toRefund = new HashSet<>();
+        toRefund.add(rootSkillId);
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+                if (node.parentId <= 0 || !toRefund.contains(node.parentId)) {
+                    continue;
+                }
+                if (toRefund.add(node.id)) {
+                    changed = true;
+                }
+            }
+        }
+        return toRefund;
+    }
+
+    private static int getPointsGainMultiplierFromRebirthSkills(Player player) {
+        int multiplier = 1;
+        if (hasRebirthSkill(player, REBIRTH_SKILL_POINTS_X10_ROOT)) {
+            multiplier *= 10;
+        }
+        if (hasRebirthSkill(player, REBIRTH_SKILL_POINTS_X10_LEFT)) {
+            multiplier *= 10;
+        }
+        int unspent = getUnspentRebirthPoints(player);
+        if (unspent > 0) {
+            multiplier *= (1 + unspent);
+        }
+        return Math.max(1, multiplier);
+    }
+
+    private static int getQuestPointsGainMultiplierFromRebirthSkills(Player player) {
+        return hasRebirthSkill(player, REBIRTH_SKILL_QUEST_POINTS_X10) ? 10 : 1;
+    }
+
+    private static int getSacrificePointsGainMultiplierFromRebirthSkills(Player player) {
+        return hasRebirthSkill(player, REBIRTH_SKILL_SACRIFICE_POINTS_X10) ? 10 : 1;
+    }
+
     private static void addQuestPoints(Player player, int amount) {
         if (player == null || amount <= 0) {
             return;
         }
+        int boosted = Math.max(1, amount) * getQuestPointsGainMultiplierFromRebirthSkills(player);
         UUID playerId = player.getUniqueId();
-        questPointsByPlayer.put(playerId, addSaturated(getQuestPoints(player), amount));
+        questPointsByPlayer.put(playerId, addSaturated(getQuestPoints(player), boosted));
         saveData();
     }
 
@@ -2703,7 +2942,10 @@ public final class SheepMergeManager {
         if (playerId == null || amount == null || amount.signum() <= 0) {
             return;
         }
-        sacrificePointsByPlayer.put(playerId, getSacrificePoints(playerId).add(amount));
+        Player player = Bukkit.getPlayer(playerId);
+        int multiplier = getSacrificePointsGainMultiplierFromRebirthSkills(player);
+        sacrificePointsByPlayer.put(playerId,
+                getSacrificePoints(playerId).add(amount.multiply(BigInteger.valueOf(multiplier))));
     }
 
     private static BigInteger getSpentSacrificePoints(int unlocksBought) {
@@ -2790,8 +3032,6 @@ public final class SheepMergeManager {
         if (current <= 0) {
             return false;
         }
-        BigInteger refund = getSpentSacrificePoints(current);
-        sacrificePointsByPlayer.put(playerId, getSacrificePoints(playerId).add(refund));
         sacrificeUnlocksBoughtByPlayer.remove(playerId);
         sacrificeUnlockMaskByPlayer.remove(playerId);
         clampUpgradeLevelsToCurrentCaps(playerId);
@@ -3207,9 +3447,52 @@ public final class SheepMergeManager {
         prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
 
+        runPrestigeResetEffects(player, false);
+        saveData();
+        markTutorialPrestigedOnce(player);
+        return affordableLevels;
+    }
+
+    public static int rebirth(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int currentRebirth = getRebirthLevel(player);
+        int affordable = getAffordableRebirthLevels(player);
+        if (affordable <= 0) {
+            return 0;
+        }
+
+        int gainedRebirthPoints = getRebirthPointsRewardForNextLevels(currentRebirth, affordable);
+        UUID playerId = player.getUniqueId();
+        rebirthLevelByPlayer.put(playerId, currentRebirth + affordable);
+        rebirthPointsByPlayer.put(playerId, addSaturated(getRebirthPoints(player), gainedRebirthPoints));
+
+        resetPrestigeUpgrades(playerId, true);
+        prestigeLevelByPlayer.remove(playerId);
+        prestigePointsByPlayer.remove(playerId);
+        clearPrestigeReminder(player);
+
+        runPrestigeResetEffects(player, true);
+        if (!hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
+            sacrificePointsByPlayer.remove(playerId);
+        }
+
+        saveData();
+        return affordable;
+    }
+
+    private static void runPrestigeResetEffects(Player player, boolean forRebirth) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        boolean keepPoints = hasRebirthSkill(player, REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE);
+        boolean keepSheep = hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE);
+
         BigInteger sacrificeGained = BigInteger.ZERO;
         World world = player.getWorld();
-        if (isSheepFarmWorld(world) && isFarmOwner(player, world)) {
+        if (!keepSheep && isSheepFarmWorld(world) && isFarmOwner(player, world)) {
             for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
                 sacrificeGained = sacrificeGained.add(getSacrificeValueForSheep(sheep));
                 if (sheep != null && sheep.isValid()) {
@@ -3218,35 +3501,32 @@ public final class SheepMergeManager {
             }
             refreshLiveSheepCount(world);
         }
-        if (sacrificeGained.signum() > 0) {
+        if (sacrificeGained.signum() > 0 && !keepSheep) {
             addSacrificePoints(playerId, sacrificeGained);
         }
 
-        // Reset regular progression purchased with normal points.
-        pointsByPlayer.put(playerId, BigInteger.ZERO);
-        refreshTopPointsDisplays();
-        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_REGULAR_RESETS)) {
+        if (!keepPoints) {
+            pointsByPlayer.put(playerId, BigInteger.ZERO);
+            refreshTopPointsDisplays();
+        }
+        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_REGULAR_RESETS) || forRebirth) {
             extraLimitByPlayer.remove(playerId);
             eggSpeedLevelByPlayer.remove(playerId);
             woolRegenLevelByPlayer.remove(playerId);
             higherTierChanceLevelByPlayer.remove(playerId);
         }
-        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_SHEAR_RESETS)) {
+        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_SHEAR_RESETS) || forRebirth) {
             shearShopLevelByPlayer.remove(playerId);
             shearWoolSaveLevelByPlayer.remove(playerId);
             shearTierBoostLevelByPlayer.remove(playerId);
         }
-        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS)) {
+        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS) || forRebirth) {
             comboDecayUpgradeByPlayer.remove(playerId);
             comboGainUpgradeByPlayer.remove(playerId);
         }
         clearMergeReminder(player);
         EGG_MODULE.clearRuntimeState(playerId);
         clearComboRuntime(player);
-
-        saveData();
-        markTutorialPrestigedOnce(player);
-        return affordableLevels;
     }
 
     public static int getPrestigeCost(Player player) {
@@ -3989,6 +4269,9 @@ public final class SheepMergeManager {
         sacrificePointsByPlayer.remove(id);
         sacrificeUnlocksBoughtByPlayer.remove(id);
         sacrificeUnlockMaskByPlayer.remove(id);
+        rebirthLevelByPlayer.remove(id);
+        rebirthPointsByPlayer.remove(id);
+        rebirthSkillUnlockMaskByPlayer.remove(id);
         nextAutomationPointAtByPlayer.remove(id);
         nextAutomationAutoBuyAtByPlayer.remove(id);
         nextAutomationAutoAbilityAtByPlayer.remove(id);
@@ -3998,6 +4281,7 @@ public final class SheepMergeManager {
         nextAutomationAutoPrestigeAtByPlayer.remove(id);
         lastPointsOverlayByPlayer.remove(id);
         pointsOverlayExpiresAtByPlayer.remove(id);
+        nextMenuStatRefreshAtByPlayer.remove(id);
         removeComboBossBar(id);
         carriedSheepByPlayer.remove(id);
         resetFarmWorldForPlayer(id);
@@ -5495,6 +5779,9 @@ public final class SheepMergeManager {
         sacrificePointsByPlayer.clear();
         sacrificeUnlocksBoughtByPlayer.clear();
         sacrificeUnlockMaskByPlayer.clear();
+        rebirthLevelByPlayer.clear();
+        rebirthPointsByPlayer.clear();
+        rebirthSkillUnlockMaskByPlayer.clear();
         for (BossBar bar : visitFarmBossBarByPlayer.values()) {
             if (bar != null) {
                 bar.removeAll();
@@ -5509,6 +5796,7 @@ public final class SheepMergeManager {
         carriedSheepByPlayer.clear();
         liveSheepCountByWorld.clear();
         lastOutOfEggWarningTimestampByPlayer.clear();
+        nextMenuStatRefreshAtByPlayer.clear();
     }
 
     private static boolean writeBackupArchive(File destination) {
@@ -5740,10 +6028,11 @@ public final class SheepMergeManager {
         if (player == null || points == null || points.signum() <= 0) {
             return;
         }
+        BigInteger boosted = points.multiply(BigInteger.valueOf(getPointsGainMultiplierFromRebirthSkills(player)));
         UUID playerId = player.getUniqueId();
-        pointsByPlayer.put(playerId, getPlayerPointsBig(player).add(points));
+        pointsByPlayer.put(playerId, getPlayerPointsBig(player).add(boosted));
         refreshTopPointsDisplays();
-        queuePointsGainOverlay(player, points);
+        queuePointsGainOverlay(player, boosted);
         saveData();
         tickPrestigeReminder(player);
     }
@@ -7418,7 +7707,7 @@ public final class SheepMergeManager {
         String woolNextReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolNextLevel);
         String woolNextFactor = getWoolCooldownFactorDisplayAtLevel(woolNextLevel);
         BigInteger woolCost = getWoolRegenUpgradeCost(player);
-        inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.createEnchanted(
+        inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.WHITE_WOOL,
                 "Faster Wool Regen",
                 List.of(
@@ -7511,6 +7800,22 @@ public final class SheepMergeManager {
                                 + SACRIFICE_UNLOCK_MAX_SHEEP_100,
                         "Click to open")));
 
+        int rebirthLevel = getRebirthLevel(player);
+        int affordableRebirths = getAffordableRebirthLevels(player);
+        int rebirthReward = getRebirthPointsRewardForNextLevels(rebirthLevel, affordableRebirths);
+        inventory.setItem(REBIRTH_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.DRAGON_EGG,
+                "Rebirth",
+                List.of(
+                        "Rebirth level: " + rebirthLevel,
+                        "Rebirth points: " + formatPoints(getRebirthPoints(player)),
+                        "Next cost: " + getRebirthCostInPrestigeLevels(rebirthLevel) + " prestige levels",
+                        affordableRebirths > 0
+                                ? "Buy now: +" + affordableRebirths + " rebirth level(s), +"
+                                        + formatPoints(rebirthReward) + " rebirth points"
+                                : "Buy now: +0 rebirth level(s)",
+                        "Click to open")));
+
         player.openInventory(inventory);
     }
 
@@ -7546,8 +7851,68 @@ public final class SheepMergeManager {
         return SACRIFICE_MENU_TITLE.equals(title);
     }
 
+    public static boolean isRebirthMenuTitle(String title) {
+        return REBIRTH_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isRebirthTreeMenuTitle(String title) {
+        return REBIRTH_TREE_MENU_TITLE.equals(title);
+    }
+
     public static boolean isScoreboardMenuTitle(String title) {
         return SCOREBOARD_MENU_TITLE.equals(title);
+    }
+
+    public static void tickOpenMenuStatRefresh(Player player) {
+        if (player == null || player.getOpenInventory() == null) {
+            return;
+        }
+        String title = player.getOpenInventory().getTitle();
+        if (!isUpgradeMenuTitle(title)
+                && !isPrestigeMenuTitle(title)
+                && !isQuestMenuTitle(title)
+                && !isQuestUpgradesMenuTitle(title)
+                && !isShopMenuTitle(title)
+                && !isComboShopMenuTitle(title)
+                && !isAutomationMenuTitle(title)
+                && !isSacrificeMenuTitle(title)
+                && !isRebirthMenuTitle(title)
+                && !isRebirthTreeMenuTitle(title)
+                && !isScoreboardMenuTitle(title)) {
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long nextRefreshAt = nextMenuStatRefreshAtByPlayer.getOrDefault(playerId, 0L);
+        if (now < nextRefreshAt) {
+            return;
+        }
+        nextMenuStatRefreshAtByPlayer.put(playerId, now + MENU_STAT_REFRESH_INTERVAL_MS);
+
+        if (isUpgradeMenuTitle(title)) {
+            openUpgradeMenu(player);
+        } else if (isPrestigeMenuTitle(title)) {
+            openPrestigeMenu(player);
+        } else if (isQuestMenuTitle(title)) {
+            openQuestMenu(player);
+        } else if (isQuestUpgradesMenuTitle(title)) {
+            openQuestUpgradesMenu(player);
+        } else if (isShopMenuTitle(title)) {
+            openShopMenu(player);
+        } else if (isComboShopMenuTitle(title)) {
+            openComboShopMenu(player);
+        } else if (isAutomationMenuTitle(title)) {
+            openAutomationMenu(player);
+        } else if (isSacrificeMenuTitle(title)) {
+            openSacrificeMenu(player);
+        } else if (isRebirthMenuTitle(title)) {
+            openRebirthMenu(player);
+        } else if (isRebirthTreeMenuTitle(title)) {
+            openRebirthTreeMenu(player);
+        } else if (isScoreboardMenuTitle(title)) {
+            openScoreboardMenu(player);
+        }
     }
 
     private static int getScoreboardLayoutMode(Player player) {
@@ -7752,6 +8117,10 @@ public final class SheepMergeManager {
             }
             case SACRIFICE_MENU_OPEN_SLOT -> {
                 openSacrificeMenu(player);
+                return;
+            }
+            case REBIRTH_MENU_OPEN_SLOT -> {
+                openRebirthMenu(player);
                 return;
             }
             default -> {
@@ -8494,6 +8863,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
+                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS) ? "MAXED" : "Not unlocked",
                         "No regular upgrade resets on prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_COMBO_RESETS_SLOT, MenuItemFactory.create(
@@ -8503,6 +8873,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
+                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS) ? "MAXED" : "Not unlocked",
                         "No combo upgrade resets on prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT, MenuItemFactory.create(
@@ -8512,6 +8883,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
+                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS) ? "MAXED" : "Not unlocked",
                         "No shear shop resets on prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT, MenuItemFactory.create(
@@ -8521,6 +8893,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
+                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S) ? "MAXED" : "Not unlocked",
                         "Adds +1 egg speed max level",
                         "Allows 1 egg per second")));
 
@@ -8531,13 +8904,15 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
+                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100) ? "MAXED" : "Not unlocked",
                         "Raises max sheep limit by +50")));
 
         inventory.setItem(SACRIFICE_REFUND_SLOT, MenuItemFactory.create(
                 Material.MILK_BUCKET,
-                "Refund Sacrifice Unlocks",
+                "Reset Sacrifice Unlocks",
                 List.of(
-                        "Refunds all spent sacrifice points",
+                        "Resets all sacrifice unlocks",
+                        "Does not refund spent sacrifice points",
                         "No cooldown, no penalty",
                         "Click to respec")));
 
@@ -8595,9 +8970,9 @@ public final class SheepMergeManager {
             case SACRIFICE_REFUND_SLOT -> {
                 if (refundSacrificeUnlocks(player)) {
                     playUpgradeSound(player);
-                    player.sendMessage(action("Sacrifice unlocks refunded."));
+                    player.sendMessage(action("Sacrifice unlocks reset. Spent sacrifice points were not refunded."));
                 } else {
-                    player.sendMessage(warning("No sacrifice unlocks to refund."));
+                    player.sendMessage(warning("No sacrifice unlocks to reset."));
                 }
             }
             case SACRIFICE_BACK_TO_UPGRADES_SLOT -> {
@@ -8612,6 +8987,231 @@ public final class SheepMergeManager {
         openSacrificeMenu(player);
     }
 
+    public static void openRebirthMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, REBIRTH_MENU_TITLE);
+        int rebirthLevel = getRebirthLevel(player);
+        int rebirthPoints = getRebirthPoints(player);
+        int unspent = getUnspentRebirthPoints(player);
+        int affordable = getAffordableRebirthLevels(player);
+        int nextCost = getRebirthCostInPrestigeLevels(rebirthLevel);
+        int reward = getRebirthPointsRewardForNextLevels(rebirthLevel, affordable);
+
+        inventory.setItem(REBIRTH_PROGRESS_SLOT, MenuItemFactory.create(
+                Material.DRAGON_EGG,
+                "Rebirth Progress",
+                List.of(
+                        "Rebirth level: " + rebirthLevel,
+                        "Rebirth points: " + formatPoints(rebirthPoints),
+                        "Unspent rebirth points: " + formatPoints(unspent),
+                        "Next rebirth cost: " + nextCost + " prestige levels")));
+
+        inventory.setItem(REBIRTH_ACTION_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Rebirth Reset",
+                List.of(
+                        affordable > 0
+                                ? "Buy now: +" + affordable + " rebirth level(s)"
+                                : "Buy now: +0 rebirth level(s)",
+                        affordable > 0
+                                ? "Gain rebirth points: +" + formatPoints(reward)
+                                : "Gain rebirth points: +0",
+                        "Cost scales by +10 prestige levels per rebirth",
+                        "Resets all prestige levels/upgrades",
+                        "Also resets what prestige resets",
+                        hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
+                                ? "Sacrifice points are kept by skill"
+                                : "Sacrifice points are reset",
+                        "Click to rebirth multiple")));
+
+        inventory.setItem(REBIRTH_OPEN_TREE_SLOT, MenuItemFactory.create(
+                Material.ENCHANTED_BOOK,
+                "Rebirth Skill Tree",
+                List.of(
+                        "Spend rebirth points on permanent effects",
+                        "Tree costs: 1 at root, +1 per layer",
+                        "Click to open")));
+
+        inventory.setItem(REBIRTH_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back To Upgrades",
+                List.of("Click to go back")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleRebirthMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        switch (slot) {
+            case REBIRTH_ACTION_SLOT -> {
+                int gained = rebirth(player);
+                if (gained > 0) {
+                    playPrestigeSound(player);
+                    player.sendMessage(action("Rebirth +" + gained));
+                } else {
+                    player.sendMessage(warning("Not enough prestige levels."));
+                }
+            }
+            case REBIRTH_OPEN_TREE_SLOT -> {
+                openRebirthTreeMenu(player);
+                return;
+            }
+            case REBIRTH_BACK_TO_UPGRADES_SLOT -> {
+                openUpgradeMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+        updatePointsScoreboard(player);
+        openRebirthMenu(player);
+    }
+
+    public static void openRebirthTreeMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 54, REBIRTH_TREE_MENU_TITLE);
+        int unspent = getUnspentRebirthPoints(player);
+        inventory.setItem(4, MenuItemFactory.create(
+                Material.BOOK,
+                "Tree Overview",
+                List.of(
+                        "Rebirth level: " + getRebirthLevel(player),
+                        "Rebirth points: " + formatPoints(getRebirthPoints(player)),
+                        "Unspent: " + formatPoints(unspent),
+                        "Click unlocked skills to refund",
+                        "Refund removes connected descendants")));
+
+        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+            boolean unlocked = hasRebirthSkill(player, node.id);
+            int cost = getRebirthSkillCost(node);
+            boolean parentUnlocked = node.parentId <= 0 || hasRebirthSkill(player, node.parentId);
+            boolean inStock = !unlocked && parentUnlocked && unspent >= cost;
+            List<String> lore = new ArrayList<>();
+            lore.add("Layer: " + node.layer + " (cost " + cost + " RP)");
+            lore.add("Status: " + (unlocked ? "UNLOCKED" : "LOCKED"));
+            lore.add(node.effectLine);
+            if (node.parentId > 0) {
+                RebirthSkillNode parent = getRebirthSkillNode(node.parentId);
+                lore.add("Parent: " + (parent == null ? "Unknown" : parent.name));
+            }
+            lore.add("In stock: " + (inStock ? "yes" : "no"));
+            if (unlocked) {
+                lore.add("MAXED");
+                lore.add("Click to refund this branch");
+            } else if (!parentUnlocked) {
+                lore.add("Locked: unlock parent first");
+            } else if (!inStock) {
+                lore.add("Need more rebirth points");
+            } else {
+                lore.add("Click to unlock");
+            }
+            inventory.setItem(node.slot, MenuItemFactory.create(node.material, node.name, lore));
+        }
+
+        inventory.setItem(REBIRTH_TREE_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back To Rebirth",
+                List.of("Click to go back")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleRebirthTreeMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        if (slot == REBIRTH_TREE_BACK_SLOT) {
+            openRebirthMenu(player);
+            return;
+        }
+        RebirthSkillNode clicked = null;
+        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+            if (node.slot == slot) {
+                clicked = node;
+                break;
+            }
+        }
+        if (clicked == null) {
+            return;
+        }
+
+        if (hasRebirthSkill(player, clicked.id)) {
+            int refundedPoints = refundRebirthSkillsFromNode(player, clicked.id);
+            if (refundedPoints > 0) {
+                playUpgradeSound(player);
+                player.sendMessage(action("Refunded " + formatPoints(refundedPoints)
+                        + " rebirth points from connected skills."));
+            } else {
+                player.sendMessage(warning("No connected skills were refunded."));
+            }
+            openRebirthTreeMenu(player);
+            return;
+        }
+
+        if (tryUnlockRebirthSkill(player, clicked.id)) {
+            playUpgradeSound(player);
+            player.sendMessage(action("Rebirth skill unlocked."));
+        } else {
+            player.sendMessage(warning("Cannot unlock this skill yet."));
+        }
+        openRebirthTreeMenu(player);
+    }
+
+    private static boolean tryUnlockRebirthSkill(Player player, int skillId) {
+        if (player == null) {
+            return false;
+        }
+        RebirthSkillNode node = getRebirthSkillNode(skillId);
+        if (node == null || hasRebirthSkill(player, skillId)) {
+            return false;
+        }
+        if (node.parentId > 0 && !hasRebirthSkill(player, node.parentId)) {
+            return false;
+        }
+        int cost = getRebirthSkillCost(node);
+        if (getUnspentRebirthPoints(player) < cost) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        int updatedMask = getRebirthSkillUnlockMask(playerId) | getRebirthSkillBit(skillId);
+        rebirthSkillUnlockMaskByPlayer.put(playerId, updatedMask);
+        saveData();
+        return true;
+    }
+
+    private static int refundRebirthSkillsFromNode(Player player, int skillId) {
+        if (player == null) {
+            return 0;
+        }
+        UUID playerId = player.getUniqueId();
+        int currentMask = getRebirthSkillUnlockMask(playerId);
+        if ((currentMask & getRebirthSkillBit(skillId)) == 0) {
+            return 0;
+        }
+        Set<Integer> refundIds = collectRebirthSkillRefundIds(skillId);
+        int refundedPoints = 0;
+        int nextMask = currentMask;
+        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
+            if (!refundIds.contains(node.id)) {
+                continue;
+            }
+            int bit = getRebirthSkillBit(node.id);
+            if ((nextMask & bit) == 0) {
+                continue;
+            }
+            refundedPoints += getRebirthSkillCost(node);
+            nextMask &= ~bit;
+        }
+        rebirthSkillUnlockMaskByPlayer.put(playerId, nextMask);
+        saveData();
+        return refundedPoints;
+    }
+
     public static void openQuestMenu(Player player) {
         if (player == null) {
             return;
@@ -8623,6 +9223,12 @@ public final class SheepMergeManager {
         boolean shearsComplete = questShearsCompleteByPlayer.getOrDefault(playerId, false);
         boolean spawnsComplete = questSpawnsCompleteByPlayer.getOrDefault(playerId, false);
         boolean mergesComplete = questMergesCompleteByPlayer.getOrDefault(playerId, false);
+        int currentQuestPoints = getQuestPoints(player);
+        int luckyCost = getQuestLuckyBurstCost(player);
+        int woolRushCost = getQuestWoolRushCost(player);
+        int jackpotCost = getQuestJackpotCost(player);
+        int autoMergeCost = getQuestAutoMergeCost(player);
+        int autoShearCost = getQuestAutoShearCost(player);
 
         inventory.setItem(QUEST_BOARD_SLOT, MenuItemFactory.create(
                 Material.BOOK,
@@ -8644,9 +9250,10 @@ public final class SheepMergeManager {
                 Material.ENDER_EYE,
                 "Lucky Burst",
                 List.of(
-                        "Cost: " + formatPoints(getQuestLuckyBurstCost(player)) + " quest points",
+                        "Cost: " + formatPoints(luckyCost) + " quest points",
                         "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
+                        "In stock: " + (currentQuestPoints >= luckyCost ? "yes" : "no"),
                         getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
                                 playerId))));
@@ -8655,9 +9262,10 @@ public final class SheepMergeManager {
                 Material.WHITE_WOOL,
                 "Wool Rush",
                 List.of(
-                        "Cost: " + formatPoints(getQuestWoolRushCost(player)) + " quest points",
+                        "Cost: " + formatPoints(woolRushCost) + " quest points",
                         "Effect: 90% faster wool regen",
                         "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
+                        "In stock: " + (currentQuestPoints >= woolRushCost ? "yes" : "no"),
                         getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
                         isAbilityActive(activeWoolRushUntilByPlayer, playerId)
                                 ? "Already active"
@@ -8667,10 +9275,11 @@ public final class SheepMergeManager {
                 Material.GOLD_INGOT,
                 "Jackpot Shears",
                 List.of(
-                        "Cost: " + formatPoints(getQuestJackpotCost(player)) + " quest points",
+                        "Cost: " + formatPoints(jackpotCost) + " quest points",
                         "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
                         "Duration: "
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
+                        "In stock: " + (currentQuestPoints >= jackpotCost ? "yes" : "no"),
                         getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
                         isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
                                 ? "Already active"
@@ -8680,9 +9289,10 @@ public final class SheepMergeManager {
                 Material.ANVIL,
                 "Auto Merge",
                 List.of(
-                        "Cost: " + formatPoints(getQuestAutoMergeCost(player)) + " quest points",
+                        "Cost: " + formatPoints(autoMergeCost) + " quest points",
                         "Effect: Instantly merges when you pick up a sheep",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
+                        "In stock: " + (currentQuestPoints >= autoMergeCost ? "yes" : "no"),
                         getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
                                 playerId))));
@@ -8691,9 +9301,10 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear All Sheep",
                 List.of(
-                        "Cost: " + formatPoints(getQuestAutoShearCost(player)) + " quest points",
+                        "Cost: " + formatPoints(autoShearCost) + " quest points",
                         "Effect: Shears every ready sheep in the farm",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
+                        "In stock: " + (currentQuestPoints >= autoShearCost ? "yes" : "no"),
                         getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
                                 playerId))));
@@ -9601,6 +10212,9 @@ public final class SheepMergeManager {
             dataConfig.set("sacrificePoints", null);
             dataConfig.set("sacrificeUnlocksBought", null);
             dataConfig.set("sacrificeUnlockMask", null);
+            dataConfig.set("rebirthLevel", null);
+            dataConfig.set("rebirthPoints", null);
+            dataConfig.set("rebirthSkillUnlockMask", null);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
@@ -9848,6 +10462,17 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : sacrificeUnlockMaskByPlayer.entrySet()) {
                 dataConfig.set("sacrificeUnlockMask." + entry.getKey().toString(),
                         normalizeSacrificeUnlockMask(entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : rebirthLevelByPlayer.entrySet()) {
+                dataConfig.set("rebirthLevel." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : rebirthPointsByPlayer.entrySet()) {
+                dataConfig.set("rebirthPoints." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
+            for (Map.Entry<UUID, Integer> entry : rebirthSkillUnlockMaskByPlayer.entrySet()) {
+                dataConfig.set("rebirthSkillUnlockMask." + entry.getKey().toString(),
+                        entry.getValue() & rebirthTreeMask);
             }
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
@@ -10770,6 +11395,38 @@ public final class SheepMergeManager {
                     int mask = normalizeSacrificeUnlockMask(loaded);
                     sacrificeUnlockMaskByPlayer.put(uuid, mask);
                     sacrificeUnlocksBoughtByPlayer.put(uuid, Integer.bitCount(mask));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("rebirthLevel")) {
+            dataConfig.getConfigurationSection("rebirthLevel").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    rebirthLevelByPlayer.put(uuid, Math.max(0, dataConfig.getInt("rebirthLevel." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("rebirthPoints")) {
+            dataConfig.getConfigurationSection("rebirthPoints").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    rebirthPointsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("rebirthPoints." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("rebirthSkillUnlockMask")) {
+            int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
+            dataConfig.getConfigurationSection("rebirthSkillUnlockMask").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    rebirthSkillUnlockMaskByPlayer.put(uuid,
+                            dataConfig.getInt("rebirthSkillUnlockMask." + key, 0) & rebirthTreeMask);
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }

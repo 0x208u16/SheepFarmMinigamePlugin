@@ -3,6 +3,7 @@ package dev.x208.sheepmerge;
 import java.util.List;
 import java.util.Locale;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
@@ -16,25 +17,48 @@ final class MenuItemFactory {
     }
 
     static ItemStack create(Material material, String name, List<String> lore) {
+        return create(material, name, lore, false);
+    }
+
+    static ItemStack create(Material material, String name, List<String> lore, boolean forceGlint) {
         ItemStack item = new ItemStack(material, 1);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(formatName(name));
-            meta.setLore(formatLore(lore));
+            List<String> formattedLore = formatLore(lore);
+            meta.setLore(formattedLore);
+            if (forceGlint || shouldGlint(formattedLore)) {
+                meta.addEnchant(Enchantment.DURABILITY, 1, true);
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            }
             item.setItemMeta(meta);
         }
         return item;
     }
 
     static ItemStack createEnchanted(Material material, String name, List<String> lore) {
-        ItemStack item = create(material, name, lore);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.addEnchant(Enchantment.DURABILITY, 1, true);
-            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            item.setItemMeta(meta);
+        return create(material, name, lore, true);
+    }
+
+    private static boolean shouldGlint(List<String> lore) {
+        if (lore == null || lore.isEmpty()) {
+            return false;
         }
-        return item;
+        for (String line : lore) {
+            if (line == null || line.isBlank()) {
+                continue;
+            }
+            String stripped = ChatColor.stripColor(line);
+            if (stripped == null || stripped.isBlank()) {
+                continue;
+            }
+            String upper = stripped.toUpperCase(Locale.ROOT);
+            if (upper.contains("MAXED")
+                    || upper.startsWith("IN STOCK: YES")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String formatName(String name) {
@@ -112,7 +136,8 @@ final class MenuItemFactory {
         if (lower.startsWith("level:") || lower.startsWith("status:")
                 || lower.startsWith("current:") || lower.startsWith("next:")
                 || lower.startsWith("chance:") || lower.startsWith("duration:")
-                || lower.startsWith("uses per activation:") || lower.startsWith("unlocks bought:")) {
+                || lower.startsWith("uses per activation:") || lower.startsWith("unlocks bought:")
+                || lower.startsWith("in stock:")) {
             return SheepMergeManager.color("&b" + line);
         }
         if (lower.startsWith("maxed") || lower.contains("maxed")
