@@ -836,6 +836,24 @@ public final class SheepMergeManager {
         } else {
             applyDefaultFarmLayout(world);
         }
+        enforceFarmPerimeter(world);
+    }
+
+    private static void enforceFarmPerimeter(World world) {
+        if (world == null) {
+            return;
+        }
+        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
+            for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
+                boolean border = x == FARM_MIN_XZ || x == FARM_MAX_XZ || z == FARM_MIN_XZ || z == FARM_MAX_XZ;
+                if (!border) {
+                    continue;
+                }
+                world.getBlockAt(x, FARM_BASE_Y + 1, z).setBlockData(Bukkit.createBlockData(Material.OAK_FENCE), true);
+                world.getBlockAt(x, FARM_BASE_Y + 2, z)
+                        .setBlockData(Bukkit.createBlockData(Material.WHITE_CARPET), true);
+            }
+        }
     }
 
     private static void clearFarmPlatformBoundingBox(World world) {
