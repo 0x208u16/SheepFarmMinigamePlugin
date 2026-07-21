@@ -5126,7 +5126,8 @@ public final class SheepMergeManager {
     }
 
     public static String buildTopPointsText(int maxEntries) {
-        return buildTopPointsText(new HashMap<>(pointsByPlayer), snapshotOnlinePlayerNames(), maxEntries);
+        Map<UUID, BigInteger> pointsSnapshot = new HashMap<>(pointsByPlayer);
+        return buildTopPointsText(pointsSnapshot, snapshotTopPointsPlayerNames(pointsSnapshot.keySet()), maxEntries);
     }
 
     private static String buildTopPointsText(Map<UUID, BigInteger> pointsSnapshot, Map<UUID, String> nameSnapshot,
@@ -5158,7 +5159,7 @@ public final class SheepMergeManager {
         return builder.toString();
     }
 
-    private static Map<UUID, String> snapshotOnlinePlayerNames() {
+    private static Map<UUID, String> snapshotTopPointsPlayerNames(Collection<UUID> playerIds) {
         Map<UUID, String> names = new HashMap<>();
         if (plugin == null || plugin.getServer() == null) {
             return names;
@@ -5170,6 +5171,20 @@ public final class SheepMergeManager {
             String name = online.getName();
             if (name != null && !name.isBlank()) {
                 names.put(online.getUniqueId(), name);
+            }
+        }
+
+        if (playerIds == null) {
+            return names;
+        }
+
+        for (UUID playerId : playerIds) {
+            if (playerId == null || names.containsKey(playerId)) {
+                continue;
+            }
+            String offlineName = Bukkit.getOfflinePlayer(playerId).getName();
+            if (offlineName != null && !offlineName.isBlank()) {
+                names.put(playerId, offlineName);
             }
         }
         return names;
@@ -5349,7 +5364,7 @@ public final class SheepMergeManager {
         }
 
         Map<UUID, BigInteger> pointsSnapshot = new HashMap<>(pointsByPlayer);
-        Map<UUID, String> nameSnapshot = snapshotOnlinePlayerNames();
+        Map<UUID, String> nameSnapshot = snapshotTopPointsPlayerNames(pointsSnapshot.keySet());
         Location savedLocation = getSavedTopPointsDisplayLocation();
         long requestVersion;
         synchronized (TOP_POINTS_REFRESH_LOCK) {
