@@ -2794,6 +2794,7 @@ public final class SheepMergeManager {
         sacrificePointsByPlayer.put(playerId, getSacrificePoints(playerId).add(refund));
         sacrificeUnlocksBoughtByPlayer.remove(playerId);
         sacrificeUnlockMaskByPlayer.remove(playerId);
+        clampUpgradeLevelsToCurrentCaps(playerId);
         saveData();
         return true;
     }
@@ -6258,9 +6259,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return BASE_SHEEP_LIMIT;
         }
-        int maxLimit = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100)
-                ? SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT
-                : MAX_SHEEP_LIMIT;
+        int maxLimit = getMaxSheepLimit(player.getUniqueId());
         return Math.min(
                 maxLimit,
                 BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0)));
@@ -6271,9 +6270,7 @@ public final class SheepMergeManager {
         if (ownerId == null) {
             return BASE_SHEEP_LIMIT;
         }
-        int maxLimit = hasSacrificeUnlock(ownerId, SACRIFICE_UNLOCK_MAX_SHEEP_100)
-                ? SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT
-                : MAX_SHEEP_LIMIT;
+        int maxLimit = getMaxSheepLimit(ownerId);
         return Math.min(
                 maxLimit,
                 BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(ownerId, 0)));
@@ -6291,9 +6288,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
-        int maxLimit = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100)
-                ? SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT
-                : MAX_SHEEP_LIMIT;
+        int maxLimit = getMaxSheepLimit(player.getUniqueId());
         if (getPlayerLimit(player) >= maxLimit) {
             return false;
         }
@@ -6317,9 +6312,7 @@ public final class SheepMergeManager {
             return 0;
         }
         int extra = Math.max(0, extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0));
-        int maxLimit = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100)
-                ? SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT
-                : MAX_SHEEP_LIMIT;
+        int maxLimit = getMaxSheepLimit(player.getUniqueId());
         int maxExtra = maxLimit - BASE_SHEEP_LIMIT;
         return Math.min(maxExtra, extra) / LIMIT_UPGRADE_STEP;
     }
@@ -6343,23 +6336,35 @@ public final class SheepMergeManager {
     }
 
     public static int getEggSpeedMaxLevel(Player player) {
+        return player == null ? 0 : getEggSpeedMaxLevel(player.getUniqueId());
+    }
+
+    private static int getEggSpeedMaxLevel(UUID playerId) {
         long computed = (long) EGG_SPEED_BASE_MAX_LEVEL
-                + (long) getPrestigeHigherMaxLevel(player) * PRESTIGE_CAP_BONUS_PER_LEVEL;
-        int hardCap = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S)
+                + (long) getPrestigeHigherMaxLevel(playerId) * PRESTIGE_CAP_BONUS_PER_LEVEL;
+        int hardCap = hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S)
                 ? EGG_SPEED_MAX_LEVEL + 1
                 : EGG_SPEED_MAX_LEVEL;
         return computed >= hardCap ? hardCap : (int) computed;
     }
 
     public static int getWoolRegenMaxLevel(Player player) {
+        return player == null ? 0 : getWoolRegenMaxLevel(player.getUniqueId());
+    }
+
+    private static int getWoolRegenMaxLevel(UUID playerId) {
         long computed = (long) WOOL_REGEN_BASE_MAX_LEVEL
-                + (long) getPrestigeHigherMaxLevel(player) * PRESTIGE_CAP_BONUS_PER_LEVEL;
+                + (long) getPrestigeHigherMaxLevel(playerId) * PRESTIGE_CAP_BONUS_PER_LEVEL;
         return computed >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) computed;
     }
 
     public static int getHigherTierChanceMaxLevel(Player player) {
+        return player == null ? 0 : getHigherTierChanceMaxLevel(player.getUniqueId());
+    }
+
+    private static int getHigherTierChanceMaxLevel(UUID playerId) {
         long computed = (long) HIGHER_TIER_CHANCE_BASE_MAX_LEVEL
-                + (long) getPrestigeHigherMaxLevel(player) * PRESTIGE_CAP_BONUS_PER_LEVEL;
+                + (long) getPrestigeHigherMaxLevel(playerId) * PRESTIGE_CAP_BONUS_PER_LEVEL;
         long softCapped = Math.min(computed, HIGHER_TIER_CHANCE_MAX_LEVEL);
         return (int) Math.min(softCapped, HIGHER_TIER_CHANCE_HARD_MAX_LEVEL);
     }
@@ -6496,8 +6501,68 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        int raw = prestigeHigherMaxLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return getPrestigeHigherMaxLevel(player.getUniqueId());
+    }
+
+    private static int getPrestigeHigherMaxLevel(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
+        int raw = prestigeHigherMaxLevelByPlayer.getOrDefault(playerId, 0);
         return Math.max(0, raw);
+    }
+
+    private static int getMaxSheepLimit(UUID playerId) {
+        return hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_MAX_SHEEP_100)
+                ? SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT
+                : MAX_SHEEP_LIMIT;
+    }
+
+    private static boolean clampUpgradeLevelsToCurrentCaps(UUID playerId) {
+        if (playerId == null) {
+            return false;
+        }
+
+        boolean changed = false;
+
+        int maxExtra = Math.max(0, getMaxSheepLimit(playerId) - BASE_SHEEP_LIMIT);
+        int rawExtra = Math.max(0, extraLimitByPlayer.getOrDefault(playerId, 0));
+        int clampedExtra = Math.min(maxExtra, rawExtra);
+        if (clampedExtra <= 0) {
+            changed |= extraLimitByPlayer.remove(playerId) != null;
+        } else if (clampedExtra != rawExtra) {
+            extraLimitByPlayer.put(playerId, clampedExtra);
+            changed = true;
+        }
+
+        int rawEggSpeed = Math.max(0, eggSpeedLevelByPlayer.getOrDefault(playerId, 0));
+        int clampedEggSpeed = Math.min(rawEggSpeed, getEggSpeedMaxLevel(playerId));
+        if (clampedEggSpeed <= 0) {
+            changed |= eggSpeedLevelByPlayer.remove(playerId) != null;
+        } else if (clampedEggSpeed != rawEggSpeed) {
+            eggSpeedLevelByPlayer.put(playerId, clampedEggSpeed);
+            changed = true;
+        }
+
+        int rawWool = Math.max(0, woolRegenLevelByPlayer.getOrDefault(playerId, 0));
+        int clampedWool = Math.min(rawWool, getWoolRegenMaxLevel(playerId));
+        if (clampedWool <= 0) {
+            changed |= woolRegenLevelByPlayer.remove(playerId) != null;
+        } else if (clampedWool != rawWool) {
+            woolRegenLevelByPlayer.put(playerId, clampedWool);
+            changed = true;
+        }
+
+        int rawChance = Math.max(0, higherTierChanceLevelByPlayer.getOrDefault(playerId, 0));
+        int clampedChance = Math.min(rawChance, getHigherTierChanceMaxLevel(playerId));
+        if (clampedChance <= 0) {
+            changed |= higherTierChanceLevelByPlayer.remove(playerId) != null;
+        } else if (clampedChance != rawChance) {
+            higherTierChanceLevelByPlayer.put(playerId, clampedChance);
+            changed = true;
+        }
+
+        return changed;
     }
 
     public static int getPrestigeStartEggsLevel(Player player) {
@@ -6917,6 +6982,7 @@ public final class SheepMergeManager {
         if (clearRefundCooldown) {
             nextPrestigeRefundTimestampByPlayer.remove(playerId);
         }
+        clampUpgradeLevelsToCurrentCaps(playerId);
     }
 
     private static int getPrestigeRefundAmount(Player player) {
@@ -10585,6 +10651,17 @@ public final class SheepMergeManager {
                     // Ignore invalid UUIDs.
                 }
             });
+        }
+        Set<UUID> playersToClamp = new HashSet<>();
+        playersToClamp.addAll(extraLimitByPlayer.keySet());
+        playersToClamp.addAll(eggSpeedLevelByPlayer.keySet());
+        playersToClamp.addAll(woolRegenLevelByPlayer.keySet());
+        playersToClamp.addAll(higherTierChanceLevelByPlayer.keySet());
+        playersToClamp.addAll(prestigeHigherMaxLevelByPlayer.keySet());
+        playersToClamp.addAll(sacrificeUnlocksBoughtByPlayer.keySet());
+        playersToClamp.addAll(sacrificeUnlockMaskByPlayer.keySet());
+        for (UUID playerId : playersToClamp) {
+            clampUpgradeLevelsToCurrentCaps(playerId);
         }
         if (dataConfig.isConfigurationSection("pendingInventory")) {
             dataConfig.getConfigurationSection("pendingInventory").getKeys(false).forEach(key -> {
