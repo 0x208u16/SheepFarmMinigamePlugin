@@ -53,8 +53,7 @@ final class MenuItemFactory {
                 continue;
             }
             String upper = stripped.toUpperCase(Locale.ROOT);
-            if (upper.contains("MAXED")
-                    || upper.startsWith("IN STOCK: YES")) {
+            if (upper.contains("MAXED")) {
                 return true;
             }
         }

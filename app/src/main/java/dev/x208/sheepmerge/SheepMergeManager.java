@@ -9229,6 +9229,14 @@ public final class SheepMergeManager {
         int jackpotCost = getQuestJackpotCost(player);
         int autoMergeCost = getQuestAutoMergeCost(player);
         int autoShearCost = getQuestAutoShearCost(player);
+        boolean luckyBurstGlint = isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+                playerId);
+        boolean woolRushGlint = isAbilityActive(activeWoolRushUntilByPlayer, playerId);
+        boolean jackpotGlint = isAbilityActive(activeJackpotShearsUntilByPlayer, playerId);
+        boolean autoMergeGlint = isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+                playerId);
+        boolean autoShearGlint = isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+                playerId);
 
         inventory.setItem(QUEST_BOARD_SLOT, MenuItemFactory.create(
                 Material.BOOK,
@@ -9256,7 +9264,8 @@ public final class SheepMergeManager {
                         "In stock: " + (currentQuestPoints >= luckyCost ? "yes" : "no"),
                         getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
-                                playerId))));
+                                playerId)),
+                luckyBurstGlint));
 
         inventory.setItem(QUEST_ABILITY_WOOL_RUSH_SLOT, MenuItemFactory.create(
                 Material.WHITE_WOOL,
@@ -9269,7 +9278,8 @@ public final class SheepMergeManager {
                         getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
                         isAbilityActive(activeWoolRushUntilByPlayer, playerId)
                                 ? "Already active"
-                                : "Click to activate")));
+                                : "Click to activate"),
+                woolRushGlint));
 
         inventory.setItem(QUEST_ABILITY_JACKPOT_SHEARS_SLOT, MenuItemFactory.create(
                 Material.GOLD_INGOT,
@@ -9283,7 +9293,8 @@ public final class SheepMergeManager {
                         getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
                         isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
                                 ? "Already active"
-                                : "Click to activate")));
+                                : "Click to activate"),
+                jackpotGlint));
 
         inventory.setItem(QUEST_ABILITY_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
@@ -9295,7 +9306,8 @@ public final class SheepMergeManager {
                         "In stock: " + (currentQuestPoints >= autoMergeCost ? "yes" : "no"),
                         getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
-                                playerId))));
+                                playerId)),
+                autoMergeGlint));
 
         inventory.setItem(QUEST_ABILITY_AUTO_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
@@ -9307,7 +9319,8 @@ public final class SheepMergeManager {
                         "In stock: " + (currentQuestPoints >= autoShearCost ? "yes" : "no"),
                         getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
-                                playerId))));
+                                playerId)),
+                autoShearGlint));
 
         inventory.setItem(QUEST_OPEN_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ENCHANTED_BOOK,
