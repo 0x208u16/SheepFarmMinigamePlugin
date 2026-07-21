@@ -1,4 +1,4 @@
-# Copyright (c) 2023 0x208u16
+# Copyright (c) 2023 x208
 # 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,7 +6,7 @@
 
 ---  # Denotes the start of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
 name: SheepMerge
-main: dev._0x208u16.sheepmerge.SheepMergePlugin
+main: dev.x208.sheepmerge.SheepMergePlugin
 version: 0.5.0
 api-version: "1.20"
 commands:
