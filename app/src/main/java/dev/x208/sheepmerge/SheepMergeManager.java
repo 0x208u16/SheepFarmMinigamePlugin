@@ -6869,10 +6869,21 @@ public final class SheepMergeManager {
             UUID playerId) {
         int remaining = getCountAbilityRemainingUses(remainingUsesByPlayer, playerId);
         if (remaining <= 0) {
-            return "Status: inactive";
+            return "&8Status: DEACTIVATED";
         }
         boolean enabled = enabledByPlayer.getOrDefault(playerId, true);
-        return "Status: " + (enabled ? "enabled" : "disabled") + " (" + remaining + " uses left)";
+        return (enabled ? "&aStatus: ON" : "&cStatus: OFF") + " (&b" + remaining + "&7 uses left)";
+    }
+
+    private static String getCountAbilityToggleActionLine(Map<UUID, Integer> remainingUsesByPlayer,
+            Map<UUID, Boolean> enabledByPlayer,
+            UUID playerId) {
+        int remaining = getCountAbilityRemainingUses(remainingUsesByPlayer, playerId);
+        if (remaining <= 0) {
+            return "&aClick: Activate";
+        }
+        boolean enabled = enabledByPlayer.getOrDefault(playerId, true);
+        return enabled ? "&cClick: Toggle OFF" : "&aClick: Toggle ON";
     }
 
     private static String getCountAbilityScoreLine(String label,
@@ -8218,9 +8229,8 @@ public final class SheepMergeManager {
                         "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
                         getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
-                        getCountAbilityRemainingUses(activeLuckyBurstUsesByPlayer, playerId) > 0
-                                ? "Click to toggle enable/disable"
-                                : "Click to activate")));
+                        getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+                                playerId))));
 
         inventory.setItem(QUEST_ABILITY_WOOL_RUSH_SLOT, MenuItemFactory.create(
                 Material.WHITE_WOOL,
@@ -8255,9 +8265,8 @@ public final class SheepMergeManager {
                         "Effect: Instantly merges when you pick up a sheep",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
                         getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
-                        getCountAbilityRemainingUses(activeAutoMergeUsesByPlayer, playerId) > 0
-                                ? "Click to toggle enable/disable"
-                                : "Click to activate")));
+                        getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+                                playerId))));
 
         inventory.setItem(QUEST_ABILITY_AUTO_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
@@ -8267,9 +8276,8 @@ public final class SheepMergeManager {
                         "Effect: Instantly shears the sheep you are looking at",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
                         getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
-                        getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) > 0
-                                ? "Click to toggle enable/disable"
-                                : "Click to activate")));
+                        getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+                                playerId))));
 
         inventory.setItem(QUEST_OPEN_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ENCHANTED_BOOK,
