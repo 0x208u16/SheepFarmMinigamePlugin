@@ -8889,7 +8889,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS),
                         "Keeps regular upgrades on prestige",
-                        "Becomes active after the next prestige")));
+                        "Applies immediately")));
 
         inventory.setItem(SACRIFICE_UNLOCK_COMBO_RESETS_SLOT, MenuItemFactory.create(
                 Material.BLAZE_POWDER,
@@ -8897,7 +8897,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS),
                         "Keeps combo upgrades on prestige",
-                        "Becomes active after the next prestige")));
+                        "Applies immediately")));
 
         inventory.setItem(SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
@@ -8905,7 +8905,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS),
                         "Keeps shear shop on prestige",
-                        "Becomes active after the next prestige")));
+                        "Applies immediately")));
 
         inventory.setItem(SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT, MenuItemFactory.create(
                 Material.CLOCK,

@@ -61,7 +61,7 @@ final class SacrificeUnlockState {
     }
 
     boolean isActive(UUID playerId, int unlockId) {
-        return hasUnlock(playerId, unlockId) && !isPending(playerId, unlockId);
+        return hasUnlock(playerId, unlockId);
     }
 
     String statusLine(Player player, int unlockId) {
@@ -71,9 +71,6 @@ final class SacrificeUnlockState {
         UUID playerId = player.getUniqueId();
         if (!hasUnlock(playerId, unlockId)) {
             return "LOCKED";
-        }
-        if (isPending(playerId, unlockId)) {
-            return "PENDING NEXT PRESTIGE";
         }
         return "ACTIVE";
     }
@@ -85,14 +82,13 @@ final class SacrificeUnlockState {
         }
         unlocksBoughtByPlayer.put(playerId, getUnlocksBought(playerId) + 1);
         unlockMaskByPlayer.put(playerId, getUnlockMask(playerId) | unlockBit);
-        pendingMaskByPlayer.put(playerId, getPendingMask(playerId) | unlockBit);
     }
 
     void clearPending(UUID playerId) {
         if (playerId == null) {
             return;
         }
-        pendingMaskByPlayer.put(playerId, 0);
+        pendingMaskByPlayer.remove(playerId);
     }
 
     boolean refund(UUID playerId) {
@@ -196,6 +192,7 @@ final class SacrificeUnlockState {
                 unlockMaskByPlayer.put(entry.getKey(), firstUnlockBits(entry.getValue()));
             }
         }
+        pendingMaskByPlayer.clear();
     }
 
     private static int getUnlockBit(int unlockId) {
