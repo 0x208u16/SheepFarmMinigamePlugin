@@ -63,6 +63,7 @@ public class SheepMergePlugin extends JavaPlugin {
         SheepMergeManager.restoreTopPointsDisplayAfterRestart(null);
         scheduleSheepEggDistribution();
         scheduleSheepNameUpdates();
+        scheduleAutomationAutoSpawnEveryTick();
         scheduleLiveSheepCountUpdates();
         scheduleFarmLoadoutAndReminderUpdates();
         scheduleFarmSaturationUpdates();
@@ -98,6 +99,14 @@ public class SheepMergePlugin extends JavaPlugin {
                 SheepMergeManager.updateCarriedSheepPosition(player);
             }
         }, fastTickInterval, fastTickInterval);
+    }
+
+    private void scheduleAutomationAutoSpawnEveryTick() {
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            for (Player player : getServer().getOnlinePlayers()) {
+                SheepMergeManager.tickAutomationAutoSpawnRealtime(player);
+            }
+        }, 1L, 1L);
     }
 
     private void setup() {

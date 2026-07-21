@@ -267,8 +267,8 @@ public final class SheepMergeManager {
     private static final String FARM_BUILD_WORLD_NAME = "sheepfarm_build";
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
-    private static final int FARM_MIN_XZ = -4;
-    private static final int FARM_MAX_XZ = 5;
+    private static final int FARM_MIN_XZ = -5;
+    private static final int FARM_MAX_XZ = 6;
     private static final int FARM_RADIUS = Math.max(Math.abs(FARM_MIN_XZ), Math.abs(FARM_MAX_XZ));
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
@@ -829,10 +829,24 @@ public final class SheepMergeManager {
         if (world == null) {
             return;
         }
+        clearFarmPlatformBoundingBox(world);
         if (hasSavedFarmLayout()) {
             applySavedFarmLayout(world);
         } else {
             applyDefaultFarmLayout(world);
+        }
+    }
+
+    private static void clearFarmPlatformBoundingBox(World world) {
+        if (world == null) {
+            return;
+        }
+        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
+            for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
+                for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
+                    world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(Material.AIR), true);
+                }
+            }
         }
     }
 
@@ -1228,6 +1242,10 @@ public final class SheepMergeManager {
         if (y == FARM_BASE_Y + 1
                 && (x == FARM_MIN_XZ || x == FARM_MAX_XZ || z == FARM_MIN_XZ || z == FARM_MAX_XZ)) {
             return Material.OAK_FENCE;
+        }
+        if (y == FARM_BASE_Y + 2
+                && (x == FARM_MIN_XZ || x == FARM_MAX_XZ || z == FARM_MIN_XZ || z == FARM_MAX_XZ)) {
+            return Material.WHITE_CARPET;
         }
         return Material.AIR;
     }
@@ -1927,8 +1945,14 @@ public final class SheepMergeManager {
         tickAutomationAutoAbility(player, playerId, now);
         tickAutomationSlowMerge(player, playerId, now);
         tickAutomationSlowShear(player, playerId, now);
-        tickAutomationAutoSpawn(player, playerId, now);
         tickAutomationAutoPrestige(player, playerId, now);
+    }
+
+    public static void tickAutomationAutoSpawnRealtime(Player player) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        tickAutomationAutoSpawn(player, player.getUniqueId(), System.currentTimeMillis());
     }
 
     public static void tickAutomationPlaytimePoints(Player player) {
