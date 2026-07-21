@@ -477,7 +477,7 @@ public final class SheepMergeManager {
     public static final int REBIRTH_ACTION_SLOT = 11;
     public static final int REBIRTH_OPEN_TREE_SLOT = 15;
     public static final int REBIRTH_BACK_TO_UPGRADES_SLOT = 26;
-    public static final int REBIRTH_TREE_RESPEC_SLOT = 46;
+    public static final int REBIRTH_TREE_RESPEC_SLOT = 45;
     public static final int REBIRTH_TREE_BACK_SLOT = 53;
     public static final int SCOREBOARD_LAYOUT_SLOT = 10;
     public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
