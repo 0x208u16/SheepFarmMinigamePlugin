@@ -7323,15 +7323,15 @@ public final class SheepMergeManager {
     }
 
     private static boolean shouldShowScoreboardQuestPoints(Player player) {
-        return player != null && scoreboardShowQuestPointsByPlayer.getOrDefault(player.getUniqueId(), true);
+        return player != null && scoreboardShowQuestPointsByPlayer.getOrDefault(player.getUniqueId(), false);
     }
 
     private static boolean shouldShowScoreboardAutomationPoints(Player player) {
-        return player != null && scoreboardShowAutomationPointsByPlayer.getOrDefault(player.getUniqueId(), true);
+        return player != null && scoreboardShowAutomationPointsByPlayer.getOrDefault(player.getUniqueId(), false);
     }
 
     private static boolean shouldShowScoreboardSacrificePoints(Player player) {
-        return player != null && scoreboardShowSacrificePointsByPlayer.getOrDefault(player.getUniqueId(), true);
+        return player != null && scoreboardShowSacrificePointsByPlayer.getOrDefault(player.getUniqueId(), false);
     }
 
     private static boolean shouldShowScoreboardQuestProgress(Player player) {
@@ -10345,7 +10345,7 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     scoreboardShowQuestPointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowQuestPoints." + key, true));
+                            dataConfig.getBoolean("scoreboardShowQuestPoints." + key, false));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -10356,7 +10356,7 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     scoreboardShowAutomationPointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowAutomationPoints." + key, true));
+                            dataConfig.getBoolean("scoreboardShowAutomationPoints." + key, false));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
@@ -10367,7 +10367,7 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     scoreboardShowSacrificePointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowSacrificePoints." + key, true));
+                            dataConfig.getBoolean("scoreboardShowSacrificePoints." + key, false));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
