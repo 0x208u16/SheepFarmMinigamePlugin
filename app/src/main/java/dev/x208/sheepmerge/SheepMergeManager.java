@@ -1532,6 +1532,12 @@ public final class SheepMergeManager {
                 || skillId == REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH;
     }
 
+    private static boolean isRebirthDelayedActivationSkill(int skillId) {
+        return isRebirthKeepSkill(skillId)
+                || skillId == REBIRTH_SKILL_QUEST_POINTS_X10
+                || skillId == REBIRTH_SKILL_SACRIFICE_POINTS_X10;
+    }
+
     private static boolean isRebirthSkillPending(UUID playerId, int skillId) {
         int bit = getRebirthSkillBit(skillId);
         return playerId != null
@@ -1544,11 +1550,18 @@ public final class SheepMergeManager {
         return hasRebirthSkill(playerId, skillId) && !isRebirthSkillPending(playerId, skillId);
     }
 
-    private static String getRebirthKeepSkillStatusLine(UUID playerId, int skillId) {
+    private static String getRebirthSkillStatusLine(UUID playerId, int skillId) {
         if (!hasRebirthSkill(playerId, skillId)) {
             return "&cLocked";
         }
-        return isRebirthSkillPending(playerId, skillId) ? "&6Pending (activates after next reset)" : "&aActive";
+        if (!isRebirthSkillPending(playerId, skillId)) {
+            return "&aActive";
+        }
+        return switch (skillId) {
+            case REBIRTH_SKILL_QUEST_POINTS_X10 -> "&6Pending (activates after next quest reset)";
+            case REBIRTH_SKILL_SACRIFICE_POINTS_X10 -> "&6Pending (activates after next sacrifice)";
+            default -> "&6Pending (activates after next reset)";
+        };
     }
 
     private static RebirthSkillNode getRebirthSkillNode(int skillId) {
@@ -1647,11 +1660,13 @@ public final class SheepMergeManager {
     }
 
     private static int getQuestPointsGainMultiplierFromRebirthSkills(Player player) {
-        return hasRebirthSkill(player, REBIRTH_SKILL_QUEST_POINTS_X10) ? 10 : 1;
+        return player != null && hasActiveRebirthSkill(player.getUniqueId(), REBIRTH_SKILL_QUEST_POINTS_X10) ? 10 : 1;
     }
 
     private static int getSacrificePointsGainMultiplierFromRebirthSkills(Player player) {
-        return hasRebirthSkill(player, REBIRTH_SKILL_SACRIFICE_POINTS_X10) ? 10 : 1;
+        return player != null && hasActiveRebirthSkill(player.getUniqueId(), REBIRTH_SKILL_SACRIFICE_POINTS_X10)
+                ? 10
+                : 1;
     }
 
     private static void addQuestPoints(Player player, int amount) {
@@ -1705,6 +1720,9 @@ public final class SheepMergeManager {
         questSpawnsCompleteByPlayer.put(playerId, false);
         questMergesCompleteByPlayer.put(playerId, false);
         nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
+        rebirthSkillPendingMaskByPlayer.put(
+                playerId,
+                getRebirthSkillPendingMask(playerId) & ~getRebirthSkillBit(REBIRTH_SKILL_QUEST_POINTS_X10));
         player.sendTitle(color("&eNew quests"), color("&7Quest board refreshed"), 10, 40, 10);
     }
 
@@ -3006,6 +3024,10 @@ public final class SheepMergeManager {
         refreshLiveSheepCount(world);
         if (gained.signum() > 0) {
             addSacrificePoints(player.getUniqueId(), gained);
+            UUID playerId = player.getUniqueId();
+            rebirthSkillPendingMaskByPlayer.put(
+                    playerId,
+                    getRebirthSkillPendingMask(playerId) & ~getRebirthSkillBit(REBIRTH_SKILL_SACRIFICE_POINTS_X10));
             saveData();
         }
         return gained;
@@ -9126,8 +9148,8 @@ public final class SheepMergeManager {
             }
             if (unlocked) {
                 lore.add("&aUnlocked");
-                if (isRebirthKeepSkill(node.id)) {
-                    lore.add(getRebirthKeepSkillStatusLine(player.getUniqueId(), node.id));
+                if (isRebirthDelayedActivationSkill(node.id)) {
+                    lore.add(getRebirthSkillStatusLine(player.getUniqueId(), node.id));
                 }
                 lore.add("&cClick to refund branch");
             } else if (!parentUnlocked) {
@@ -9207,7 +9229,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         int updatedMask = getRebirthSkillUnlockMask(playerId) | getRebirthSkillBit(skillId);
         rebirthSkillUnlockMaskByPlayer.put(playerId, updatedMask);
-        if (isRebirthKeepSkill(skillId)) {
+        if (isRebirthDelayedActivationSkill(skillId)) {
             rebirthSkillPendingMaskByPlayer.put(
                     playerId,
                     getRebirthSkillPendingMask(playerId) | getRebirthSkillBit(skillId));
