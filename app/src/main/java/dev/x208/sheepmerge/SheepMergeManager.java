@@ -183,6 +183,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> sacrificeUnlocksBoughtByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> sacrificeUnlockMaskByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
@@ -2645,8 +2646,30 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return 0;
         }
+        if (sacrificeUnlockMaskByPlayer.containsKey(playerId)) {
+            return Integer.bitCount(getSacrificeUnlockMask(playerId));
+        }
         return Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX,
                 sacrificeUnlocksBoughtByPlayer.getOrDefault(playerId, 0)));
+    }
+
+    private static int getSacrificeUnlockMask(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
+        return normalizeSacrificeUnlockMask(sacrificeUnlockMaskByPlayer.getOrDefault(playerId, 0));
+    }
+
+    private static int getSacrificeUnlockBit(int unlockId) {
+        if (unlockId <= 0 || unlockId > SACRIFICE_UNLOCK_MAX) {
+            return 0;
+        }
+        return 1 << (unlockId - 1);
+    }
+
+    private static int normalizeSacrificeUnlockMask(int mask) {
+        int allUnlocksMask = (1 << SACRIFICE_UNLOCK_MAX) - 1;
+        return mask & allUnlocksMask;
     }
 
     private static boolean hasSacrificeUnlock(Player player, int unlockId) {
@@ -2656,6 +2679,13 @@ public final class SheepMergeManager {
     private static boolean hasSacrificeUnlock(UUID playerId, int unlockId) {
         if (playerId == null || unlockId <= 0) {
             return false;
+        }
+        int unlockBit = getSacrificeUnlockBit(unlockId);
+        if (unlockBit == 0) {
+            return false;
+        }
+        if (sacrificeUnlockMaskByPlayer.containsKey(playerId)) {
+            return (getSacrificeUnlockMask(playerId) & unlockBit) != 0;
         }
         return getSacrificeUnlocksBought(playerId) >= unlockId;
     }
@@ -2723,11 +2753,18 @@ public final class SheepMergeManager {
         return gained;
     }
 
-    private static boolean tryBuyNextSacrificeUnlock(Player player) {
+    private static boolean tryBuySacrificeUnlock(Player player, int unlockId) {
         if (player == null) {
             return false;
         }
+        int unlockBit = getSacrificeUnlockBit(unlockId);
+        if (unlockBit == 0) {
+            return false;
+        }
         UUID playerId = player.getUniqueId();
+        if (hasSacrificeUnlock(playerId, unlockId)) {
+            return false;
+        }
         int current = getSacrificeUnlocksBought(playerId);
         if (current >= SACRIFICE_UNLOCK_MAX) {
             return false;
@@ -2739,6 +2776,7 @@ public final class SheepMergeManager {
         }
         sacrificePointsByPlayer.put(playerId, points.subtract(cost));
         sacrificeUnlocksBoughtByPlayer.put(playerId, current + 1);
+        sacrificeUnlockMaskByPlayer.put(playerId, getSacrificeUnlockMask(playerId) | unlockBit);
         saveData();
         return true;
     }
@@ -2755,6 +2793,7 @@ public final class SheepMergeManager {
         BigInteger refund = getSpentSacrificePoints(current);
         sacrificePointsByPlayer.put(playerId, getSacrificePoints(playerId).add(refund));
         sacrificeUnlocksBoughtByPlayer.remove(playerId);
+        sacrificeUnlockMaskByPlayer.remove(playerId);
         saveData();
         return true;
     }
@@ -3948,6 +3987,7 @@ public final class SheepMergeManager {
         scoreboardShowAbilityStatusByPlayer.remove(id);
         sacrificePointsByPlayer.remove(id);
         sacrificeUnlocksBoughtByPlayer.remove(id);
+        sacrificeUnlockMaskByPlayer.remove(id);
         nextAutomationPointAtByPlayer.remove(id);
         nextAutomationAutoBuyAtByPlayer.remove(id);
         nextAutomationAutoAbilityAtByPlayer.remove(id);
@@ -5365,6 +5405,7 @@ public final class SheepMergeManager {
         scoreboardShowAbilityStatusByPlayer.clear();
         sacrificePointsByPlayer.clear();
         sacrificeUnlocksBoughtByPlayer.clear();
+        sacrificeUnlockMaskByPlayer.clear();
         for (BossBar bar : visitFarmBossBarByPlayer.values()) {
             if (bar != null) {
                 bar.removeAll();
@@ -8272,7 +8313,7 @@ public final class SheepMergeManager {
                                 ? "UNLOCKED"
                                 : "LOCKED"),
                         "No regular upgrade resets on prestige",
-                        "Requires unlock #1")));
+                        "Can be purchased in any order")));
 
         inventory.setItem(SACRIFICE_UNLOCK_COMBO_RESETS_SLOT, MenuItemFactory.create(
                 Material.BLAZE_POWDER,
@@ -8282,7 +8323,7 @@ public final class SheepMergeManager {
                                 ? "UNLOCKED"
                                 : "LOCKED"),
                         "No combo upgrade resets on prestige",
-                        "Requires unlock #2")));
+                        "Can be purchased in any order")));
 
         inventory.setItem(SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
@@ -8292,7 +8333,7 @@ public final class SheepMergeManager {
                                 ? "UNLOCKED"
                                 : "LOCKED"),
                         "No shear shop resets on prestige",
-                        "Requires unlock #3")));
+                        "Can be purchased in any order")));
 
         inventory.setItem(SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
@@ -8303,7 +8344,7 @@ public final class SheepMergeManager {
                                 : "LOCKED"),
                         "Adds +1 egg speed max level",
                         "Allows 1 egg per second",
-                        "Requires unlock #4")));
+                        "Can be purchased in any order")));
 
         inventory.setItem(SACRIFICE_UNLOCK_MAX_SHEEP_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
@@ -8313,7 +8354,7 @@ public final class SheepMergeManager {
                                 ? "UNLOCKED"
                                 : "LOCKED"),
                         "Raises max sheep limit to 100",
-                        "Requires unlock #5")));
+                        "Can be purchased in any order")));
 
         inventory.setItem(SACRIFICE_REFUND_SLOT, MenuItemFactory.create(
                 Material.MILK_BUCKET,
@@ -8356,18 +8397,18 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("All sacrifice unlocks are already purchased."));
                     break;
                 }
-                int expectedSlot = switch (unlocksBought + 1) {
-                    case SACRIFICE_UNLOCK_NO_REGULAR_RESETS -> SACRIFICE_UNLOCK_REGULAR_RESETS_SLOT;
-                    case SACRIFICE_UNLOCK_NO_COMBO_RESETS -> SACRIFICE_UNLOCK_COMBO_RESETS_SLOT;
-                    case SACRIFICE_UNLOCK_NO_SHEAR_RESETS -> SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT;
-                    case SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S -> SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT;
-                    default -> SACRIFICE_UNLOCK_MAX_SHEEP_SLOT;
+                int unlockId = switch (slot) {
+                    case SACRIFICE_UNLOCK_REGULAR_RESETS_SLOT -> SACRIFICE_UNLOCK_NO_REGULAR_RESETS;
+                    case SACRIFICE_UNLOCK_COMBO_RESETS_SLOT -> SACRIFICE_UNLOCK_NO_COMBO_RESETS;
+                    case SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT -> SACRIFICE_UNLOCK_NO_SHEAR_RESETS;
+                    case SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT -> SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S;
+                    default -> SACRIFICE_UNLOCK_MAX_SHEEP_100;
                 };
-                if (slot != expectedSlot) {
-                    player.sendMessage(warning("Purchase sacrifice unlocks in order."));
+                if (hasSacrificeUnlock(player, unlockId)) {
+                    player.sendMessage(warning("That sacrifice unlock is already purchased."));
                     break;
                 }
-                if (tryBuyNextSacrificeUnlock(player)) {
+                if (tryBuySacrificeUnlock(player, unlockId)) {
                     playUpgradeSound(player);
                     player.sendMessage(action("Sacrifice unlock purchased."));
                 } else {
@@ -9370,6 +9411,7 @@ public final class SheepMergeManager {
             dataConfig.set("scoreboardShowAbilityStatus", null);
             dataConfig.set("sacrificePoints", null);
             dataConfig.set("sacrificeUnlocksBought", null);
+            dataConfig.set("sacrificeUnlockMask", null);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
@@ -9613,6 +9655,10 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Integer> entry : sacrificeUnlocksBoughtByPlayer.entrySet()) {
                 dataConfig.set("sacrificeUnlocksBought." + entry.getKey().toString(),
                         Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX, entry.getValue())));
+            }
+            for (Map.Entry<UUID, Integer> entry : sacrificeUnlockMaskByPlayer.entrySet()) {
+                dataConfig.set("sacrificeUnlockMask." + entry.getKey().toString(),
+                        normalizeSacrificeUnlockMask(entry.getValue()));
             }
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
@@ -10522,6 +10568,19 @@ public final class SheepMergeManager {
                     int loaded = dataConfig.getInt("sacrificeUnlocksBought." + key, 0);
                     sacrificeUnlocksBoughtByPlayer.put(uuid,
                             Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX, loaded)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("sacrificeUnlockMask")) {
+            dataConfig.getConfigurationSection("sacrificeUnlockMask").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    int loaded = dataConfig.getInt("sacrificeUnlockMask." + key, 0);
+                    int mask = normalizeSacrificeUnlockMask(loaded);
+                    sacrificeUnlockMaskByPlayer.put(uuid, mask);
+                    sacrificeUnlocksBoughtByPlayer.put(uuid, Integer.bitCount(mask));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
