@@ -353,6 +353,7 @@ public final class SheepMergeManager {
     private static int AUTOMATION_SLOW_AUTO_SHEAR_BASE_COST = 12;
     private static int AUTOMATION_AUTO_SPAWN_BASE_COST = 10;
     private static final int AUTOMATION_SINGLE_LEVEL_MAX = 1;
+    private static final int AUTOMATION_AUTO_ABILITY_MAX_LEVEL = 3;
     private static final int AUTOMATION_AUTO_BUY_MAX_LEVEL = 5;
     private static final int AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL = 3;
     private static final int AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL = 3;
@@ -2000,19 +2001,26 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationAutoAbility(Player player, UUID playerId, long now) {
-        if (getAutomationAutoAbilityUpgradeLevel(player) <= 0 || AUTOMATION_AUTO_ABILITY_INTERVAL_MS <= 0L
-                || !isAutomationAutoAbilityEnabled(player)) {
+        int level = getAutomationAutoAbilityUpgradeLevel(player);
+        if (level <= 0 || !isAutomationAutoAbilityEnabled(player)) {
             return;
         }
-        long nextAt = nextAutomationAutoAbilityAtByPlayer.getOrDefault(playerId, 0L);
-        if (now < nextAt) {
-            return;
+        if (level < AUTOMATION_AUTO_ABILITY_MAX_LEVEL) {
+            if (AUTOMATION_AUTO_ABILITY_INTERVAL_MS <= 0L) {
+                return;
+            }
+            long nextAt = nextAutomationAutoAbilityAtByPlayer.getOrDefault(playerId, 0L);
+            if (now < nextAt) {
+                return;
+            }
+            nextAutomationAutoAbilityAtByPlayer.put(playerId, now + AUTOMATION_AUTO_ABILITY_INTERVAL_MS);
+        } else {
+            nextAutomationAutoAbilityAtByPlayer.put(playerId, 0L);
         }
-        nextAutomationAutoAbilityAtByPlayer.put(playerId, now + AUTOMATION_AUTO_ABILITY_INTERVAL_MS);
         if (!canAutomationRun(player, true)) {
             return;
         }
-        tryAutoActivateAbility(player);
+        tryAutoActivateAbility(player, level >= 2);
     }
 
     private static void tickAutomationSlowMerge(Player player, UUID playerId, long now) {
@@ -2265,11 +2273,12 @@ public final class SheepMergeManager {
                 && canSpendUpgradePointsDuringTutorial(player, cost);
     }
 
-    private static boolean tryAutoActivateAbility(Player player) {
+    private static boolean tryAutoActivateAbility(Player player, boolean buyAllMissing) {
         if (player == null) {
             return false;
         }
         UUID playerId = player.getUniqueId();
+        boolean changed = false;
         if (getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) <= 0
                 && activateCountQuestAbility(player,
                         activeAutoShearUsesByPlayer,
@@ -2279,7 +2288,10 @@ public final class SheepMergeManager {
                         Sound.ENTITY_SHEEP_SHEAR,
                         org.bukkit.Particle.WAX_OFF)) {
             nextAutoShearAtByPlayer.put(playerId, 0L);
-            return true;
+            if (!buyAllMissing) {
+                return true;
+            }
+            changed = true;
         }
         if (getCountAbilityRemainingUses(activeAutoMergeUsesByPlayer, playerId) <= 0
                 && activateCountQuestAbility(player,
@@ -2290,19 +2302,28 @@ public final class SheepMergeManager {
                         Sound.BLOCK_PISTON_EXTEND,
                         org.bukkit.Particle.ENCHANTMENT_TABLE)) {
             nextAutoMergeAtByPlayer.put(playerId, 0L);
-            return true;
+            if (!buyAllMissing) {
+                return true;
+            }
+            changed = true;
         }
         if (!isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
                 && activateQuestAbility(player, activeJackpotShearsUntilByPlayer, getQuestJackpotCost(player),
                         getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
                         Sound.ENTITY_PLAYER_LEVELUP, org.bukkit.Particle.CRIT)) {
-            return true;
+            if (!buyAllMissing) {
+                return true;
+            }
+            changed = true;
         }
         if (!isAbilityActive(activeWoolRushUntilByPlayer, playerId)
                 && activateQuestAbility(player, activeWoolRushUntilByPlayer, getQuestWoolRushCost(player),
                         getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
                         Sound.ENTITY_ENDER_DRAGON_FLAP, org.bukkit.Particle.CLOUD)) {
-            return true;
+            if (!buyAllMissing) {
+                return true;
+            }
+            changed = true;
         }
         if (getCountAbilityRemainingUses(activeLuckyBurstUsesByPlayer, playerId) <= 0
                 && activateCountQuestAbility(player,
@@ -2312,9 +2333,12 @@ public final class SheepMergeManager {
                         getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
                         Sound.BLOCK_BEACON_POWER_SELECT,
                         org.bukkit.Particle.END_ROD)) {
-            return true;
+            if (!buyAllMissing) {
+                return true;
+            }
+            changed = true;
         }
-        return false;
+        return changed;
     }
 
     public static void tickRandomFarmEvents() {
@@ -2998,7 +3022,7 @@ public final class SheepMergeManager {
 
     public static int getAutomationAutoAbilityUpgradeLevel(Player player) {
         return player == null ? 0
-                : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                : Math.min(AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
                         Math.max(0, automationAutoAbilityUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
     }
 
@@ -3350,7 +3374,7 @@ public final class SheepMergeManager {
     }
 
     private static int getAutomationAutoAbilityUpgradeCost(Player player) {
-        if (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+        if (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL) {
             return 0;
         }
         return getDoubledUpgradeCost(AUTOMATION_AUTO_ABILITY_BASE_COST, getAutomationAutoAbilityUpgradeLevel(player));
@@ -3482,7 +3506,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean upgradeAutomationAutoAbility(Player player) {
-        if (player == null || getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+        if (player == null || getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL) {
             return false;
         }
         int cost = getAutomationAutoAbilityUpgradeCost(player);
@@ -3491,6 +3515,7 @@ public final class SheepMergeManager {
         }
         automationAutoAbilityUpgradeByPlayer.put(player.getUniqueId(),
                 getAutomationAutoAbilityUpgradeLevel(player) + 1);
+        nextAutomationAutoAbilityAtByPlayer.put(player.getUniqueId(), 0L);
         saveData();
         return true;
     }
@@ -9179,15 +9204,25 @@ public final class SheepMergeManager {
                 "Auto Activate Abilities",
                 List.of(
                         "Level: " + getAutomationAutoAbilityUpgradeLevel(player) + " / "
-                                + AUTOMATION_SINGLE_LEVEL_MAX,
+                                + AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
                         "Status: " + (isAutomationAutoAbilityEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS),
-                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                        "Runs every "
+                                + (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                        ? "instant"
+                                        : formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS)),
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
                                 ? "Cost: MAXED"
                                 : "Cost: " + formatPoints(getAutomationAutoAbilityUpgradeCost(player))
                                         + " automation points",
-                        "Activates non-active quest abilities",
-                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                ? "Instantly buys all missing abilities"
+                                : getAutomationAutoAbilityUpgradeLevel(player) >= 2
+                                        ? "Buys all missing abilities each cycle"
+                                        : "Buys one missing ability each cycle",
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                ? "Instantly re-buys abilities that run out"
+                                : "Upgrade further for instant refill",
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
                                 ? "Click: maxed"
                                 : "Click: unlock")));
 
@@ -9341,7 +9376,7 @@ public final class SheepMergeManager {
                 }
             }
             case AUTOMATION_AUTO_ABILITY_SLOT -> {
-                if (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_SINGLE_LEVEL_MAX) {
+                if (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL) {
                     player.sendMessage(warning("Auto Ability is already maxed."));
                     break;
                 }
@@ -11847,7 +11882,7 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationAutoAbilityUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
+                            Math.max(0, Math.min(AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
                                     dataConfig.getInt("automationAutoAbility." + key, 0))));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
