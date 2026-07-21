@@ -932,7 +932,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 String backupName = backups.get(i);
                 boolean marked = SheepMergeManager.isBackupMarkedForDeletion(backupName);
                 player.sendMessage(ChatColor.GRAY + "- " + backupName
-                        + (marked ? ChatColor.RED + " [marked for deletion]" : ""));
+                        + (marked ? ChatColor.RED + " [temporary: queued for deletion]" : ""));
             }
             return true;
         }

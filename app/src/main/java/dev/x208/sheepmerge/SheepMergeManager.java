@@ -3701,28 +3701,28 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         if (!tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Open Upgrades (Nether Star)";
+            return "Hotbar Slot 9 -> Upgrade Menu";
         }
         if (!tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
-            return "Buy any regular upgrade";
+            return "Hotbar Slot 9 -> Upgrade Menu -> Buy any regular upgrade";
         }
         if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Open Quests from Upgrades";
+            return "Upgrade Menu -> Quest Menu";
         }
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
-            return "Activate any quest ability";
+            return "Upgrade Menu -> Quest Menu -> Activate any quest ability";
         }
         if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Open Quest Upgrades";
+            return "Upgrade Menu -> Quest Menu -> Quest Upgrades";
         }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
-            return "Buy one Shear Shop upgrade";
+            return "Upgrade Menu -> Shear Shop -> Buy one Shear Shop upgrade";
         }
         if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Open Prestige from Upgrades";
+            return "Upgrade Menu -> Prestige Menu";
         }
         if (!tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
-            return "Use Prestige once";
+            return "Upgrade Menu -> Prestige Menu -> Prestige Reset";
         }
         return "Tutorial complete";
     }
@@ -3969,14 +3969,14 @@ public final class SheepMergeManager {
             case SPAWN -> "Spawn sheep";
             case SHEAR -> "Shear sheep";
             case MERGE -> "Merge same-tier sheep";
-            case OPEN_UPGRADES -> "Open Upgrades (Nether Star)";
-            case BUY_REGULAR_UPGRADE -> "Buy one regular upgrade";
-            case OPEN_QUESTS -> "Open Quests from Upgrades";
-            case USE_ABILITY -> "Activate any quest ability";
-            case OPEN_QUEST_UPGRADES -> "Open Quest Upgrades";
-            case BUY_SHEAR_UPGRADE -> "Buy one Shear Shop upgrade";
-            case OPEN_PRESTIGE -> "Open Prestige from Upgrades";
-            case PRESTIGE_ONCE -> "Use Prestige once";
+            case OPEN_UPGRADES -> "Hotbar Slot 9 -> Upgrade Menu";
+            case BUY_REGULAR_UPGRADE -> "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade";
+            case OPEN_QUESTS -> "Upgrade Menu -> Quest Menu";
+            case USE_ABILITY -> "Upgrade Menu -> Quest Menu -> Activate any quest ability";
+            case OPEN_QUEST_UPGRADES -> "Upgrade Menu -> Quest Menu -> Quest Upgrades";
+            case BUY_SHEAR_UPGRADE -> "Upgrade Menu -> Shear Shop -> Buy one Shear Shop upgrade";
+            case OPEN_PRESTIGE -> "Upgrade Menu -> Prestige Menu";
+            case PRESTIGE_ONCE -> "Upgrade Menu -> Prestige Menu -> Prestige Reset";
             case COMPLETE -> "Tutorial complete";
         };
     }
@@ -8065,7 +8065,7 @@ public final class SheepMergeManager {
         switch (slot) {
             case LIMIT_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.BUY_REGULAR_UPGRADE,
-                        "Buy one regular upgrade in /sheepmerge upgrade")) {
+                        "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade")) {
                     break;
                 }
                 if (getPlayerLimit(player) >= getMaxSheepLimit(player.getUniqueId())) {
@@ -8080,7 +8080,7 @@ public final class SheepMergeManager {
             }
             case EGG_SPEED_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.BUY_REGULAR_UPGRADE,
-                        "Buy one regular upgrade in /sheepmerge upgrade")) {
+                        "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade")) {
                     break;
                 }
                 if (upgradeEggSpeed(player)) {
@@ -8093,7 +8093,7 @@ public final class SheepMergeManager {
             }
             case WOOL_REGEN_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.BUY_REGULAR_UPGRADE,
-                        "Buy one regular upgrade in /sheepmerge upgrade")) {
+                        "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade")) {
                     break;
                 }
                 if (upgradeWoolRegen(player)) {
@@ -8106,7 +8106,7 @@ public final class SheepMergeManager {
             }
             case HIGHER_TIER_CHANCE_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.BUY_REGULAR_UPGRADE,
-                        "Buy one regular upgrade in /sheepmerge upgrade")) {
+                        "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade")) {
                     break;
                 }
                 int level = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
@@ -8296,7 +8296,7 @@ public final class SheepMergeManager {
         switch (slot) {
             case PRESTIGE_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 int gained = prestige(player);
@@ -8309,7 +8309,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_DOUBLE_POINTS_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 if (getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL) {
@@ -8325,7 +8325,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_HIGHER_MAX_LEVEL_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 if (upgradePrestigeHigherMaxLevel(player)) {
@@ -8337,7 +8337,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_START_EGGS_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 if (upgradePrestigeStartEggs(player)) {
@@ -8349,7 +8349,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_EGG_CAP_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 if (upgradePrestigeEggCap(player)) {
@@ -8361,7 +8361,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_BASE_SPAWN_TIER_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 if (getBaseSpawnTierLevel(player) >= SheepTier.RAINBOW.getLevel()) {
@@ -8377,7 +8377,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_QUEST_REWARD_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 if (getPrestigeQuestRewardLevel(player) >= PRESTIGE_QUEST_REWARD_MAX_LEVEL) {
@@ -8396,7 +8396,7 @@ public final class SheepMergeManager {
             }
             case PRESTIGE_REFUND_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
-                        "In Prestige menu, click Prestige once")) {
+                        "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
                     break;
                 }
                 long refundRemaining = getPrestigeRefundRemainingMs(player);
