@@ -286,6 +286,7 @@ public final class SheepMergeManager {
     private static final double SHEEP_RESCUE_EDGE_MARGIN = 0.60D;
     private static final double SHEEP_FALL_TRIGGER_EDGE_MARGIN = 0.25D;
     private static final double SHEEP_FALL_TRIGGER_Y = FARM_BASE_Y + 1.05D;
+    private static final double PLAYER_FALL_RECOVERY_TRIGGER_Y = FARM_BASE_Y - 2.0D;
     private static final long RAINBOW_ANIMATION_STEP_MS = 220L;
     private static final org.bukkit.DyeColor[] RAINBOW_ANIMATION_COLORS = {
             org.bukkit.DyeColor.RED,
@@ -4831,6 +4832,27 @@ public final class SheepMergeManager {
             return;
         }
         sheep.getPersistentDataContainer().set(getNextEatKey(), PersistentDataType.LONG, timestamp);
+    }
+
+    public static void recoverPlayerIfFallenFromPlatform(Player player) {
+        if (player == null || !player.isOnline() || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        org.bukkit.Location location = player.getLocation();
+        if (location == null || location.getY() > PLAYER_FALL_RECOVERY_TRIGGER_Y) {
+            return;
+        }
+
+        org.bukkit.Location target = new org.bukkit.Location(
+                player.getWorld(),
+                FARM_CENTER_X,
+                FARM_BASE_Y + 1.0D,
+                FARM_CENTER_Z,
+                location.getYaw(),
+                location.getPitch());
+        player.teleport(target);
+        player.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
+        player.setFallDistance(0.0F);
     }
 
     public static void updateSheepName(Sheep sheep) {

@@ -96,6 +96,7 @@ public class SheepMergePlugin extends JavaPlugin {
                 }
             }
             for (Player player : getServer().getOnlinePlayers()) {
+                SheepMergeManager.recoverPlayerIfFallenFromPlatform(player);
                 SheepMergeManager.updateCarriedSheepPosition(player);
             }
         }, fastTickInterval, fastTickInterval);
