@@ -377,8 +377,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             applyConfiguredSpawn(world);
-            player.teleportAsync(getConfiguredFarmTeleportLocation(world));
-            player.sendMessage("You were teleported to your sheep farm world.");
+            teleportPlayerToConfiguredSpawnAsync(player, world,
+                    () -> player.sendMessage("You were teleported to your sheep farm world."),
+                    "Unable to teleport to your sheep farm world right now.");
         });
         return true;
     }
@@ -627,18 +628,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
 
             applyConfiguredSpawn(ownerWorld);
-            player.teleportAsync(getConfiguredFarmTeleportLocation(ownerWorld));
-            player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
-            player.sendMessage("Use /sheepmerge to return to your own farm.");
-            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
-                    () -> SheepMergeManager.updateVisitFarmBossBar(player),
-                    2L);
-            player.sendTitle(
-                    SheepMergeManager.color("&eVisiting " + owner.getName()),
-                    SheepMergeManager.color("&7Use /sheepmerge to return home"),
-                    10,
-                    60,
-                    10);
+            teleportPlayerToConfiguredSpawnAsync(player, ownerWorld, () -> {
+                player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
+                player.sendMessage("Use /sheepmerge to return to your own farm.");
+                Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
+                        () -> SheepMergeManager.updateVisitFarmBossBar(player),
+                        2L);
+                player.sendTitle(
+                        SheepMergeManager.color("&eVisiting " + owner.getName()),
+                        SheepMergeManager.color("&7Use /sheepmerge to return home"),
+                        10,
+                        60,
+                        10);
+            }, "Unable to teleport to that farm world right now.");
         });
         return true;
     }
@@ -1730,7 +1732,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (existing != null) {
             initializeManagedWorldState(existing, false);
             if (callback != null) {
-                callback.accept(existing);
+                if (SheepMergePlugin.instance == null) {
+                    callback.accept(existing);
+                } else {
+                    Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
+                            () -> callback.accept(existing),
+                            1L);
+                }
             }
             return;
         }
@@ -1752,7 +1760,35 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         Bukkit.getScheduler().runTask(SheepMergePlugin.instance, () -> {
             World world = ensureFarmWorld(worldName);
-            completeFarmWorldAsync(worldName, world);
+            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
+                    () -> completeFarmWorldAsync(worldName, world),
+                    1L);
+        });
+    }
+
+    private static void teleportPlayerToConfiguredSpawnAsync(Player player, World world, Runnable onSuccess,
+            String failureMessage) {
+        if (player == null || world == null) {
+            return;
+        }
+        player.teleportAsync(getConfiguredFarmTeleportLocation(world)).whenComplete((success, throwable) -> {
+            if (SheepMergePlugin.instance == null) {
+                return;
+            }
+            Bukkit.getScheduler().runTask(SheepMergePlugin.instance, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+                if (throwable == null && Boolean.TRUE.equals(success)) {
+                    if (onSuccess != null) {
+                        onSuccess.run();
+                    }
+                    return;
+                }
+                if (failureMessage != null && !failureMessage.isBlank()) {
+                    player.sendMessage(failureMessage);
+                }
+            });
         });
     }
 
