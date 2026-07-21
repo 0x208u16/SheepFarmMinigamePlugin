@@ -139,6 +139,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> autoShearEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> pausedAutoShearRemainingMsByPlayer = new HashMap<>();
     private static final Map<UUID, Long> nextAutoShearAtByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastTierBoostSoundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastAbilityAuraSoundTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> prestigeTitleReminderShownByPlayer = new HashMap<>();
@@ -376,6 +377,7 @@ public final class SheepMergeManager {
     private static int AUTOMATION_CONDITION_MIN_READY_SHEEP_FOR_SHEAR = 1;
     private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
     private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
+    private static final long TIER_BOOST_SOUND_COOLDOWN_MS = 175L;
     private static final long BACKUP_AUTOMATIC_PERMANENT_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L;
     private static final long BACKUP_AUTOMATIC_BUFFER_INTERVAL_MS = 24L * 60L * 60L * 1000L;
     private static final int BACKUP_AUTOMATIC_BUFFER_MAX_FILES = 7;
@@ -4452,6 +4454,7 @@ public final class SheepMergeManager {
         autoShearEnabledByPlayer.remove(id);
         pausedAutoShearRemainingMsByPlayer.remove(id);
         nextAutoShearAtByPlayer.remove(id);
+        lastTierBoostSoundTimestampByPlayer.remove(id);
         EGG_MODULE.clearRuntimeState(id);
         lastSpawnLimitWarningTimestampByPlayer.remove(id);
         comboScoreByPlayer.remove(id);
@@ -5179,8 +5182,22 @@ public final class SheepMergeManager {
                 sheep.getLocation().add(0, 0.7, 0), 12, 0.25, 0.2, 0.25, 0.02);
         showOverlay(player, accent("Tier Booster triggered: " + currentTier.getDisplayName()
                 + color(" &7-> ") + upgradedTier.getDisplayName()));
-        playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.9f, 1.45f);
+        playTierBoostProcSound(player);
         return true;
+    }
+
+    private static void playTierBoostProcSound(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long lastPlayed = lastTierBoostSoundTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastPlayed < TIER_BOOST_SOUND_COOLDOWN_MS) {
+            return;
+        }
+        lastTierBoostSoundTimestampByPlayer.put(playerId, now);
+        playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.35f, 0.95f);
     }
 
     public static String buildTopPointsText(int maxEntries) {
@@ -6002,6 +6019,7 @@ public final class SheepMergeManager {
         pausedJackpotShearsRemainingMsByPlayer.clear();
         pausedAutoMergeRemainingMsByPlayer.clear();
         pausedAutoShearRemainingMsByPlayer.clear();
+        lastTierBoostSoundTimestampByPlayer.clear();
         comboDecayUpgradeByPlayer.clear();
         comboMaxUpgradeByPlayer.clear();
         comboGainUpgradeByPlayer.clear();
