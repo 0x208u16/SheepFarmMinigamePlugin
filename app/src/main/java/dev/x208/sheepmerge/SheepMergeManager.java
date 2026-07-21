@@ -203,7 +203,7 @@ public final class SheepMergeManager {
     private static final Random RANDOM = new Random();
     private static final int BASE_SHEEP_LIMIT = 10;
     private static final int MAX_SHEEP_LIMIT = 50;
-    private static final int SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT = 100;
+    private static final int SACRIFICE_UNLOCK_MAX_SHEEP_BONUS = 50;
     private static final int LIMIT_UPGRADE_STEP = 5;
     private static int LIMIT_UPGRADE_COST = 16;
     private static final int BASE_EGG_INTERVAL_SECONDS = 10;
@@ -1790,7 +1790,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
-        if (getPlayerLimit(player) < MAX_SHEEP_LIMIT && upgradeLimit(player)) {
+        if (getPlayerLimit(player) < getMaxSheepLimit(player.getUniqueId()) && upgradeLimit(player)) {
             return true;
         }
         if (getEggSpeedLevel(player) < getEggSpeedMaxLevel(player) && upgradeEggSpeed(player)) {
@@ -3690,7 +3690,7 @@ public final class SheepMergeManager {
             return BigInteger.valueOf(-1L);
         }
         BigInteger minimum = null;
-        if (getPlayerLimit(player) < MAX_SHEEP_LIMIT) {
+        if (getPlayerLimit(player) < getMaxSheepLimit(player.getUniqueId())) {
             minimum = minPositive(minimum, getUpgradeCost(player));
         }
         if (getEggSpeedLevel(player) < getEggSpeedMaxLevel(player)) {
@@ -6556,7 +6556,7 @@ public final class SheepMergeManager {
 
     private static int getMaxSheepLimit(UUID playerId) {
         return hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_MAX_SHEEP_100)
-                ? SACRIFICE_UNLOCK_MAX_SHEEP_LIMIT
+                ? MAX_SHEEP_LIMIT + SACRIFICE_UNLOCK_MAX_SHEEP_BONUS
                 : MAX_SHEEP_LIMIT;
     }
 
@@ -7330,16 +7330,17 @@ public final class SheepMergeManager {
                         "Keep points for utility unlocks")));
         int limitLevel = getLimitUpgradeLevel(player);
         int currentLimit = getPlayerLimit(player);
-        boolean limitMaxed = currentLimit >= MAX_SHEEP_LIMIT;
+        int maxLimit = getMaxSheepLimit(player.getUniqueId());
+        boolean limitMaxed = currentLimit >= maxLimit;
         BigInteger limitCost = getUpgradeCost(player);
         inventory.setItem(LIMIT_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
                 "Sheep Limit",
                 List.of(
-                        "Level: " + limitLevel + " / " + ((MAX_SHEEP_LIMIT - BASE_SHEEP_LIMIT) / LIMIT_UPGRADE_STEP),
-                        "Current limit: " + currentLimit + " / " + MAX_SHEEP_LIMIT,
+                        "Level: " + limitLevel + " / " + ((maxLimit - BASE_SHEEP_LIMIT) / LIMIT_UPGRADE_STEP),
+                        "Current limit: " + currentLimit + " / " + maxLimit,
                         "Next: " + currentLimit + " -> "
-                                + Math.min(MAX_SHEEP_LIMIT, currentLimit + getLimitUpgradeStep()),
+                                + Math.min(maxLimit, currentLimit + getLimitUpgradeStep()),
                         limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " points",
                         limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
@@ -7630,7 +7631,7 @@ public final class SheepMergeManager {
                         "Buy one regular upgrade in /sheepmerge upgrade")) {
                     break;
                 }
-                if (getPlayerLimit(player) >= MAX_SHEEP_LIMIT) {
+                if (getPlayerLimit(player) >= getMaxSheepLimit(player.getUniqueId())) {
                     player.sendMessage(warning("Sheep limit maxed."));
                 } else if (upgradeLimit(player)) {
                     playUpgradeSound(player);
@@ -8448,8 +8449,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
-                        "No regular upgrade resets on prestige",
-                        "Can be purchased in any order")));
+                        "No regular upgrade resets on prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_COMBO_RESETS_SLOT, MenuItemFactory.create(
                 Material.BLAZE_POWDER,
@@ -8458,8 +8458,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
-                        "No combo upgrade resets on prestige",
-                        "Can be purchased in any order")));
+                        "No combo upgrade resets on prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
@@ -8468,8 +8467,7 @@ public final class SheepMergeManager {
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
-                        "No shear shop resets on prestige",
-                        "Can be purchased in any order")));
+                        "No shear shop resets on prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
@@ -8479,18 +8477,16 @@ public final class SheepMergeManager {
                                 ? "UNLOCKED"
                                 : "LOCKED"),
                         "Adds +1 egg speed max level",
-                        "Allows 1 egg per second",
-                        "Can be purchased in any order")));
+                        "Allows 1 egg per second")));
 
         inventory.setItem(SACRIFICE_UNLOCK_MAX_SHEEP_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
-                "Unlock 5: 100 Sheep Cap",
+                "Unlock 5: +50 Sheep Cap",
                 List.of(
                         "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100)
                                 ? "UNLOCKED"
                                 : "LOCKED"),
-                        "Raises max sheep limit to 100",
-                        "Can be purchased in any order")));
+                        "Raises max sheep limit by +50")));
 
         inventory.setItem(SACRIFICE_REFUND_SLOT, MenuItemFactory.create(
                 Material.MILK_BUCKET,
