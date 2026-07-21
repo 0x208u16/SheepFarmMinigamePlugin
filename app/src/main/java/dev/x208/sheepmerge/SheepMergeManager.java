@@ -183,6 +183,12 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> sacrificeUnlocksBoughtByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> scoreboardShowSacrificePointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> scoreboardShowQuestProgressByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> scoreboardShowAbilityStatusByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastOutOfEggWarningTimestampByPlayer = new HashMap<>();
     private static final String TOP_POINTS_DISPLAY_WORLD_KEY = "topPointsDisplay.world";
@@ -388,6 +394,7 @@ public final class SheepMergeManager {
     public static final String COMBO_SHOP_MENU_TITLE = "Combo Upgrades";
     public static final String AUTOMATION_MENU_TITLE = "Automation Upgrades";
     public static final String SACRIFICE_MENU_TITLE = "Sacrifice Unlocks";
+    public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
     public static final int WOOL_REGEN_UPGRADE_SLOT = 14;
@@ -450,6 +457,13 @@ public final class SheepMergeManager {
     public static final int SACRIFICE_UNLOCK_MAX_SHEEP_SLOT = 15;
     public static final int SACRIFICE_REFUND_SLOT = 24;
     public static final int SACRIFICE_BACK_TO_UPGRADES_SLOT = 26;
+    public static final int SCOREBOARD_LAYOUT_SLOT = 10;
+    public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
+    public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 14;
+    public static final int SCOREBOARD_SACRIFICE_POINTS_SLOT = 16;
+    public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 20;
+    public static final int SCOREBOARD_ABILITIES_SLOT = 22;
+    public static final int SCOREBOARD_BACK_SLOT = 26;
 
     private static final int SACRIFICE_UNLOCK_NO_REGULAR_RESETS = 1;
     private static final int SACRIFICE_UNLOCK_NO_COMBO_RESETS = 2;
@@ -3920,6 +3934,12 @@ public final class SheepMergeManager {
         automationSlowAutoShearEnabledByPlayer.remove(id);
         automationAutoSpawnEnabledByPlayer.remove(id);
         automationAutoPrestigeEnabledByPlayer.remove(id);
+        scoreboardLayoutModeByPlayer.remove(id);
+        scoreboardShowQuestPointsByPlayer.remove(id);
+        scoreboardShowAutomationPointsByPlayer.remove(id);
+        scoreboardShowSacrificePointsByPlayer.remove(id);
+        scoreboardShowQuestProgressByPlayer.remove(id);
+        scoreboardShowAbilityStatusByPlayer.remove(id);
         sacrificePointsByPlayer.remove(id);
         sacrificeUnlocksBoughtByPlayer.remove(id);
         nextAutomationPointAtByPlayer.remove(id);
@@ -4591,6 +4611,49 @@ public final class SheepMergeManager {
             builder.append("\nNo scores yet");
         }
         return builder.toString();
+    }
+
+    public static List<String> getTopPointsLines(int maxEntries) {
+        List<String> lines = new ArrayList<>();
+        final int limit = Math.max(1, maxEntries);
+        List<Map.Entry<UUID, BigInteger>> entries = pointsByPlayer.entrySet().stream()
+                .sorted((left, right) -> {
+                    int pointsCompare = right.getValue().compareTo(left.getValue());
+                    if (pointsCompare != 0) {
+                        return pointsCompare;
+                    }
+
+                    String leftName = Bukkit.getOfflinePlayer(left.getKey()).getName();
+                    String rightName = Bukkit.getOfflinePlayer(right.getKey()).getName();
+                    String leftSafeName = leftName == null || leftName.isBlank()
+                            ? left.getKey().toString().substring(0, 8)
+                            : leftName;
+                    String rightSafeName = rightName == null || rightName.isBlank()
+                            ? right.getKey().toString().substring(0, 8)
+                            : rightName;
+
+                    int nameCompare = leftSafeName.compareToIgnoreCase(rightSafeName);
+                    if (nameCompare != 0) {
+                        return nameCompare;
+                    }
+                    return left.getKey().compareTo(right.getKey());
+                })
+                .limit(limit)
+                .toList();
+
+        int rank = 1;
+        for (Map.Entry<UUID, BigInteger> entry : entries) {
+            String name = Bukkit.getOfflinePlayer(entry.getKey()).getName();
+            if (name == null || name.isBlank()) {
+                name = entry.getKey().toString().substring(0, 8);
+            }
+            lines.add(rank + ". " + name + " - " + formatPoints(entry.getValue()));
+            rank++;
+        }
+        if (lines.isEmpty()) {
+            lines.add("No scores yet.");
+        }
+        return lines;
     }
 
     public static boolean spawnOrMoveTopPointsDisplay(Player player) {
@@ -5282,6 +5345,12 @@ public final class SheepMergeManager {
         automationSlowAutoShearEnabledByPlayer.clear();
         automationAutoSpawnEnabledByPlayer.clear();
         automationAutoPrestigeEnabledByPlayer.clear();
+        scoreboardLayoutModeByPlayer.clear();
+        scoreboardShowQuestPointsByPlayer.clear();
+        scoreboardShowAutomationPointsByPlayer.clear();
+        scoreboardShowSacrificePointsByPlayer.clear();
+        scoreboardShowQuestProgressByPlayer.clear();
+        scoreboardShowAbilityStatusByPlayer.clear();
         sacrificePointsByPlayer.clear();
         sacrificeUnlocksBoughtByPlayer.clear();
         for (BossBar bar : visitFarmBossBarByPlayer.values()) {
@@ -7242,6 +7311,126 @@ public final class SheepMergeManager {
         return SACRIFICE_MENU_TITLE.equals(title);
     }
 
+    public static boolean isScoreboardMenuTitle(String title) {
+        return SCOREBOARD_MENU_TITLE.equals(title);
+    }
+
+    private static int getScoreboardLayoutMode(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        return Math.max(0, Math.min(1, scoreboardLayoutModeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+    }
+
+    private static boolean shouldShowScoreboardQuestPoints(Player player) {
+        return player != null && scoreboardShowQuestPointsByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    private static boolean shouldShowScoreboardAutomationPoints(Player player) {
+        return player != null && scoreboardShowAutomationPointsByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    private static boolean shouldShowScoreboardSacrificePoints(Player player) {
+        return player != null && scoreboardShowSacrificePointsByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    private static boolean shouldShowScoreboardQuestProgress(Player player) {
+        return player != null && scoreboardShowQuestProgressByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    private static boolean shouldShowScoreboardAbilityStatus(Player player) {
+        return player != null && scoreboardShowAbilityStatusByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static void openScoreboardMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, SCOREBOARD_MENU_TITLE);
+        int layoutMode = getScoreboardLayoutMode(player);
+        inventory.setItem(SCOREBOARD_LAYOUT_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Layout",
+                List.of(
+                        "Current: " + (layoutMode == 0 ? "Detailed" : "Compact"),
+                        "Detailed: full sections",
+                        "Compact: summary only",
+                        "Click: Switch layout")));
+
+        inventory.setItem(SCOREBOARD_QUEST_POINTS_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quest Points",
+                List.of(
+                        "Status: " + (shouldShowScoreboardQuestPoints(player) ? "Shown" : "Hidden"),
+                        shouldShowScoreboardQuestPoints(player) ? "Click: Hide" : "Click: Show")));
+
+        inventory.setItem(SCOREBOARD_AUTOMATION_POINTS_SLOT, MenuItemFactory.create(
+                Material.REDSTONE,
+                "Automation Points",
+                List.of(
+                        "Status: " + (shouldShowScoreboardAutomationPoints(player) ? "Shown" : "Hidden"),
+                        shouldShowScoreboardAutomationPoints(player) ? "Click: Hide" : "Click: Show")));
+
+        inventory.setItem(SCOREBOARD_SACRIFICE_POINTS_SLOT, MenuItemFactory.create(
+                Material.TOTEM_OF_UNDYING,
+                "Sacrifice Points",
+                List.of(
+                        "Status: " + (shouldShowScoreboardSacrificePoints(player) ? "Shown" : "Hidden"),
+                        shouldShowScoreboardSacrificePoints(player) ? "Click: Hide" : "Click: Show")));
+
+        inventory.setItem(SCOREBOARD_QUEST_PROGRESS_SLOT, MenuItemFactory.create(
+                Material.MAP,
+                "Quest Progress",
+                List.of(
+                        "Status: " + (shouldShowScoreboardQuestProgress(player) ? "Shown" : "Hidden"),
+                        shouldShowScoreboardQuestProgress(player) ? "Click: Hide" : "Click: Show")));
+
+        inventory.setItem(SCOREBOARD_ABILITIES_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Ability Status",
+                List.of(
+                        "Status: " + (shouldShowScoreboardAbilityStatus(player) ? "Shown" : "Hidden"),
+                        shouldShowScoreboardAbilityStatus(player) ? "Click: Hide" : "Click: Show")));
+
+        inventory.setItem(SCOREBOARD_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Open upgrades")));
+
+        player.openInventory(inventory);
+    }
+
+    public static void handleScoreboardMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        switch (slot) {
+            case SCOREBOARD_LAYOUT_SLOT ->
+                scoreboardLayoutModeByPlayer.put(playerId, getScoreboardLayoutMode(player) == 0 ? 1 : 0);
+            case SCOREBOARD_QUEST_POINTS_SLOT -> scoreboardShowQuestPointsByPlayer.put(playerId,
+                    !shouldShowScoreboardQuestPoints(player));
+            case SCOREBOARD_AUTOMATION_POINTS_SLOT -> scoreboardShowAutomationPointsByPlayer.put(playerId,
+                    !shouldShowScoreboardAutomationPoints(player));
+            case SCOREBOARD_SACRIFICE_POINTS_SLOT -> scoreboardShowSacrificePointsByPlayer.put(playerId,
+                    !shouldShowScoreboardSacrificePoints(player));
+            case SCOREBOARD_QUEST_PROGRESS_SLOT -> scoreboardShowQuestProgressByPlayer.put(playerId,
+                    !shouldShowScoreboardQuestProgress(player));
+            case SCOREBOARD_ABILITIES_SLOT -> scoreboardShowAbilityStatusByPlayer.put(playerId,
+                    !shouldShowScoreboardAbilityStatus(player));
+            case SCOREBOARD_BACK_SLOT -> {
+                openUpgradeMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+        saveData();
+        updatePointsScoreboard(player);
+        openScoreboardMenu(player);
+    }
+
     public static void handleUpgradeMenuClick(Player player, int slot) {
         if (player == null) {
             return;
@@ -8945,6 +9134,10 @@ public final class SheepMergeManager {
         return label + ": " + (complete ? "done" : (progress + "/" + target));
     }
 
+    private static String makeScoreboardSpacer(int index) {
+        return " ".repeat(Math.max(1, index));
+    }
+
     private static void renderPointsScoreboard(Player player, Scoreboard scoreboard, Objective objective) {
         if (player == null || scoreboard == null || objective == null) {
             return;
@@ -8955,29 +9148,54 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        objective.getScore("Points: " + formatPoints(getPlayerPointsBig(player))).setScore(15);
-        objective.getScore("Prestige Lv: " + getPrestigeLevel(player)).setScore(14);
-        objective.getScore("Prestige Pts: " + formatPoints(getPrestigePoints(player))).setScore(13);
-        objective.getScore(" ").setScore(12);
-        objective.getScore("Quest Reset: " + formatDuration(getQuestResetRemainingMs(player))).setScore(11);
-        objective.getScore(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
-                QUEST_SHEARS_TARGET, questShearsCompleteByPlayer.getOrDefault(playerId, false))).setScore(10);
-        objective.getScore(getQuestScoreLine("Spawn", questSpawnsByPlayer.getOrDefault(playerId, 0),
-                QUEST_SPAWNS_TARGET, questSpawnsCompleteByPlayer.getOrDefault(playerId, false))).setScore(9);
-        objective.getScore(getQuestScoreLine("Merge", questMergesByPlayer.getOrDefault(playerId, 0),
-                QUEST_MERGES_TARGET, questMergesCompleteByPlayer.getOrDefault(playerId, false))).setScore(8);
-        objective.getScore("  ").setScore(7);
-        objective.getScore("Abilities").setScore(6);
-        objective.getScore(getCountAbilityScoreLine("Lucky", activeLuckyBurstUsesByPlayer,
-                luckyBurstEnabledByPlayer, playerId)).setScore(5);
-        objective.getScore(getAbilityScoreLine("Wool", activeWoolRushUntilByPlayer,
-                pausedWoolRushRemainingMsByPlayer, playerId)).setScore(4);
-        objective.getScore(getAbilityScoreLine("Jackpot", activeJackpotShearsUntilByPlayer,
-                pausedJackpotShearsRemainingMsByPlayer, playerId)).setScore(3);
-        objective.getScore(getCountAbilityScoreLine("Merge", activeAutoMergeUsesByPlayer,
-                autoMergeEnabledByPlayer, playerId)).setScore(2);
-        objective.getScore(getCountAbilityScoreLine("Shear", activeAutoShearUsesByPlayer,
-                autoShearEnabledByPlayer, playerId)).setScore(1);
+        List<String> lines = new ArrayList<>();
+        lines.add("Points: " + formatPoints(getPlayerPointsBig(player)));
+        lines.add("Prestige Lv: " + getPrestigeLevel(player));
+        lines.add("Prestige Pts: " + formatPoints(getPrestigePoints(player)));
+
+        if (shouldShowScoreboardQuestPoints(player)) {
+            lines.add("Quest Pts: " + formatPoints(getQuestPoints(player)));
+        }
+        if (shouldShowScoreboardAutomationPoints(player)) {
+            lines.add("Auto Pts: " + formatPoints(getAutomationPoints(player)));
+        }
+        if (shouldShowScoreboardSacrificePoints(player)) {
+            lines.add("Sac Pts: " + formatPoints(getSacrificePoints(player)));
+        }
+
+        boolean compact = getScoreboardLayoutMode(player) == 1;
+
+        if (!compact && shouldShowScoreboardQuestProgress(player)) {
+            lines.add(makeScoreboardSpacer(lines.size() + 1));
+            lines.add("Quest Reset: " + formatDuration(getQuestResetRemainingMs(player)));
+            lines.add(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
+                    QUEST_SHEARS_TARGET, questShearsCompleteByPlayer.getOrDefault(playerId, false)));
+            lines.add(getQuestScoreLine("Spawn", questSpawnsByPlayer.getOrDefault(playerId, 0),
+                    QUEST_SPAWNS_TARGET, questSpawnsCompleteByPlayer.getOrDefault(playerId, false)));
+            lines.add(getQuestScoreLine("Merge", questMergesByPlayer.getOrDefault(playerId, 0),
+                    QUEST_MERGES_TARGET, questMergesCompleteByPlayer.getOrDefault(playerId, false)));
+        }
+
+        if (!compact && shouldShowScoreboardAbilityStatus(player)) {
+            lines.add(makeScoreboardSpacer(lines.size() + 1));
+            lines.add("Abilities");
+            lines.add(getCountAbilityScoreLine("Lucky", activeLuckyBurstUsesByPlayer,
+                    luckyBurstEnabledByPlayer, playerId));
+            lines.add(getAbilityScoreLine("Wool", activeWoolRushUntilByPlayer,
+                    pausedWoolRushRemainingMsByPlayer, playerId));
+            lines.add(getAbilityScoreLine("Jackpot", activeJackpotShearsUntilByPlayer,
+                    pausedJackpotShearsRemainingMsByPlayer, playerId));
+            lines.add(getCountAbilityScoreLine("Merge", activeAutoMergeUsesByPlayer,
+                    autoMergeEnabledByPlayer, playerId));
+            lines.add(getCountAbilityScoreLine("Shear", activeAutoShearUsesByPlayer,
+                    autoShearEnabledByPlayer, playerId));
+        }
+
+        int score = Math.min(15, lines.size());
+        for (int index = 0; index < lines.size() && score > 0; index++) {
+            objective.getScore(lines.get(index)).setScore(score);
+            score--;
+        }
 
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (online == null) {
@@ -9126,6 +9344,12 @@ public final class SheepMergeManager {
             dataConfig.set("automationSlowAutoShearEnabled", null);
             dataConfig.set("automationAutoSpawnEnabled", null);
             dataConfig.set("automationAutoPrestigeEnabled", null);
+            dataConfig.set("scoreboardLayoutMode", null);
+            dataConfig.set("scoreboardShowQuestPoints", null);
+            dataConfig.set("scoreboardShowAutomationPoints", null);
+            dataConfig.set("scoreboardShowSacrificePoints", null);
+            dataConfig.set("scoreboardShowQuestProgress", null);
+            dataConfig.set("scoreboardShowAbilityStatus", null);
             dataConfig.set("sacrificePoints", null);
             dataConfig.set("sacrificeUnlocksBought", null);
             dataConfig.set("farmSheep", null);
@@ -9328,6 +9552,24 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : automationAutoPrestigeEnabledByPlayer.entrySet()) {
                 dataConfig.set("automationAutoPrestigeEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : scoreboardLayoutModeByPlayer.entrySet()) {
+                dataConfig.set("scoreboardLayoutMode." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : scoreboardShowQuestPointsByPlayer.entrySet()) {
+                dataConfig.set("scoreboardShowQuestPoints." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : scoreboardShowAutomationPointsByPlayer.entrySet()) {
+                dataConfig.set("scoreboardShowAutomationPoints." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : scoreboardShowSacrificePointsByPlayer.entrySet()) {
+                dataConfig.set("scoreboardShowSacrificePoints." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : scoreboardShowQuestProgressByPlayer.entrySet()) {
+                dataConfig.set("scoreboardShowQuestProgress." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : scoreboardShowAbilityStatusByPlayer.entrySet()) {
+                dataConfig.set("scoreboardShowAbilityStatus." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, BigInteger> entry : sacrificePointsByPlayer.entrySet()) {
                 dataConfig.set("sacrificePoints." + entry.getKey().toString(), entry.getValue().toString());
@@ -10082,6 +10324,72 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     automationAutoPrestigeEnabledByPlayer.put(uuid,
                             dataConfig.getBoolean("automationAutoPrestigeEnabled." + key, false));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardLayoutMode")) {
+            dataConfig.getConfigurationSection("scoreboardLayoutMode").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    int layoutMode = dataConfig.getInt("scoreboardLayoutMode." + key, 0);
+                    scoreboardLayoutModeByPlayer.put(uuid, Math.max(0, Math.min(1, layoutMode)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardShowQuestPoints")) {
+            dataConfig.getConfigurationSection("scoreboardShowQuestPoints").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    scoreboardShowQuestPointsByPlayer.put(uuid,
+                            dataConfig.getBoolean("scoreboardShowQuestPoints." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardShowAutomationPoints")) {
+            dataConfig.getConfigurationSection("scoreboardShowAutomationPoints").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    scoreboardShowAutomationPointsByPlayer.put(uuid,
+                            dataConfig.getBoolean("scoreboardShowAutomationPoints." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardShowSacrificePoints")) {
+            dataConfig.getConfigurationSection("scoreboardShowSacrificePoints").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    scoreboardShowSacrificePointsByPlayer.put(uuid,
+                            dataConfig.getBoolean("scoreboardShowSacrificePoints." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardShowQuestProgress")) {
+            dataConfig.getConfigurationSection("scoreboardShowQuestProgress").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    scoreboardShowQuestProgressByPlayer.put(uuid,
+                            dataConfig.getBoolean("scoreboardShowQuestProgress." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardShowAbilityStatus")) {
+            dataConfig.getConfigurationSection("scoreboardShowAbilityStatus").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    scoreboardShowAbilityStatusByPlayer.put(uuid,
+                            dataConfig.getBoolean("scoreboardShowAbilityStatus." + key, true));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
