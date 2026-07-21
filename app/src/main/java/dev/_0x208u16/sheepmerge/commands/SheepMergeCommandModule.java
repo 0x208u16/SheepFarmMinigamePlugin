@@ -1,0 +1,14 @@
+package dev._0x208u16.sheepmerge.commands;
+
+import java.util.List;
+
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+public interface SheepMergeCommandModule {
+    String root();
+
+    boolean execute(Player player, String[] args);
+
+    List<String> tabComplete(CommandSender sender, String[] args);
+}
