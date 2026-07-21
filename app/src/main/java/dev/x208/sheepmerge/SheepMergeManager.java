@@ -189,7 +189,6 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillPendingMaskByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextMenuStatRefreshAtByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
@@ -335,7 +334,6 @@ public final class SheepMergeManager {
     private static final long COMBO_FRENZY_EVENT_DURATION_MS = 60_000L;
     private static final double COMBO_FRENZY_MULTIPLIER = 10.0D;
     private static final long POINTS_OVERLAY_DISPLAY_DURATION_MS = 1_400L;
-    private static final long MENU_STAT_REFRESH_INTERVAL_MS = 5_000L;
     private static final double BASE_COMBO_DECAY_PER_SECOND = 1.3D;
     private static final double COMBO_DECAY_HIGH_LEVEL_SCALING = 2.2D;
     private static final double COMBO_BASE_MAX_SCORE = 100.0D;
@@ -4383,7 +4381,6 @@ public final class SheepMergeManager {
         nextAutomationAutoPrestigeAtByPlayer.remove(id);
         lastPointsOverlayByPlayer.remove(id);
         pointsOverlayExpiresAtByPlayer.remove(id);
-        nextMenuStatRefreshAtByPlayer.remove(id);
         removeComboBossBar(id);
         carriedSheepByPlayer.remove(id);
         resetFarmWorldForPlayer(id);
@@ -5898,7 +5895,6 @@ public final class SheepMergeManager {
         carriedSheepByPlayer.clear();
         liveSheepCountByWorld.clear();
         lastOutOfEggWarningTimestampByPlayer.clear();
-        nextMenuStatRefreshAtByPlayer.clear();
     }
 
     private static boolean writeBackupArchive(File destination) {
@@ -7971,51 +7967,439 @@ public final class SheepMergeManager {
             return;
         }
         String title = player.getOpenInventory().getTitle();
-        if (!isUpgradeMenuTitle(title)
-                && !isPrestigeMenuTitle(title)
-                && !isQuestMenuTitle(title)
-                && !isQuestUpgradesMenuTitle(title)
-                && !isShopMenuTitle(title)
-                && !isComboShopMenuTitle(title)
-                && !isAutomationMenuTitle(title)
-                && !isSacrificeMenuTitle(title)
-                && !isRebirthMenuTitle(title)
-                && !isRebirthTreeMenuTitle(title)
-                && !isScoreboardMenuTitle(title)) {
+        Inventory openInventory = player.getOpenInventory().getTopInventory();
+        if (openInventory == null) {
             return;
         }
-
-        UUID playerId = player.getUniqueId();
-        long now = System.currentTimeMillis();
-        long nextRefreshAt = nextMenuStatRefreshAtByPlayer.getOrDefault(playerId, 0L);
-        if (now < nextRefreshAt) {
-            return;
-        }
-        nextMenuStatRefreshAtByPlayer.put(playerId, now + MENU_STAT_REFRESH_INTERVAL_MS);
 
         if (isUpgradeMenuTitle(title)) {
-            openUpgradeMenu(player);
+            refreshOpenUpgradeMenuItems(player, openInventory);
         } else if (isPrestigeMenuTitle(title)) {
-            openPrestigeMenu(player);
+            refreshOpenPrestigeMenuItems(player, openInventory);
         } else if (isQuestMenuTitle(title)) {
-            openQuestMenu(player);
-        } else if (isQuestUpgradesMenuTitle(title)) {
-            openQuestUpgradesMenu(player);
-        } else if (isShopMenuTitle(title)) {
-            openShopMenu(player);
+            refreshOpenQuestMenuItems(player, openInventory);
         } else if (isComboShopMenuTitle(title)) {
-            openComboShopMenu(player);
-        } else if (isAutomationMenuTitle(title)) {
-            openAutomationMenu(player);
-        } else if (isSacrificeMenuTitle(title)) {
-            openSacrificeMenu(player);
-        } else if (isRebirthMenuTitle(title)) {
-            openRebirthMenu(player);
-        } else if (isRebirthTreeMenuTitle(title)) {
-            openRebirthTreeMenu(player);
-        } else if (isScoreboardMenuTitle(title)) {
-            openScoreboardMenu(player);
+            refreshOpenComboMenuItems(player, openInventory);
         }
+    }
+
+    private static void refreshOpenUpgradeMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        int limitLevel = getLimitUpgradeLevel(player);
+        int currentLimit = getPlayerLimit(player);
+        int maxLimit = getMaxSheepLimit(player.getUniqueId());
+        boolean limitMaxed = currentLimit >= maxLimit;
+        BigInteger limitCost = getUpgradeCost(player);
+        setMenuItemIfChanged(inventory, LIMIT_UPGRADE_SLOT, MenuItemFactory.create(
+                Material.OAK_FENCE,
+                "Sheep Limit",
+                List.of(
+                        "Level: " + limitLevel + " / " + ((maxLimit - BASE_SHEEP_LIMIT) / LIMIT_UPGRADE_STEP),
+                        "Current limit: " + currentLimit + " / " + maxLimit,
+                        "Next: " + currentLimit + " -> "
+                                + Math.min(maxLimit, currentLimit + getLimitUpgradeStep()),
+                        limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " points",
+                        limitMaxed ? "Limit cap reached" : "Click to purchase")));
+
+        int eggLevel = getEggSpeedLevel(player);
+        int eggMaxLevel = getEggSpeedMaxLevel(player);
+        int eggCurrentSeconds = getEggIntervalSeconds(player);
+        int eggNextLevel = Math.min(eggMaxLevel, eggLevel + 1);
+        int eggNextSeconds = Math.max(MIN_EGG_INTERVAL_SECONDS, BASE_EGG_INTERVAL_SECONDS - eggNextLevel);
+        BigInteger eggCost = getEggSpeedUpgradeCost(player);
+        setMenuItemIfChanged(inventory, EGG_SPEED_UPGRADE_SLOT, MenuItemFactory.create(
+                Material.CLOCK,
+                "Faster Egg Spawn",
+                List.of(
+                        "Level: " + eggLevel + " / " + eggMaxLevel,
+                        "Current: " + eggCurrentSeconds + "s per egg",
+                        eggLevel >= eggMaxLevel
+                                ? "Next: MAXED"
+                                : "Next: " + eggCurrentSeconds + "s -> " + eggNextSeconds + "s",
+                        eggLevel >= eggMaxLevel ? "MAXED"
+                                : "Cost: " + formatPoints(eggCost) + " points",
+                        "Click to purchase")));
+
+        int woolLevel = getWoolRegenLevel(player);
+        int woolMaxLevel = getWoolRegenMaxLevel(player);
+        String woolCurrentCooldownPercent = getWoolCooldownPercentDisplayAtLevel(woolLevel);
+        String woolCurrentReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolLevel);
+        String woolCurrentFactor = getWoolCooldownFactorDisplayAtLevel(woolLevel);
+        int woolNextLevel = Math.min(woolMaxLevel, woolLevel + 1);
+        String woolNextCooldownPercent = getWoolCooldownPercentDisplayAtLevel(woolNextLevel);
+        String woolNextReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolNextLevel);
+        String woolNextFactor = getWoolCooldownFactorDisplayAtLevel(woolNextLevel);
+        BigInteger woolCost = getWoolRegenUpgradeCost(player);
+        setMenuItemIfChanged(inventory, WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.create(
+                Material.WHITE_WOOL,
+                "Faster Wool Regen",
+                List.of(
+                        "Level: " + woolLevel + " / " + woolMaxLevel,
+                        "Current: " + woolCurrentReductionPercent + "% reduced " + "(duration * " + woolCurrentFactor
+                                + ")",
+                        woolLevel >= woolMaxLevel
+                                ? "Next: MAXED"
+                                : "Next: " + woolCurrentCooldownPercent + "% -> " + woolNextCooldownPercent
+                                        + "% cooldown (" + woolNextReductionPercent + "% faster, x" + woolNextFactor
+                                        + ")",
+                        woolLevel >= woolMaxLevel
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(woolCost) + " points",
+                        "Click to purchase")));
+
+        int chanceLevel = getHigherTierChanceLevel(player);
+        int chanceMaxLevel = getHigherTierChanceMaxLevel(player);
+        int chanceCurrentPercent = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT, chanceLevel * 5);
+        int chanceNextLevel = Math.min(chanceMaxLevel, chanceLevel + 1);
+        int chanceNextPercent = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT, chanceNextLevel * 5);
+        BigInteger chanceCost = getHigherTierChanceUpgradeCost(player);
+        setMenuItemIfChanged(inventory, HIGHER_TIER_CHANCE_UPGRADE_SLOT, MenuItemFactory.create(
+                Material.GOLDEN_APPLE,
+                "Higher Tier Spawn Chance",
+                List.of(
+                        "Level: " + chanceLevel + " / " + chanceMaxLevel,
+                        "Current: " + chanceCurrentPercent + "% bonus chance",
+                        chanceLevel >= chanceMaxLevel
+                                ? "Next: MAXED"
+                                : "Next: " + chanceCurrentPercent + "% -> " + chanceNextPercent + "%",
+                        "Hard cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
+                        chanceLevel >= chanceMaxLevel ? "MAXED"
+                                : "Cost: " + formatPoints(chanceCost) + " points",
+                        "Click to purchase")));
+
+        setMenuItemIfChanged(inventory, PRESTIGE_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Prestige Upgrades",
+                List.of(
+                        "Prestige level: " + getPrestigeLevel(player),
+                        "Prestige points: " + formatPoints(getPrestigePoints(player)),
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, QUEST_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quests",
+                List.of(
+                        "Quest points: " + formatPoints(getQuestPoints(player)),
+                        "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
+                        "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                                + QUEST_SHEARS_TARGET,
+                        "Spawn " + questSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                                + QUEST_SPAWNS_TARGET,
+                        "Merge " + questMergesByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                                + QUEST_MERGES_TARGET,
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, SHOP_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.SHEARS,
+                "Shear Shop",
+                List.of(
+                        "Shear level: " + getShearShopLevel(player),
+                        "Points multiplier: x" + getShearPointMultiplier(player),
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, COMBO_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.BLAZE_POWDER,
+                "Combo Upgrades",
+                List.of(
+                        "Combo score: " + (int) Math.floor(getComboScore(player))
+                                + " / " + (int) Math.floor(getComboMaxScore(player)),
+                        "Points x" + formatComboMultiplier(getComboMultiplier(player, getComboScore(player))),
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.REDSTONE,
+                "Automation",
+                List.of(
+                        "Automation points: " + formatPoints(getAutomationPoints(player)),
+                        "Gain: +1 per " + formatDuration(AUTOMATION_POINT_INTERVAL_MS),
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, SACRIFICE_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.TOTEM_OF_UNDYING,
+                "Sacrifice",
+                List.of(
+                        "Sacrifice points: " + formatPoints(getSacrificePoints(player)),
+                        "Unlocks bought: " + getSacrificeUnlocksBought(player) + " / "
+                                + SACRIFICE_UNLOCK_MAX_SHEEP_100,
+                        "Click to open")));
+
+        int rebirthLevel = getRebirthLevel(player);
+        int affordableRebirths = getAffordableRebirthLevels(player);
+        int rebirthReward = getRebirthPointsRewardForNextLevels(rebirthLevel, affordableRebirths);
+        setMenuItemIfChanged(inventory, REBIRTH_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.DRAGON_EGG,
+                "Rebirth",
+                List.of(
+                        "Rebirth level: " + rebirthLevel,
+                        "Rebirth points: " + formatPoints(getRebirthPoints(player)),
+                        "Next cost: " + getRebirthCostInPrestigeLevels(rebirthLevel) + " prestige levels",
+                        "Consumes prestige levels and resets prestige progress",
+                        affordableRebirths > 0
+                                ? "Buy now: +" + affordableRebirths + " rebirth level(s), +"
+                                        + formatPoints(rebirthReward) + " rebirth points"
+                                : "Buy now: +0 rebirth level(s)",
+                        "Click to open")));
+    }
+
+    private static void refreshOpenPrestigeMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        int affordablePrestiges = getAffordablePrestigeLevels(player);
+        BigInteger totalCostForAffordable = getTotalPrestigeCostForNextLevels(getPrestigeLevel(player),
+                affordablePrestiges);
+        int rewardForAffordable = getPrestigePointsRewardForNextLevels(getPrestigeLevel(player), affordablePrestiges);
+        setMenuItemIfChanged(inventory, PRESTIGE_UPGRADE_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Prestige Reset",
+                List.of(
+                        "Current prestige: " + getPrestigeLevel(player),
+                        affordablePrestiges > 0
+                                ? "Buy now: +" + affordablePrestiges + " prestige level(s)"
+                                : "Buy now: +0 prestige level(s)",
+                        affordablePrestiges > 0
+                                ? "Gain prestige points: +" + formatPoints(rewardForAffordable)
+                                : "Gain prestige points: +0",
+                        "Next prestige cost: " + formatPoints(getPrestigeCostBig(player)) + " normal points",
+                        affordablePrestiges > 0
+                                ? "Total cost now: " + formatPoints(totalCostForAffordable) + " normal points"
+                                : "Need more points for next prestige",
+                        "Resets normal-point upgrades",
+                        "Click to prestige multiple")));
+
+        setMenuItemIfChanged(inventory, PRESTIGE_DOUBLE_POINTS_SLOT, MenuItemFactory.create(
+                Material.EMERALD,
+                "Double Points Chance",
+                List.of(
+                        "Level: " + getPrestigeDoublePointsChanceLevel(player) + " / "
+                                + PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
+                        "Chance: " + getDoublePointsChancePercent(player) + "%",
+                        getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getPrestigeDoublePointsCost(player))
+                                        + " prestige points",
+                        "Click to purchase")));
+
+        int baseSpawnTierLevel = getBaseSpawnTierLevel(player);
+        SheepTier baseSpawnTier = SheepTier.byLevel(baseSpawnTierLevel);
+        setMenuItemIfChanged(inventory, PRESTIGE_BASE_SPAWN_TIER_SLOT, MenuItemFactory.create(
+                Material.SHEEP_SPAWN_EGG,
+                "Higher Base Spawn Tier",
+                List.of(
+                        "Level: " + baseSpawnTierLevel + " / " + SheepTier.RAINBOW.getLevel(),
+                        "Current base tier: " + baseSpawnTier.getDisplayName(),
+                        baseSpawnTierLevel >= SheepTier.RAINBOW.getLevel()
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getPrestigeBaseSpawnTierCost(player)) + " prestige points",
+                        "Click to purchase")));
+
+        int questRewardLevel = getPrestigeQuestRewardLevel(player);
+        setMenuItemIfChanged(inventory, PRESTIGE_QUEST_REWARD_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quest Reward Boost",
+                List.of(
+                        "Level: " + questRewardLevel + " / " + PRESTIGE_QUEST_REWARD_MAX_LEVEL,
+                        "Quest rewards: +"
+                                + (int) Math.round(questRewardLevel * PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL * 100)
+                                + "%",
+                        questRewardLevel >= PRESTIGE_QUEST_REWARD_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getPrestigeQuestRewardCost(player)) + " prestige points",
+                        "Click to purchase")));
+
+        long refundRemaining = getPrestigeRefundRemainingMs(player);
+        int refundAmount = getPrestigeRefundAmount(player);
+        setMenuItemIfChanged(inventory, PRESTIGE_REFUND_SLOT, MenuItemFactory.create(
+                Material.BARRIER,
+                "Refund Prestige Upgrades",
+                List.of(
+                        "Refund amount: " + formatPoints(refundAmount) + " prestige points",
+                        refundRemaining > 0L ? "Cooldown: " + formatDuration(refundRemaining) : "Cooldown: ready",
+                        "Resets prestige shop upgrades",
+                        "Click to refund")));
+    }
+
+    private static void refreshOpenQuestMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        long remaining = getQuestResetRemainingMs(player);
+        boolean shearsComplete = questShearsCompleteByPlayer.getOrDefault(playerId, false);
+        boolean spawnsComplete = questSpawnsCompleteByPlayer.getOrDefault(playerId, false);
+        boolean mergesComplete = questMergesCompleteByPlayer.getOrDefault(playerId, false);
+        int currentQuestPoints = getQuestPoints(player);
+        int luckyCost = getQuestLuckyBurstCost(player);
+        int woolRushCost = getQuestWoolRushCost(player);
+        int jackpotCost = getQuestJackpotCost(player);
+        int autoMergeCost = getQuestAutoMergeCost(player);
+        int autoShearCost = getQuestAutoShearCost(player);
+        boolean luckyBurstGlint = isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+                playerId);
+        boolean woolRushGlint = isAbilityActive(activeWoolRushUntilByPlayer, playerId);
+        boolean jackpotGlint = isAbilityActive(activeJackpotShearsUntilByPlayer, playerId);
+        boolean autoMergeGlint = isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+                playerId);
+        boolean autoShearGlint = isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+                playerId);
+
+        setMenuItemIfChanged(inventory, QUEST_BOARD_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Quest Board",
+                List.of(
+                        "Quest points: " + formatPoints(getQuestPoints(player)),
+                        remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
+                        (shearsComplete ? "DONE " : "TODO ")
+                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SHEARS_TARGET
+                                + " (" + formatPoints(QUEST_SHEARS_REWARD) + " pts)",
+                        (spawnsComplete ? "DONE " : "TODO ")
+                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SPAWNS_TARGET
+                                + " (" + formatPoints(QUEST_SPAWNS_REWARD) + " pts)",
+                        (mergesComplete ? "DONE " : "TODO ")
+                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_MERGES_TARGET
+                                + " (" + formatPoints(QUEST_MERGES_REWARD) + " pts)")));
+
+        setMenuItemIfChanged(inventory, QUEST_ABILITY_LUCKY_BURST_SLOT, MenuItemFactory.create(
+                Material.ENDER_EYE,
+                "Lucky Burst",
+                List.of(
+                        "Cost: " + formatPoints(luckyCost) + " quest points",
+                        "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
+                        "Uses per activation: " + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
+                        "In stock: " + (currentQuestPoints >= luckyCost ? "yes" : "no"),
+                        getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
+                        getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+                                playerId)),
+                luckyBurstGlint));
+
+        setMenuItemIfChanged(inventory, QUEST_ABILITY_WOOL_RUSH_SLOT, MenuItemFactory.create(
+                Material.WHITE_WOOL,
+                "Wool Rush",
+                List.of(
+                        "Cost: " + formatPoints(woolRushCost) + " quest points",
+                        "Effect: 90% faster wool regen",
+                        "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
+                        "In stock: " + (currentQuestPoints >= woolRushCost ? "yes" : "no"),
+                        getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
+                        isAbilityActive(activeWoolRushUntilByPlayer, playerId)
+                                ? "Already active"
+                                : "Click to activate"),
+                woolRushGlint));
+
+        setMenuItemIfChanged(inventory, QUEST_ABILITY_JACKPOT_SHEARS_SLOT, MenuItemFactory.create(
+                Material.GOLD_INGOT,
+                "Jackpot Shears",
+                List.of(
+                        "Cost: " + formatPoints(jackpotCost) + " quest points",
+                        "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
+                        "Duration: "
+                                + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
+                        "In stock: " + (currentQuestPoints >= jackpotCost ? "yes" : "no"),
+                        getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
+                        isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
+                                ? "Already active"
+                                : "Click to activate"),
+                jackpotGlint));
+
+        setMenuItemIfChanged(inventory, QUEST_ABILITY_AUTO_MERGE_SLOT, MenuItemFactory.create(
+                Material.ANVIL,
+                "Auto Merge",
+                List.of(
+                        "Cost: " + formatPoints(autoMergeCost) + " quest points",
+                        "Effect: Instantly merges when you pick up a sheep",
+                        "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
+                        "In stock: " + (currentQuestPoints >= autoMergeCost ? "yes" : "no"),
+                        getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
+                        getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+                                playerId)),
+                autoMergeGlint));
+
+        setMenuItemIfChanged(inventory, QUEST_ABILITY_AUTO_SHEAR_SLOT, MenuItemFactory.create(
+                Material.SHEARS,
+                "Shear All Sheep",
+                List.of(
+                        "Cost: " + formatPoints(autoShearCost) + " quest points",
+                        "Effect: Shears every ready sheep in the farm",
+                        "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
+                        "In stock: " + (currentQuestPoints >= autoShearCost ? "yes" : "no"),
+                        getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
+                        getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+                                playerId)),
+                autoShearGlint));
+
+        setMenuItemIfChanged(inventory, QUEST_OPEN_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ENCHANTED_BOOK,
+                "Quest Upgrades",
+                List.of(
+                        "Duration Lv: " + getQuestUpgradeDurationLevel(player),
+                        "Power Lv: " + getQuestUpgradePowerLevel(player),
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, QUEST_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back To Upgrades",
+                List.of(
+                        "Quest points: " + formatPoints(getQuestPoints(player)),
+                        remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
+                        "Click to go back")));
+    }
+
+    private static void refreshOpenComboMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        int decayLevel = getComboDecayUpgradeLevel(player);
+        int gainLevel = getComboGainUpgradeLevel(player);
+        int maxLevel = getComboMaxUpgradeLevel(player);
+
+        setMenuItemIfChanged(inventory, COMBO_DECAY_SLOT, MenuItemFactory.create(
+                Material.CLOCK,
+                "Slower Combo Decay",
+                List.of(
+                        "Level: " + decayLevel + " / " + COMBO_DECAY_MAX_LEVEL,
+                        "Decay speed: " + (int) Math.round(getComboDecayMultiplier(player) * 100) + "%",
+                        decayLevel >= COMBO_DECAY_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getComboDecayUpgradeCost(player)) + " points",
+                        "Click to purchase")));
+
+        setMenuItemIfChanged(inventory, COMBO_MAX_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Maximum Combo",
+                List.of(
+                        "Level: " + maxLevel + " / " + COMBO_MAX_MAX_LEVEL,
+                        "Max score: " + (int) Math.floor(getComboMaxScore(player)),
+                        maxLevel >= COMBO_MAX_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getComboMaxUpgradePrestigeCost(player)) + " prestige points",
+                        "Click to purchase")));
+
+        setMenuItemIfChanged(inventory, COMBO_GAIN_SLOT, MenuItemFactory.create(
+                Material.EMERALD,
+                "Combo Gain Percentage",
+                List.of(
+                        "Level: " + gainLevel + " / " + COMBO_GAIN_MAX_LEVEL,
+                        "Combo gain boost: +" + (int) Math.round(gainLevel * COMBO_GAIN_PERCENT_PER_LEVEL) + "%",
+                        gainLevel >= COMBO_GAIN_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getComboGainUpgradeCost(player)) + " points",
+                        "Click to purchase")));
+    }
+
+    private static void setMenuItemIfChanged(Inventory inventory, int slot, ItemStack next) {
+        if (inventory == null || slot < 0 || slot >= inventory.getSize()) {
+            return;
+        }
+        ItemStack current = inventory.getItem(slot);
+        if (current == null && next == null) {
+            return;
+        }
+        if (current != null && next != null && current.isSimilar(next) && current.getAmount() == next.getAmount()) {
+            return;
+        }
+        inventory.setItem(slot, next);
     }
 
     private static int getScoreboardLayoutMode(Player player) {
