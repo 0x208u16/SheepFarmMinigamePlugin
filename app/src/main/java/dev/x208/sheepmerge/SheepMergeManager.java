@@ -186,6 +186,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> sacrificeUnlocksBoughtByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> sacrificeUnlockMaskByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> sacrificeUnlockPendingMaskByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
@@ -2911,6 +2912,36 @@ public final class SheepMergeManager {
         return mask & allUnlocksMask;
     }
 
+    private static int getSacrificeUnlockPendingMask(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
+        return normalizeSacrificeUnlockMask(sacrificeUnlockPendingMaskByPlayer.getOrDefault(playerId, 0));
+    }
+
+    private static boolean isSacrificeUnlockPending(UUID playerId, int unlockId) {
+        int unlockBit = getSacrificeUnlockBit(unlockId);
+        return playerId != null && unlockBit != 0 && (getSacrificeUnlockPendingMask(playerId) & unlockBit) != 0;
+    }
+
+    private static boolean isSacrificeUnlockActive(UUID playerId, int unlockId) {
+        return hasSacrificeUnlock(playerId, unlockId) && !isSacrificeUnlockPending(playerId, unlockId);
+    }
+
+    private static String sacrificeUnlockStatusLine(Player player, int unlockId) {
+        if (player == null) {
+            return "LOCKED";
+        }
+        UUID playerId = player.getUniqueId();
+        if (!hasSacrificeUnlock(playerId, unlockId)) {
+            return "LOCKED";
+        }
+        if (isSacrificeUnlockPending(playerId, unlockId)) {
+            return "PENDING NEXT PRESTIGE";
+        }
+        return "ACTIVE";
+    }
+
     private static boolean hasSacrificeUnlock(Player player, int unlockId) {
         return player != null && hasSacrificeUnlock(player.getUniqueId(), unlockId);
     }
@@ -3019,6 +3050,7 @@ public final class SheepMergeManager {
         sacrificePointsByPlayer.put(playerId, points.subtract(cost));
         sacrificeUnlocksBoughtByPlayer.put(playerId, current + 1);
         sacrificeUnlockMaskByPlayer.put(playerId, getSacrificeUnlockMask(playerId) | unlockBit);
+        sacrificeUnlockPendingMaskByPlayer.put(playerId, getSacrificeUnlockPendingMask(playerId) | unlockBit);
         saveData();
         return true;
     }
@@ -3034,6 +3066,7 @@ public final class SheepMergeManager {
         }
         sacrificeUnlocksBoughtByPlayer.remove(playerId);
         sacrificeUnlockMaskByPlayer.remove(playerId);
+        sacrificeUnlockPendingMaskByPlayer.remove(playerId);
         clampUpgradeLevelsToCurrentCaps(playerId);
         saveData();
         return true;
@@ -3446,6 +3479,7 @@ public final class SheepMergeManager {
         prestigeLevelByPlayer.put(playerId, nextPrestige);
         prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
+        sacrificeUnlockPendingMaskByPlayer.put(playerId, 0);
 
         runPrestigeResetEffects(player, false);
         saveData();
@@ -3509,18 +3543,18 @@ public final class SheepMergeManager {
             pointsByPlayer.put(playerId, BigInteger.ZERO);
             refreshTopPointsDisplays();
         }
-        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_REGULAR_RESETS) || forRebirth) {
+        if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_REGULAR_RESETS) || forRebirth) {
             extraLimitByPlayer.remove(playerId);
             eggSpeedLevelByPlayer.remove(playerId);
             woolRegenLevelByPlayer.remove(playerId);
             higherTierChanceLevelByPlayer.remove(playerId);
         }
-        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_SHEAR_RESETS) || forRebirth) {
+        if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_SHEAR_RESETS) || forRebirth) {
             shearShopLevelByPlayer.remove(playerId);
             shearWoolSaveLevelByPlayer.remove(playerId);
             shearTierBoostLevelByPlayer.remove(playerId);
         }
-        if (!hasSacrificeUnlock(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS) || forRebirth) {
+        if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS) || forRebirth) {
             comboDecayUpgradeByPlayer.remove(playerId);
             comboGainUpgradeByPlayer.remove(playerId);
         }
@@ -4269,6 +4303,7 @@ public final class SheepMergeManager {
         sacrificePointsByPlayer.remove(id);
         sacrificeUnlocksBoughtByPlayer.remove(id);
         sacrificeUnlockMaskByPlayer.remove(id);
+        sacrificeUnlockPendingMaskByPlayer.remove(id);
         rebirthLevelByPlayer.remove(id);
         rebirthPointsByPlayer.remove(id);
         rebirthSkillUnlockMaskByPlayer.remove(id);
@@ -5779,6 +5814,7 @@ public final class SheepMergeManager {
         sacrificePointsByPlayer.clear();
         sacrificeUnlocksBoughtByPlayer.clear();
         sacrificeUnlockMaskByPlayer.clear();
+        sacrificeUnlockPendingMaskByPlayer.clear();
         rebirthLevelByPlayer.clear();
         rebirthPointsByPlayer.clear();
         rebirthSkillUnlockMaskByPlayer.clear();
@@ -8860,31 +8896,25 @@ public final class SheepMergeManager {
                 Material.BARRIER,
                 "Unlock 1: Keep Regular Upgrades",
                 List.of(
-                        "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS)
-                                ? "UNLOCKED"
-                                : "LOCKED"),
-                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS) ? "MAXED" : "Not unlocked",
-                        "No regular upgrade resets on prestige")));
+                        "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS),
+                        "Keeps regular upgrades on prestige",
+                        "Becomes active after the next prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_COMBO_RESETS_SLOT, MenuItemFactory.create(
                 Material.BLAZE_POWDER,
                 "Unlock 2: Keep Combo Upgrades",
                 List.of(
-                        "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS)
-                                ? "UNLOCKED"
-                                : "LOCKED"),
-                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS) ? "MAXED" : "Not unlocked",
-                        "No combo upgrade resets on prestige")));
+                        "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS),
+                        "Keeps combo upgrades on prestige",
+                        "Becomes active after the next prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
                 "Unlock 3: Keep Shear Upgrades",
                 List.of(
-                        "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS)
-                                ? "UNLOCKED"
-                                : "LOCKED"),
-                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS) ? "MAXED" : "Not unlocked",
-                        "No shear shop resets on prestige")));
+                        "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS),
+                        "Keeps shear shop on prestige",
+                        "Becomes active after the next prestige")));
 
         inventory.setItem(SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
@@ -10475,6 +10505,10 @@ public final class SheepMergeManager {
                 dataConfig.set("sacrificeUnlockMask." + entry.getKey().toString(),
                         normalizeSacrificeUnlockMask(entry.getValue()));
             }
+            for (Map.Entry<UUID, Integer> entry : sacrificeUnlockPendingMaskByPlayer.entrySet()) {
+                dataConfig.set("sacrificeUnlockPendingMask." + entry.getKey().toString(),
+                        normalizeSacrificeUnlockMask(entry.getValue()));
+            }
             for (Map.Entry<UUID, Integer> entry : rebirthLevelByPlayer.entrySet()) {
                 dataConfig.set("rebirthLevel." + entry.getKey().toString(), Math.max(0, entry.getValue()));
             }
@@ -11407,6 +11441,17 @@ public final class SheepMergeManager {
                     int mask = normalizeSacrificeUnlockMask(loaded);
                     sacrificeUnlockMaskByPlayer.put(uuid, mask);
                     sacrificeUnlocksBoughtByPlayer.put(uuid, Integer.bitCount(mask));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("sacrificeUnlockPendingMask")) {
+            dataConfig.getConfigurationSection("sacrificeUnlockPendingMask").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    int loaded = dataConfig.getInt("sacrificeUnlockPendingMask." + key, 0);
+                    sacrificeUnlockPendingMaskByPlayer.put(uuid, normalizeSacrificeUnlockMask(loaded));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
