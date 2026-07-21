@@ -6837,6 +6837,25 @@ public final class SheepMergeManager {
         return true;
     }
 
+    private static boolean extendQuestAbility(Player player, Map<UUID, Long> activeUntil, int questPointCost,
+            long durationMs, Sound sound, org.bukkit.Particle particle) {
+        if (player == null || activeUntil == null) {
+            return false;
+        }
+        if (!trySpendQuestPoints(player, questPointCost)) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long currentRemaining = Math.max(0L, activeUntil.getOrDefault(playerId, 0L) - now);
+        long nextUntil = now + currentRemaining + durationMs;
+        activeUntil.put(playerId, nextUntil);
+        playSound(player, sound, 1.0f, 1.2f);
+        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        saveData();
+        return true;
+    }
+
     private static boolean activateCountQuestAbility(Player player,
             Map<UUID, Integer> remainingUsesByPlayer,
             Map<UUID, Boolean> enabledByPlayer,
@@ -8690,52 +8709,64 @@ public final class SheepMergeManager {
                 }
             }
             case QUEST_ABILITY_WOOL_RUSH_SLOT -> {
-                if (isAbilityActive(activeWoolRushUntilByPlayer, player.getUniqueId())) {
-                    player.sendMessage(warning("Wool Rush is already active."));
-                    break;
-                }
                 if (blockTutorialMenuPurchase(player, TutorialStep.USE_ABILITY,
                         "Activate any quest ability")) {
                     break;
                 }
-                if (activateQuestAbility(
-                        player,
-                        activeWoolRushUntilByPlayer,
-                        getQuestWoolRushCost(player),
-                        getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
-                        Sound.ENTITY_ENDER_DRAGON_FLAP,
-                        org.bukkit.Particle.CLOUD)) {
+                boolean active = isAbilityActive(activeWoolRushUntilByPlayer, player.getUniqueId());
+                boolean applied = active
+                        ? extendQuestAbility(
+                                player,
+                                activeWoolRushUntilByPlayer,
+                                getQuestWoolRushCost(player),
+                                getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
+                                Sound.ENTITY_ENDER_DRAGON_FLAP,
+                                org.bukkit.Particle.CLOUD)
+                        : activateQuestAbility(
+                                player,
+                                activeWoolRushUntilByPlayer,
+                                getQuestWoolRushCost(player),
+                                getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
+                                Sound.ENTITY_ENDER_DRAGON_FLAP,
+                                org.bukkit.Particle.CLOUD);
+                if (applied) {
                     markTutorialAbilityUsed(player);
                     applyWoolRushToShearedSheep(player);
                     player.getWorld().spawnParticle(org.bukkit.Particle.SPORE_BLOSSOM_AIR,
                             player.getLocation().add(0, 1.0, 0), 28, 0.5, 0.35, 0.5, 0.01);
                     playSound(player, Sound.BLOCK_MOSS_CARPET_PLACE, 1.0f, 0.8f);
-                    player.sendMessage(action("Wool Rush active."));
+                    player.sendMessage(action(active ? "Wool Rush extended." : "Wool Rush active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
                 }
             }
             case QUEST_ABILITY_JACKPOT_SHEARS_SLOT -> {
-                if (isAbilityActive(activeJackpotShearsUntilByPlayer, player.getUniqueId())) {
-                    player.sendMessage(warning("Jackpot Shears is already active."));
-                    break;
-                }
                 if (blockTutorialMenuPurchase(player, TutorialStep.USE_ABILITY,
                         "Activate any quest ability")) {
                     break;
                 }
-                if (activateQuestAbility(
-                        player,
-                        activeJackpotShearsUntilByPlayer,
-                        getQuestJackpotCost(player),
-                        getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
-                        Sound.ENTITY_PLAYER_LEVELUP,
-                        org.bukkit.Particle.CRIT)) {
+                boolean active = isAbilityActive(activeJackpotShearsUntilByPlayer, player.getUniqueId());
+                boolean applied = active
+                        ? extendQuestAbility(
+                                player,
+                                activeJackpotShearsUntilByPlayer,
+                                getQuestJackpotCost(player),
+                                getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
+                                Sound.ENTITY_PLAYER_LEVELUP,
+                                org.bukkit.Particle.CRIT)
+                        : activateQuestAbility(
+                                player,
+                                activeJackpotShearsUntilByPlayer,
+                                getQuestJackpotCost(player),
+                                getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
+                                Sound.ENTITY_PLAYER_LEVELUP,
+                                org.bukkit.Particle.CRIT);
+                if (applied) {
                     markTutorialAbilityUsed(player);
                     player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORKS_SPARK,
                             player.getLocation().add(0, 1.1, 0), 22, 0.45, 0.45, 0.45, 0.02);
                     playSound(player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.8f, 1.6f);
-                    player.sendMessage(action("Jackpot Shears active."));
+                    player.sendMessage(action(active ? "Jackpot Shears extended." : "Jackpot Shears active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
                 }
