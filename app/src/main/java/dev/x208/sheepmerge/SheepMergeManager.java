@@ -1582,6 +1582,18 @@ public final class SheepMergeManager {
         return player == null ? 0 : rebirthPointsByPlayer.getOrDefault(player.getUniqueId(), 0);
     }
 
+    public static int getUnspentRebirthPointsDisplay(Player player) {
+        return getUnspentRebirthPoints(player);
+    }
+
+    public static int getRebirthNextCostInPrestigeLevels(Player player) {
+        return getRebirthCostInPrestigeLevels(getRebirthLevel(player));
+    }
+
+    public static int getAffordableRebirthLevelsDisplay(Player player) {
+        return getAffordableRebirthLevels(player);
+    }
+
     private static int getRebirthSkillUnlockMask(UUID playerId) {
         if (playerId == null) {
             return 0;

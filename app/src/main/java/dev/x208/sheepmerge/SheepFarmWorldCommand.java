@@ -1537,6 +1537,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + label("Prestige Points") + ": "
                 + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)))
                 + ChatColor.DARK_GRAY + " | "
+                + label("Rebirth") + ": " + value(String.valueOf(SheepMergeManager.getRebirthLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Rebirth Points") + ": "
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getRebirthPoints(target)))
+                + ChatColor.DARK_GRAY + " | "
                 + label("Automation Points") + ": "
                 + value(SheepMergeManager.formatPoints(SheepMergeManager.getAutomationPoints(target))));
         sender.sendMessage(ChatColor.GRAY + "- " + label("Sheep Limit") + ": "
@@ -1598,6 +1603,21 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ChatColor.DARK_GRAY + " | "
                 + label("Quest Reward Lv") + ": "
                 + value(String.valueOf(SheepMergeManager.getPrestigeQuestRewardLevel(target))));
+        sender.sendMessage(ChatColor.GRAY + "- " + label("Rebirth Progress") + ": "
+                + label("Level") + "=" + value(String.valueOf(SheepMergeManager.getRebirthLevel(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Points") + "="
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getRebirthPoints(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Unspent") + "="
+                + value(SheepMergeManager.formatPoints(SheepMergeManager.getUnspentRebirthPointsDisplay(target)))
+                + ChatColor.DARK_GRAY + " | "
+                + label("Next Cost") + "="
+                + value(String.valueOf(SheepMergeManager.getRebirthNextCostInPrestigeLevels(target))) + ChatColor.GRAY
+                + " prestige levels"
+                + ChatColor.DARK_GRAY + " | "
+                + label("Affordable Now") + "="
+                + value(String.valueOf(SheepMergeManager.getAffordableRebirthLevelsDisplay(target))));
         sender.sendMessage(ChatColor.GRAY + "- " + label("Automation Upgrades") + ": Auto Buy Lv."
                 + value(String.valueOf(SheepMergeManager.getAutomationAutoBuyUpgradeLevel(target)))
                 + ChatColor.DARK_GRAY + " | "
@@ -1668,7 +1688,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean shouldFormatPointStat(String statLabel) {
-        return "Points".equals(statLabel) || "Quest Points".equals(statLabel) || "Prestige Points".equals(statLabel);
+        return "Points".equals(statLabel)
+                || "Quest Points".equals(statLabel)
+                || "Prestige Points".equals(statLabel)
+                || "Rebirth Points".equals(statLabel);
     }
 
     private String adminHeader(String text) {
