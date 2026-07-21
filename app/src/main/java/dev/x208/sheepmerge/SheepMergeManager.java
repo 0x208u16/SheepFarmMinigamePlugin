@@ -2133,9 +2133,7 @@ public final class SheepMergeManager {
         }
 
         nextAutoShearAtByPlayer.put(playerId, now + 100L);
-        if (tryAutoShearLookTarget(player)) {
-            consumeCountAbilityUse(activeAutoShearUsesByPlayer, playerId);
-        }
+        tryAutoShearLookTarget(player);
     }
 
     private static boolean tryAutoShearLookTarget(Player player) {
@@ -4546,6 +4544,50 @@ public final class SheepMergeManager {
         if (player == null || sheep == null || sheep.getWorld() == null || !isSheepFarmWorld(sheep.getWorld())) {
             return false;
         }
+        UUID playerId = player.getUniqueId();
+        if (isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)) {
+            int shearedCount = shearAllEligibleSheepForPlayer(player, sheep);
+            if (shearedCount > 0) {
+                consumeCountAbilityUses(activeAutoShearUsesByPlayer, playerId, shearedCount);
+                saveData();
+            }
+            return shearedCount > 0;
+        }
+        return shearSingleSheepForPlayer(player, sheep);
+    }
+
+    private static int shearAllEligibleSheepForPlayer(Player player, Sheep triggerSheep) {
+        if (player == null || triggerSheep == null || triggerSheep.getWorld() == null) {
+            return 0;
+        }
+        if (!isFarmOwner(player, triggerSheep.getWorld())) {
+            return 0;
+        }
+        World world = triggerSheep.getWorld();
+        long now = System.currentTimeMillis();
+        int shearedCount = 0;
+        for (Sheep candidate : new ArrayList<>(world.getEntitiesByClass(Sheep.class))) {
+            if (candidate == null || !candidate.isValid() || candidate.isDead() || !candidate.isAdult()) {
+                continue;
+            }
+            if (candidate.isSheared()) {
+                continue;
+            }
+            long nextEatAt = getNextEatTimestamp(candidate);
+            if (nextEatAt > now) {
+                continue;
+            }
+            if (shearSingleSheepForPlayer(player, candidate)) {
+                shearedCount++;
+            }
+        }
+        return shearedCount;
+    }
+
+    private static boolean shearSingleSheepForPlayer(Player player, Sheep sheep) {
+        if (player == null || sheep == null || sheep.getWorld() == null || !isSheepFarmWorld(sheep.getWorld())) {
+            return false;
+        }
         if (!sheep.isAdult()) {
             return false;
         }
@@ -6718,14 +6760,23 @@ public final class SheepMergeManager {
     }
 
     private static void consumeCountAbilityUse(Map<UUID, Integer> remainingUsesByPlayer, UUID playerId) {
+        consumeCountAbilityUses(remainingUsesByPlayer, playerId, 1);
+    }
+
+    private static void consumeCountAbilityUses(Map<UUID, Integer> remainingUsesByPlayer, UUID playerId,
+            int useCount) {
         if (remainingUsesByPlayer == null || playerId == null) {
             return;
         }
+        int usesToConsume = Math.max(0, useCount);
+        if (usesToConsume <= 0) {
+            return;
+        }
         int current = Math.max(0, remainingUsesByPlayer.getOrDefault(playerId, 0));
-        if (current <= 1) {
+        if (current <= usesToConsume) {
             remainingUsesByPlayer.remove(playerId);
         } else {
-            remainingUsesByPlayer.put(playerId, current - 1);
+            remainingUsesByPlayer.put(playerId, current - usesToConsume);
         }
     }
 
