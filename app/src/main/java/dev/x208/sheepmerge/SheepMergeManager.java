@@ -184,9 +184,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> sacrificeUnlocksBoughtByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> sacrificeUnlockMaskByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> sacrificeUnlockPendingMaskByPlayer = new HashMap<>();
+    private static final SacrificeUnlockState sacrificeUnlockState = new SacrificeUnlockState();
     private static final Map<UUID, Integer> rebirthLevelByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
@@ -487,7 +485,7 @@ public final class SheepMergeManager {
     private static final int SACRIFICE_UNLOCK_NO_SHEAR_RESETS = 3;
     private static final int SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S = 4;
     private static final int SACRIFICE_UNLOCK_MAX_SHEEP_100 = 5;
-    private static final int SACRIFICE_UNLOCK_MAX = SACRIFICE_UNLOCK_MAX_SHEEP_100;
+    static final int SACRIFICE_UNLOCK_MAX = SACRIFICE_UNLOCK_MAX_SHEEP_100;
     private static final BigInteger SACRIFICE_UNLOCK_COST_MULTIPLIER = BigInteger.valueOf(1000L);
     private static final int REBIRTH_PRESTIGE_LEVEL_COST_STEP = 10;
     private static final int REBIRTH_SKILL_ROOT_COST = 1;
@@ -2883,63 +2881,27 @@ public final class SheepMergeManager {
     }
 
     private static int getSacrificeUnlocksBought(UUID playerId) {
-        if (playerId == null) {
-            return 0;
-        }
-        if (sacrificeUnlockMaskByPlayer.containsKey(playerId)) {
-            return Integer.bitCount(getSacrificeUnlockMask(playerId));
-        }
-        return Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX,
-                sacrificeUnlocksBoughtByPlayer.getOrDefault(playerId, 0)));
+        return sacrificeUnlockState.getUnlocksBought(playerId);
     }
 
     private static int getSacrificeUnlockMask(UUID playerId) {
-        if (playerId == null) {
-            return 0;
-        }
-        return normalizeSacrificeUnlockMask(sacrificeUnlockMaskByPlayer.getOrDefault(playerId, 0));
-    }
-
-    private static int getSacrificeUnlockBit(int unlockId) {
-        if (unlockId <= 0 || unlockId > SACRIFICE_UNLOCK_MAX) {
-            return 0;
-        }
-        return 1 << (unlockId - 1);
-    }
-
-    private static int normalizeSacrificeUnlockMask(int mask) {
-        int allUnlocksMask = (1 << SACRIFICE_UNLOCK_MAX) - 1;
-        return mask & allUnlocksMask;
+        return sacrificeUnlockState.getUnlockMask(playerId);
     }
 
     private static int getSacrificeUnlockPendingMask(UUID playerId) {
-        if (playerId == null) {
-            return 0;
-        }
-        return normalizeSacrificeUnlockMask(sacrificeUnlockPendingMaskByPlayer.getOrDefault(playerId, 0));
+        return sacrificeUnlockState.getPendingMask(playerId);
     }
 
     private static boolean isSacrificeUnlockPending(UUID playerId, int unlockId) {
-        int unlockBit = getSacrificeUnlockBit(unlockId);
-        return playerId != null && unlockBit != 0 && (getSacrificeUnlockPendingMask(playerId) & unlockBit) != 0;
+        return sacrificeUnlockState.isPending(playerId, unlockId);
     }
 
     private static boolean isSacrificeUnlockActive(UUID playerId, int unlockId) {
-        return hasSacrificeUnlock(playerId, unlockId) && !isSacrificeUnlockPending(playerId, unlockId);
+        return sacrificeUnlockState.isActive(playerId, unlockId);
     }
 
     private static String sacrificeUnlockStatusLine(Player player, int unlockId) {
-        if (player == null) {
-            return "LOCKED";
-        }
-        UUID playerId = player.getUniqueId();
-        if (!hasSacrificeUnlock(playerId, unlockId)) {
-            return "LOCKED";
-        }
-        if (isSacrificeUnlockPending(playerId, unlockId)) {
-            return "PENDING NEXT PRESTIGE";
-        }
-        return "ACTIVE";
+        return sacrificeUnlockState.statusLine(player, unlockId);
     }
 
     private static boolean hasSacrificeUnlock(Player player, int unlockId) {
@@ -2947,17 +2909,7 @@ public final class SheepMergeManager {
     }
 
     private static boolean hasSacrificeUnlock(UUID playerId, int unlockId) {
-        if (playerId == null || unlockId <= 0) {
-            return false;
-        }
-        int unlockBit = getSacrificeUnlockBit(unlockId);
-        if (unlockBit == 0) {
-            return false;
-        }
-        if (sacrificeUnlockMaskByPlayer.containsKey(playerId)) {
-            return (getSacrificeUnlockMask(playerId) & unlockBit) != 0;
-        }
-        return getSacrificeUnlocksBought(playerId) >= unlockId;
+        return sacrificeUnlockState.hasUnlock(playerId, unlockId);
     }
 
     private static BigInteger getSacrificeUnlockCost(UUID playerId) {
@@ -3030,8 +2982,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
-        int unlockBit = getSacrificeUnlockBit(unlockId);
-        if (unlockBit == 0) {
+        if (unlockId <= 0 || unlockId > SACRIFICE_UNLOCK_MAX) {
             return false;
         }
         UUID playerId = player.getUniqueId();
@@ -3048,9 +2999,7 @@ public final class SheepMergeManager {
             return false;
         }
         sacrificePointsByPlayer.put(playerId, points.subtract(cost));
-        sacrificeUnlocksBoughtByPlayer.put(playerId, current + 1);
-        sacrificeUnlockMaskByPlayer.put(playerId, getSacrificeUnlockMask(playerId) | unlockBit);
-        sacrificeUnlockPendingMaskByPlayer.put(playerId, getSacrificeUnlockPendingMask(playerId) | unlockBit);
+        sacrificeUnlockState.recordPurchase(playerId, unlockId);
         saveData();
         return true;
     }
@@ -3060,13 +3009,9 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        int current = getSacrificeUnlocksBought(playerId);
-        if (current <= 0) {
+        if (!sacrificeUnlockState.refund(playerId)) {
             return false;
         }
-        sacrificeUnlocksBoughtByPlayer.remove(playerId);
-        sacrificeUnlockMaskByPlayer.remove(playerId);
-        sacrificeUnlockPendingMaskByPlayer.remove(playerId);
         clampUpgradeLevelsToCurrentCaps(playerId);
         saveData();
         return true;
@@ -3479,7 +3424,7 @@ public final class SheepMergeManager {
         prestigeLevelByPlayer.put(playerId, nextPrestige);
         prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
-        sacrificeUnlockPendingMaskByPlayer.put(playerId, 0);
+        sacrificeUnlockState.clearPending(playerId);
 
         runPrestigeResetEffects(player, false);
         saveData();
@@ -4301,9 +4246,7 @@ public final class SheepMergeManager {
         scoreboardShowQuestProgressByPlayer.remove(id);
         scoreboardShowAbilityStatusByPlayer.remove(id);
         sacrificePointsByPlayer.remove(id);
-        sacrificeUnlocksBoughtByPlayer.remove(id);
-        sacrificeUnlockMaskByPlayer.remove(id);
-        sacrificeUnlockPendingMaskByPlayer.remove(id);
+        sacrificeUnlockState.remove(id);
         rebirthLevelByPlayer.remove(id);
         rebirthPointsByPlayer.remove(id);
         rebirthSkillUnlockMaskByPlayer.remove(id);
@@ -5812,9 +5755,7 @@ public final class SheepMergeManager {
         scoreboardShowQuestProgressByPlayer.clear();
         scoreboardShowAbilityStatusByPlayer.clear();
         sacrificePointsByPlayer.clear();
-        sacrificeUnlocksBoughtByPlayer.clear();
-        sacrificeUnlockMaskByPlayer.clear();
-        sacrificeUnlockPendingMaskByPlayer.clear();
+        sacrificeUnlockState.clear();
         rebirthLevelByPlayer.clear();
         rebirthPointsByPlayer.clear();
         rebirthSkillUnlockMaskByPlayer.clear();
@@ -7846,6 +7787,7 @@ public final class SheepMergeManager {
                         "Rebirth level: " + rebirthLevel,
                         "Rebirth points: " + formatPoints(getRebirthPoints(player)),
                         "Next cost: " + getRebirthCostInPrestigeLevels(rebirthLevel) + " prestige levels",
+                        "Consumes prestige levels and resets prestige progress",
                         affordableRebirths > 0
                                 ? "Buy now: +" + affordableRebirths + " rebirth level(s), +"
                                         + formatPoints(rebirthReward) + " rebirth points"
@@ -9048,8 +8990,9 @@ public final class SheepMergeManager {
                         affordable > 0
                                 ? "&dReward: +" + formatPoints(reward) + " rebirth points"
                                 : "&dReward: +0 rebirth points",
-                        "&7+10 prestige levels per rebirth",
-                        "&7Resets prestige progress",
+                        "&7Cost scaling: +10 prestige levels per rebirth",
+                        "&cConsumes prestige levels and prestige points",
+                        "&cResets prestige upgrades",
                         hasRebirthSkill(player, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
                                 ? "&aKeeps sacrifice points"
                                 : "&cSacrifice points reset",
@@ -10254,6 +10197,7 @@ public final class SheepMergeManager {
             dataConfig.set("sacrificePoints", null);
             dataConfig.set("sacrificeUnlocksBought", null);
             dataConfig.set("sacrificeUnlockMask", null);
+            dataConfig.set("sacrificeUnlockPendingMask", null);
             dataConfig.set("rebirthLevel", null);
             dataConfig.set("rebirthPoints", null);
             dataConfig.set("rebirthSkillUnlockMask", null);
@@ -10497,18 +10441,7 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, BigInteger> entry : sacrificePointsByPlayer.entrySet()) {
                 dataConfig.set("sacrificePoints." + entry.getKey().toString(), entry.getValue().toString());
             }
-            for (Map.Entry<UUID, Integer> entry : sacrificeUnlocksBoughtByPlayer.entrySet()) {
-                dataConfig.set("sacrificeUnlocksBought." + entry.getKey().toString(),
-                        Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX, entry.getValue())));
-            }
-            for (Map.Entry<UUID, Integer> entry : sacrificeUnlockMaskByPlayer.entrySet()) {
-                dataConfig.set("sacrificeUnlockMask." + entry.getKey().toString(),
-                        normalizeSacrificeUnlockMask(entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : sacrificeUnlockPendingMaskByPlayer.entrySet()) {
-                dataConfig.set("sacrificeUnlockPendingMask." + entry.getKey().toString(),
-                        normalizeSacrificeUnlockMask(entry.getValue()));
-            }
+            sacrificeUnlockState.saveTo(dataConfig);
             for (Map.Entry<UUID, Integer> entry : rebirthLevelByPlayer.entrySet()) {
                 dataConfig.set("rebirthLevel." + entry.getKey().toString(), Math.max(0, entry.getValue()));
             }
@@ -11421,42 +11354,7 @@ public final class SheepMergeManager {
                 }
             });
         }
-        if (dataConfig.isConfigurationSection("sacrificeUnlocksBought")) {
-            dataConfig.getConfigurationSection("sacrificeUnlocksBought").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    int loaded = dataConfig.getInt("sacrificeUnlocksBought." + key, 0);
-                    sacrificeUnlocksBoughtByPlayer.put(uuid,
-                            Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX, loaded)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("sacrificeUnlockMask")) {
-            dataConfig.getConfigurationSection("sacrificeUnlockMask").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    int loaded = dataConfig.getInt("sacrificeUnlockMask." + key, 0);
-                    int mask = normalizeSacrificeUnlockMask(loaded);
-                    sacrificeUnlockMaskByPlayer.put(uuid, mask);
-                    sacrificeUnlocksBoughtByPlayer.put(uuid, Integer.bitCount(mask));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("sacrificeUnlockPendingMask")) {
-            dataConfig.getConfigurationSection("sacrificeUnlockPendingMask").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    int loaded = dataConfig.getInt("sacrificeUnlockPendingMask." + key, 0);
-                    sacrificeUnlockPendingMaskByPlayer.put(uuid, normalizeSacrificeUnlockMask(loaded));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
+        sacrificeUnlockState.loadFrom(dataConfig);
         if (dataConfig.isConfigurationSection("rebirthLevel")) {
             dataConfig.getConfigurationSection("rebirthLevel").getKeys(false).forEach(key -> {
                 try {
@@ -11495,8 +11393,7 @@ public final class SheepMergeManager {
         playersToClamp.addAll(woolRegenLevelByPlayer.keySet());
         playersToClamp.addAll(higherTierChanceLevelByPlayer.keySet());
         playersToClamp.addAll(prestigeHigherMaxLevelByPlayer.keySet());
-        playersToClamp.addAll(sacrificeUnlocksBoughtByPlayer.keySet());
-        playersToClamp.addAll(sacrificeUnlockMaskByPlayer.keySet());
+        playersToClamp.addAll(sacrificeUnlockState.getTrackedPlayerIds());
         for (UUID playerId : playersToClamp) {
             clampUpgradeLevelsToCurrentCaps(playerId);
         }
