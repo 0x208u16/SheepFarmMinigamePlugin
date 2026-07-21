@@ -8939,6 +8939,11 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         int unlocksBought = getSacrificeUnlocksBought(playerId);
         BigInteger nextCost = getSacrificeUnlockCost(playerId);
+        boolean regularUnlocked = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS);
+        boolean comboUnlocked = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS);
+        boolean shearUnlocked = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS);
+        boolean eggCooldownUnlocked = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S);
+        boolean maxSheepUnlocked = hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100);
 
         inventory.setItem(SACRIFICE_POINTS_SLOT, MenuItemFactory.create(
                 Material.TOTEM_OF_UNDYING,
@@ -8965,7 +8970,8 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_REGULAR_RESETS),
                         "Keeps regular upgrades on prestige",
-                        "Applies immediately")));
+                        "Applies immediately"),
+                regularUnlocked));
 
         inventory.setItem(SACRIFICE_UNLOCK_COMBO_RESETS_SLOT, MenuItemFactory.create(
                 Material.BLAZE_POWDER,
@@ -8973,7 +8979,8 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_COMBO_RESETS),
                         "Keeps combo upgrades on prestige",
-                        "Applies immediately")));
+                        "Applies immediately"),
+                comboUnlocked));
 
         inventory.setItem(SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
@@ -8981,28 +8988,31 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + sacrificeUnlockStatusLine(player, SACRIFICE_UNLOCK_NO_SHEAR_RESETS),
                         "Keeps shear shop on prestige",
-                        "Applies immediately")));
+                        "Applies immediately"),
+                shearUnlocked));
 
         inventory.setItem(SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Unlock 4: 1s Egg Cooldown Cap",
                 List.of(
-                        "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S)
+                        "Status: " + (eggCooldownUnlocked
                                 ? "UNLOCKED"
                                 : "LOCKED"),
-                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S) ? "MAXED" : "Not unlocked",
+                        eggCooldownUnlocked ? "MAXED" : "Not unlocked",
                         "Adds +1 egg speed max level",
-                        "Allows 1 egg per second")));
+                        "Allows 1 egg per second"),
+                eggCooldownUnlocked));
 
         inventory.setItem(SACRIFICE_UNLOCK_MAX_SHEEP_SLOT, MenuItemFactory.create(
                 Material.OAK_FENCE,
                 "Unlock 5: +50 Sheep Cap",
                 List.of(
-                        "Status: " + (hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100)
+                        "Status: " + (maxSheepUnlocked
                                 ? "UNLOCKED"
                                 : "LOCKED"),
-                        hasSacrificeUnlock(player, SACRIFICE_UNLOCK_MAX_SHEEP_100) ? "MAXED" : "Not unlocked",
-                        "Raises max sheep limit by +50")));
+                        maxSheepUnlocked ? "MAXED" : "Not unlocked",
+                        "Raises max sheep limit by +50"),
+                maxSheepUnlocked));
 
         inventory.setItem(SACRIFICE_REFUND_SLOT, MenuItemFactory.create(
                 Material.MILK_BUCKET,
