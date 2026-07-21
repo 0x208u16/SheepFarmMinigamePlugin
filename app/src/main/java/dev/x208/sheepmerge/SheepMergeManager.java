@@ -8629,10 +8629,10 @@ public final class SheepMergeManager {
 
         inventory.setItem(QUEST_ABILITY_AUTO_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
-                "Auto Shear",
+                "Shear All Sheep",
                 List.of(
                         "Cost: " + formatPoints(getQuestAutoShearCost(player)) + " quest points",
-                        "Effect: Instantly shears the sheep you are looking at",
+                        "Effect: Shears every ready sheep in the farm",
                         "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
                         getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
@@ -8771,7 +8771,7 @@ public final class SheepMergeManager {
             }
             case QUEST_ABILITY_AUTO_SHEAR_SLOT -> {
                 if (toggleCountAbilityEnabled(player, activeAutoShearUsesByPlayer, autoShearEnabledByPlayer)) {
-                    player.sendMessage(action("Auto Shear "
+                    player.sendMessage(action("Shear All Sheep "
                             + (autoShearEnabledByPlayer.getOrDefault(player.getUniqueId(), true) ? "enabled."
                                     : "disabled.")));
                     break;
@@ -8793,7 +8793,7 @@ public final class SheepMergeManager {
                     player.getWorld().spawnParticle(org.bukkit.Particle.WAX_OFF,
                             player.getLocation().add(0, 1.0, 0), 26, 0.5, 0.4, 0.5, 0.03);
                     playSound(player, Sound.ITEM_TRIDENT_RETURN, 0.8f, 1.4f);
-                    player.sendMessage(action("Auto Shear active."));
+                    player.sendMessage(action("Shear All Sheep active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
                 }
