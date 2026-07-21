@@ -1693,24 +1693,6 @@ public final class SheepMergeManager {
         return Math.max(0, total);
     }
 
-    private static Set<Integer> collectRebirthSkillRefundIds(int rootSkillId) {
-        Set<Integer> toRefund = new HashSet<>();
-        toRefund.add(rootSkillId);
-        boolean changed = true;
-        while (changed) {
-            changed = false;
-            for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
-                if (node.parentId <= 0 || !toRefund.contains(node.parentId)) {
-                    continue;
-                }
-                if (toRefund.add(node.id)) {
-                    changed = true;
-                }
-            }
-        }
-        return toRefund;
-    }
-
     private static int getPointsGainMultiplierFromRebirthSkills(Player player) {
         int multiplier = 1;
         if (hasRebirthSkill(player, REBIRTH_SKILL_POINTS_X10_ROOT)) {
@@ -9558,8 +9540,8 @@ public final class SheepMergeManager {
                 "Rebirth Skill Tree",
                 List.of(
                         "&7Spend rebirth points here",
-                "&aUnlocks apply immediately",
-                "&aUnlocks stay active until refunded",
+                        "&aUnlocks apply immediately",
+                        "&aUnlocks stay active until refunded",
                         "&7Cost starts at 1 RP",
                         "&7Builds upward from the root",
                         "&aClick: Open")));
@@ -9614,10 +9596,10 @@ public final class SheepMergeManager {
                         "&bLevel: &f" + getRebirthLevel(player),
                         "&dRebirth points: &f" + formatPoints(getRebirthPoints(player)),
                         "&aUnspent: &f" + formatPoints(unspent),
-                "&aAll unlocked skills are active immediately",
-                "&aUnlocks are permanent unless refunded",
+                        "&aAll unlocked skills are active immediately",
+                        "&aUnlocks are permanent and non-refundable",
                         "&7Root starts at the bottom",
-                        "&7Refunds clear the branch above")));
+                        "&7Unlock nodes upward from the root")));
 
         for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
             boolean unlocked = hasRebirthSkill(player, node.id);
@@ -9634,7 +9616,7 @@ public final class SheepMergeManager {
             if (unlocked) {
                 lore.add("&aUnlocked");
                 lore.add("&aActive now");
-                lore.add("&cClick to refund branch");
+                lore.add("&aPermanent unlock");
             } else if (!parentUnlocked) {
                 lore.add("&cLocked: need parent first");
             } else if (!inStock) {
@@ -9673,14 +9655,7 @@ public final class SheepMergeManager {
         }
 
         if (hasRebirthSkill(player, clicked.id)) {
-            int refundedPoints = refundRebirthSkillsFromNode(player, clicked.id);
-            if (refundedPoints > 0) {
-                playUpgradeSound(player);
-                player.sendMessage(action("Refunded " + formatPoints(refundedPoints)
-                        + " rebirth points from connected skills."));
-            } else {
-                player.sendMessage(warning("No connected skills were refunded."));
-            }
+            player.sendMessage(warning("That rebirth skill is already unlocked permanently."));
             openRebirthTreeMenu(player);
             return;
         }
@@ -9715,35 +9690,6 @@ public final class SheepMergeManager {
         rebirthSkillPendingMaskByPlayer.remove(playerId);
         saveData();
         return true;
-    }
-
-    private static int refundRebirthSkillsFromNode(Player player, int skillId) {
-        if (player == null) {
-            return 0;
-        }
-        UUID playerId = player.getUniqueId();
-        int currentMask = getRebirthSkillUnlockMask(playerId);
-        if ((currentMask & getRebirthSkillBit(skillId)) == 0) {
-            return 0;
-        }
-        Set<Integer> refundIds = collectRebirthSkillRefundIds(skillId);
-        int refundedPoints = 0;
-        int nextMask = currentMask;
-        for (RebirthSkillNode node : REBIRTH_SKILL_NODES) {
-            if (!refundIds.contains(node.id)) {
-                continue;
-            }
-            int bit = getRebirthSkillBit(node.id);
-            if ((nextMask & bit) == 0) {
-                continue;
-            }
-            refundedPoints += getRebirthSkillCost(node);
-            nextMask &= ~bit;
-        }
-        rebirthSkillUnlockMaskByPlayer.put(playerId, nextMask);
-        rebirthSkillPendingMaskByPlayer.remove(playerId);
-        saveData();
-        return refundedPoints;
     }
 
     public static void openQuestMenu(Player player) {
