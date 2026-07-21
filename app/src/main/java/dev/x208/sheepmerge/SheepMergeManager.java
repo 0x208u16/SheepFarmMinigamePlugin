@@ -6756,7 +6756,7 @@ public final class SheepMergeManager {
         boolean next = !enabledByPlayer.getOrDefault(playerId, true);
         enabledByPlayer.put(playerId, next);
         saveData();
-        return next;
+        return true;
     }
 
     private static void consumeCountAbilityUse(Map<UUID, Integer> remainingUsesByPlayer, UUID playerId) {
@@ -8682,9 +8682,9 @@ public final class SheepMergeManager {
         switch (slot) {
             case QUEST_ABILITY_LUCKY_BURST_SLOT -> {
                 if (toggleCountAbilityEnabled(player, activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer)) {
+                    boolean enabled = luckyBurstEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
                     player.sendMessage(action("Lucky Burst "
-                            + (luckyBurstEnabledByPlayer.getOrDefault(player.getUniqueId(), true) ? "enabled."
-                                    : "disabled.")));
+                            + (enabled ? "enabled." : "disabled.")));
                     break;
                 }
                 if (blockTutorialMenuPurchase(player, TutorialStep.USE_ABILITY,
@@ -8773,9 +8773,9 @@ public final class SheepMergeManager {
             }
             case QUEST_ABILITY_AUTO_MERGE_SLOT -> {
                 if (toggleCountAbilityEnabled(player, activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer)) {
+                    boolean enabled = autoMergeEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
                     player.sendMessage(action("Auto Merge "
-                            + (autoMergeEnabledByPlayer.getOrDefault(player.getUniqueId(), true) ? "enabled."
-                                    : "disabled.")));
+                            + (enabled ? "enabled." : "disabled.")));
                     break;
                 }
                 if (blockTutorialMenuPurchase(player, TutorialStep.USE_ABILITY,
@@ -8802,9 +8802,9 @@ public final class SheepMergeManager {
             }
             case QUEST_ABILITY_AUTO_SHEAR_SLOT -> {
                 if (toggleCountAbilityEnabled(player, activeAutoShearUsesByPlayer, autoShearEnabledByPlayer)) {
+                    boolean enabled = autoShearEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
                     player.sendMessage(action("Shear All Sheep "
-                            + (autoShearEnabledByPlayer.getOrDefault(player.getUniqueId(), true) ? "enabled."
-                                    : "disabled.")));
+                            + (enabled ? "enabled." : "disabled.")));
                     break;
                 }
                 if (blockTutorialMenuPurchase(player, TutorialStep.USE_ABILITY,
