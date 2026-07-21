@@ -1627,42 +1627,8 @@ public final class SheepMergeManager {
         return bit != 0 && (getRebirthSkillUnlockMask(playerId) & bit) != 0;
     }
 
-    private static boolean isRebirthKeepSkill(int skillId) {
-        return skillId == REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE
-                || skillId == REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE
-                || skillId == REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH;
-    }
-
-    private static boolean isRebirthDelayedActivationSkill(int skillId) {
-        return isRebirthKeepSkill(skillId)
-                || skillId == REBIRTH_SKILL_QUEST_POINTS_X10
-                || skillId == REBIRTH_SKILL_SACRIFICE_POINTS_X10;
-    }
-
-    private static boolean isRebirthSkillPending(UUID playerId, int skillId) {
-        int bit = getRebirthSkillBit(skillId);
-        return playerId != null
-                && bit != 0
-                && (getRebirthSkillPendingMask(playerId) & bit) != 0
-                && hasRebirthSkill(playerId, skillId);
-    }
-
     private static boolean hasActiveRebirthSkill(UUID playerId, int skillId) {
-        return hasRebirthSkill(playerId, skillId) && !isRebirthSkillPending(playerId, skillId);
-    }
-
-    private static String getRebirthSkillStatusLine(UUID playerId, int skillId) {
-        if (!hasRebirthSkill(playerId, skillId)) {
-            return "&cLocked";
-        }
-        if (!isRebirthSkillPending(playerId, skillId)) {
-            return "&aActive";
-        }
-        return switch (skillId) {
-            case REBIRTH_SKILL_QUEST_POINTS_X10 -> "&6Pending (activates after next quest reset)";
-            case REBIRTH_SKILL_SACRIFICE_POINTS_X10 -> "&6Pending (activates after next sacrifice)";
-            default -> "&6Pending (activates after next reset)";
-        };
+        return hasRebirthSkill(playerId, skillId);
     }
 
     private static RebirthSkillNode getRebirthSkillNode(int skillId) {
@@ -1821,9 +1787,6 @@ public final class SheepMergeManager {
         questSpawnsCompleteByPlayer.put(playerId, false);
         questMergesCompleteByPlayer.put(playerId, false);
         nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
-        rebirthSkillPendingMaskByPlayer.put(
-                playerId,
-                getRebirthSkillPendingMask(playerId) & ~getRebirthSkillBit(REBIRTH_SKILL_QUEST_POINTS_X10));
         player.sendTitle(color("&eNew quests"), color("&7Quest board refreshed"), 10, 40, 10);
     }
 
@@ -3131,10 +3094,6 @@ public final class SheepMergeManager {
         refreshLiveSheepCount(world);
         if (gained.signum() > 0) {
             addSacrificePoints(player.getUniqueId(), gained);
-            UUID playerId = player.getUniqueId();
-            rebirthSkillPendingMaskByPlayer.put(
-                    playerId,
-                    getRebirthSkillPendingMask(playerId) & ~getRebirthSkillBit(REBIRTH_SKILL_SACRIFICE_POINTS_X10));
             saveData();
         }
         return gained;
@@ -3619,13 +3578,6 @@ public final class SheepMergeManager {
             sacrificePointsByPlayer.remove(playerId);
             sacrificeUnlockState.remove(playerId);
         }
-        int rebirthPendingClearMask = getRebirthSkillBit(REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE)
-                | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE)
-                | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH);
-        rebirthSkillPendingMaskByPlayer.put(
-                playerId,
-                getRebirthSkillPendingMask(playerId) & ~rebirthPendingClearMask);
-
         saveData();
         return affordable;
     }
@@ -3671,13 +3623,6 @@ public final class SheepMergeManager {
         if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS) || forRebirth) {
             comboDecayUpgradeByPlayer.remove(playerId);
             comboGainUpgradeByPlayer.remove(playerId);
-        }
-        if (!forRebirth) {
-            int prestigePendingClearMask = getRebirthSkillBit(REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE)
-                    | getRebirthSkillBit(REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE);
-            rebirthSkillPendingMaskByPlayer.put(
-                    playerId,
-                    getRebirthSkillPendingMask(playerId) & ~prestigePendingClearMask);
         }
         clearMergeReminder(player);
         EGG_MODULE.clearRuntimeState(playerId);
@@ -9605,10 +9550,7 @@ public final class SheepMergeManager {
                         "&cResets prestige upgrades",
                         hasActiveRebirthSkill(player.getUniqueId(), REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
                                 ? "&aKeeps sacrifice points"
-                                : isRebirthSkillPending(player.getUniqueId(),
-                                        REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)
-                                                ? "&6Keep Sacrifice pending (applies after this rebirth)"
-                                                : "&cSacrifice points reset",
+                                : "&cSacrifice points reset",
                         "&aClick: Rebirth")));
 
         inventory.setItem(REBIRTH_OPEN_TREE_SLOT, MenuItemFactory.create(
@@ -9616,6 +9558,8 @@ public final class SheepMergeManager {
                 "Rebirth Skill Tree",
                 List.of(
                         "&7Spend rebirth points here",
+                "&aUnlocks apply immediately",
+                "&aUnlocks stay active until refunded",
                         "&7Cost starts at 1 RP",
                         "&7Builds upward from the root",
                         "&aClick: Open")));
@@ -9670,6 +9614,8 @@ public final class SheepMergeManager {
                         "&bLevel: &f" + getRebirthLevel(player),
                         "&dRebirth points: &f" + formatPoints(getRebirthPoints(player)),
                         "&aUnspent: &f" + formatPoints(unspent),
+                "&aAll unlocked skills are active immediately",
+                "&aUnlocks are permanent unless refunded",
                         "&7Root starts at the bottom",
                         "&7Refunds clear the branch above")));
 
@@ -9687,9 +9633,7 @@ public final class SheepMergeManager {
             }
             if (unlocked) {
                 lore.add("&aUnlocked");
-                if (isRebirthDelayedActivationSkill(node.id)) {
-                    lore.add(getRebirthSkillStatusLine(player.getUniqueId(), node.id));
-                }
+                lore.add("&aActive now");
                 lore.add("&cClick to refund branch");
             } else if (!parentUnlocked) {
                 lore.add("&cLocked: need parent first");
@@ -9768,11 +9712,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         int updatedMask = getRebirthSkillUnlockMask(playerId) | getRebirthSkillBit(skillId);
         rebirthSkillUnlockMaskByPlayer.put(playerId, updatedMask);
-        if (isRebirthDelayedActivationSkill(skillId)) {
-            rebirthSkillPendingMaskByPlayer.put(
-                    playerId,
-                    getRebirthSkillPendingMask(playerId) | getRebirthSkillBit(skillId));
-        }
+        rebirthSkillPendingMaskByPlayer.remove(playerId);
         saveData();
         return true;
     }
@@ -9801,7 +9741,7 @@ public final class SheepMergeManager {
             nextMask &= ~bit;
         }
         rebirthSkillUnlockMaskByPlayer.put(playerId, nextMask);
-        rebirthSkillPendingMaskByPlayer.put(playerId, getRebirthSkillPendingMask(playerId) & nextMask);
+        rebirthSkillPendingMaskByPlayer.remove(playerId);
         saveData();
         return refundedPoints;
     }
