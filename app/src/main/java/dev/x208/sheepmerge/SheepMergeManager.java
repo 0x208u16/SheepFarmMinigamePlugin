@@ -998,6 +998,60 @@ public final class SheepMergeManager {
         refreshLiveSheepCount(world);
     }
 
+    public static void restoreSavedSheepForWorldAsync(World world) {
+        if (plugin == null || world == null || !isSheepFarmWorld(world)) {
+            restoreSavedSheepForWorld(world);
+            return;
+        }
+        UUID ownerId = getOwnerId(world);
+        if (ownerId == null) {
+            refreshLiveSheepCount(world);
+            return;
+        }
+        List<SheepSnapshot> snapshots = getSavedSheepSnapshots(world).get(ownerId);
+        if (snapshots == null || snapshots.isEmpty()) {
+            refreshLiveSheepCount(world);
+            return;
+        }
+
+        final long now = System.currentTimeMillis();
+        final int batchSize = 25;
+        final int[] index = { 0 };
+        final UUID worldId = world.getUID();
+
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            if (Bukkit.getWorld(worldId) == null || !isSheepFarmWorld(world)) {
+                task.cancel();
+                return;
+            }
+            int processed = 0;
+            while (index[0] < snapshots.size() && processed < batchSize) {
+                SheepSnapshot snapshot = snapshots.get(index[0]++);
+                if (snapshot == null) {
+                    continue;
+                }
+                Sheep sheep = world.spawn(new Location(world, snapshot.x, snapshot.y, snapshot.z), Sheep.class);
+                SheepTier tier = SheepTier.byLevel(snapshot.tierLevel);
+                setSheepTier(sheep, tier);
+                setRainbowTier(sheep, snapshot.mergedCount);
+                sheep.setAdult();
+                if (snapshot.sheared && snapshot.nextEatAt > now) {
+                    sheep.setSheared(true);
+                    setNextEatTimestamp(sheep, snapshot.nextEatAt);
+                } else {
+                    sheep.setSheared(false);
+                    setNextEatTimestamp(sheep, 0L);
+                }
+                updateSheepName(sheep);
+                processed++;
+            }
+            if (index[0] >= snapshots.size()) {
+                refreshLiveSheepCount(world);
+                task.cancel();
+            }
+        }, 1L, 1L);
+    }
+
     public static void rebuildFarmWorld(World world) {
         if (world == null || !isSheepFarmWorld(world)) {
             return;

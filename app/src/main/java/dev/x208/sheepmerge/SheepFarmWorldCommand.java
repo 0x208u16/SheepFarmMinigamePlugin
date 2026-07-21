@@ -46,14 +46,19 @@ import org.bukkit.entity.Sheep;
 
 import java.util.ArrayList;
 import java.io.File;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private static final Set<String> initializedManagedWorldNames = new HashSet<>();
+    private static final Set<String> farmWorldsInitializing = new HashSet<>();
+    private static final Map<String, List<Consumer<World>>> pendingFarmWorldCallbacks = new HashMap<>();
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "help",
@@ -360,16 +365,21 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         String worldName = getWorldName(player.getUniqueId());
-        World world = ensureFarmWorld(worldName);
-
-        if (world == null) {
-            player.sendMessage("Unable to create your sheep farm world right now.");
-            return true;
-        }
-
-        applyConfiguredSpawn(world);
-        player.teleportAsync(getConfiguredFarmTeleportLocation(world));
-        player.sendMessage("You were teleported to your sheep farm world.");
+        player.sendMessage("Loading your sheep farm world...");
+        ensureFarmWorldAsync(worldName, world -> {
+            if (world == null) {
+                if (player.isOnline()) {
+                    player.sendMessage("Unable to create your sheep farm world right now.");
+                }
+                return;
+            }
+            if (!player.isOnline()) {
+                return;
+            }
+            applyConfiguredSpawn(world);
+            player.teleportAsync(getConfiguredFarmTeleportLocation(world));
+            player.sendMessage("You were teleported to your sheep farm world.");
+        });
         return true;
     }
 
@@ -604,25 +614,32 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         String ownerWorldName = getWorldName(ownerId);
-        World ownerWorld = ensureFarmWorld(ownerWorldName);
-        if (ownerWorld == null) {
-            player.sendMessage("Unable to open that farm world right now.");
-            return true;
-        }
+        player.sendMessage("Loading " + owner.getName() + "'s sheep farm...");
+        ensureFarmWorldAsync(ownerWorldName, ownerWorld -> {
+            if (ownerWorld == null) {
+                if (player.isOnline()) {
+                    player.sendMessage("Unable to open that farm world right now.");
+                }
+                return;
+            }
+            if (!player.isOnline()) {
+                return;
+            }
 
-        applyConfiguredSpawn(ownerWorld);
-        player.teleportAsync(getConfiguredFarmTeleportLocation(ownerWorld));
-        player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
-        player.sendMessage("Use /sheepmerge to return to your own farm.");
-        Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
-                () -> SheepMergeManager.updateVisitFarmBossBar(player),
-                2L);
-        player.sendTitle(
-                SheepMergeManager.color("&eVisiting " + owner.getName()),
-                SheepMergeManager.color("&7Use /sheepmerge to return home"),
-                10,
-                60,
-                10);
+            applyConfiguredSpawn(ownerWorld);
+            player.teleportAsync(getConfiguredFarmTeleportLocation(ownerWorld));
+            player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
+            player.sendMessage("Use /sheepmerge to return to your own farm.");
+            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
+                    () -> SheepMergeManager.updateVisitFarmBossBar(player),
+                    2L);
+            player.sendTitle(
+                    SheepMergeManager.color("&eVisiting " + owner.getName()),
+                    SheepMergeManager.color("&7Use /sheepmerge to return home"),
+                    10,
+                    60,
+                    10);
+        });
         return true;
     }
 
@@ -1679,6 +1696,60 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return createFlatWorld(worldName);
     }
 
+    public static void ensureFarmWorldAsync(String worldName, Consumer<World> callback) {
+        if (worldName == null || worldName.isBlank()) {
+            if (callback != null) {
+                callback.accept(null);
+            }
+            return;
+        }
+        World existing = Bukkit.getWorld(worldName);
+        if (existing != null) {
+            initializeManagedWorldState(existing, false);
+            if (callback != null) {
+                callback.accept(existing);
+            }
+            return;
+        }
+
+        synchronized (pendingFarmWorldCallbacks) {
+            if (callback != null) {
+                pendingFarmWorldCallbacks.computeIfAbsent(worldName, key -> new ArrayList<>()).add(callback);
+            }
+            if (farmWorldsInitializing.contains(worldName)) {
+                return;
+            }
+            farmWorldsInitializing.add(worldName);
+        }
+
+        if (SheepMergePlugin.instance == null) {
+            completeFarmWorldAsync(worldName, null);
+            return;
+        }
+
+        Bukkit.getScheduler().runTask(SheepMergePlugin.instance, () -> {
+            World world = ensureFarmWorld(worldName);
+            completeFarmWorldAsync(worldName, world);
+        });
+    }
+
+    private static void completeFarmWorldAsync(String worldName, World world) {
+        List<Consumer<World>> callbacks;
+        synchronized (pendingFarmWorldCallbacks) {
+            farmWorldsInitializing.remove(worldName);
+            callbacks = pendingFarmWorldCallbacks.remove(worldName);
+        }
+        if (callbacks == null) {
+            return;
+        }
+        for (Consumer<World> callback : callbacks) {
+            if (callback == null) {
+                continue;
+            }
+            callback.accept(world);
+        }
+    }
+
     public static World ensureFarmBuildWorld() {
         World world = Bukkit.getWorld(SheepMergeManager.getFarmBuildWorldName());
         if (world != null) {
@@ -1765,20 +1836,38 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        if (SheepMergePlugin.instance == null) {
+            initializeManagedWorldStateImmediate(world, applyDefaultLayoutWhenMissing, managedWorldName);
+            return;
+        }
+
+        if (initializedManagedWorldNames.contains(managedWorldName)) {
+            return;
+        }
+
+        initializedManagedWorldNames.add(managedWorldName);
+        Bukkit.getScheduler().runTask(SheepMergePlugin.instance,
+                () -> initializeManagedWorldStateImmediate(world, applyDefaultLayoutWhenMissing, managedWorldName));
+    }
+
+    private static void initializeManagedWorldStateImmediate(World world, boolean applyDefaultLayoutWhenMissing,
+            String managedWorldName) {
+        if (world == null || managedWorldName == null || managedWorldName.isBlank()) {
+            return;
+        }
+
         if (SheepMergeManager.isSheepFarmWorld(world)) {
             if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
                 SheepMergeManager.applyFarmLayout(world);
             }
             if (world.getEntitiesByClass(org.bukkit.entity.Sheep.class).isEmpty()) {
-                SheepMergeManager.restoreSavedSheepForWorld(world);
+                SheepMergeManager.restoreSavedSheepForWorldAsync(world);
             }
         } else if (SheepMergeManager.isFarmBuildWorld(world)) {
             if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
                 SheepMergeManager.applyFarmLayout(world);
             }
         }
-
-        initializedManagedWorldNames.add(managedWorldName);
     }
 
     private static void ensureWorldStorageFolders(World world) {
