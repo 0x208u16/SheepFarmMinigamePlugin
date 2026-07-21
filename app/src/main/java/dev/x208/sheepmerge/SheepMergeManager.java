@@ -360,6 +360,7 @@ public final class SheepMergeManager {
     private static int AUTOMATION_AUTO_PRESTIGE_BASE_COST = 64;
     private static long AUTOMATION_POINT_INTERVAL_MS = 60_000L;
     private static long AUTOMATION_AUTO_BUY_INTERVAL_MS = 5_000L;
+    private static final int AUTOMATION_AUTO_BUY_MAX_PURCHASES_PER_TICK = 512;
     private static long AUTOMATION_AUTO_ABILITY_INTERVAL_MS = 5_000L;
     private static long AUTOMATION_SLOW_AUTO_MERGE_INTERVAL_MS = 3_000L;
     private static long AUTOMATION_SLOW_AUTO_SHEAR_INTERVAL_MS = 3_000L;
@@ -1967,17 +1968,32 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutomationAutoBuy(Player player, UUID playerId, long now) {
-        long interval = getAutomationAutoBuyIntervalMs(player);
-        if (getAutomationAutoBuyUpgradeLevel(player) <= 0 || interval <= 0L
-                || !isAutomationAutoBuyEnabled(player)) {
+        int level = getAutomationAutoBuyUpgradeLevel(player);
+        if (level <= 0 || !isAutomationAutoBuyEnabled(player)) {
             return;
         }
-        long nextAt = nextAutomationAutoBuyAtByPlayer.getOrDefault(playerId, 0L);
-        if (now < nextAt) {
-            return;
+        if (level < AUTOMATION_AUTO_BUY_MAX_LEVEL) {
+            long interval = getAutomationAutoBuyIntervalMs(player);
+            if (interval <= 0L) {
+                return;
+            }
+            long nextAt = nextAutomationAutoBuyAtByPlayer.getOrDefault(playerId, 0L);
+            if (now < nextAt) {
+                return;
+            }
+            nextAutomationAutoBuyAtByPlayer.put(playerId, now + interval);
+        } else {
+            nextAutomationAutoBuyAtByPlayer.put(playerId, 0L);
         }
-        nextAutomationAutoBuyAtByPlayer.put(playerId, now + interval);
         if (!canAutomationRun(player, false)) {
+            return;
+        }
+        if (level >= AUTOMATION_AUTO_BUY_MAX_LEVEL) {
+            for (int i = 0; i < AUTOMATION_AUTO_BUY_MAX_PURCHASES_PER_TICK; i++) {
+                if (!tryAutoBuyOneUpgrade(player)) {
+                    break;
+                }
+            }
             return;
         }
         tryAutoBuyOneUpgrade(player);
@@ -2144,31 +2160,109 @@ public final class SheepMergeManager {
         if (player == null) {
             return false;
         }
-        if (getPlayerLimit(player) < getMaxSheepLimit(player.getUniqueId()) && upgradeLimit(player)) {
-            return true;
+        BigInteger availablePoints = getPlayerPointsBig(player);
+        int selection = getCheapestAutoBuyUpgradeSelection(player, availablePoints);
+        return switch (selection) {
+            case 1 -> upgradeLimit(player);
+            case 2 -> upgradeEggSpeed(player);
+            case 3 -> upgradeWoolRegen(player);
+            case 4 -> upgradeHigherTierChance(player);
+            case 5 -> upgradeComboDecay(player);
+            case 6 -> upgradeComboGain(player);
+            case 7 -> upgradeShearWoolSave(player);
+            case 8 -> upgradeShearTierBoost(player);
+            case 9 -> upgradeShearShop(player);
+            default -> false;
+        };
+    }
+
+    private static int getCheapestAutoBuyUpgradeSelection(Player player, BigInteger availablePoints) {
+        if (player == null || availablePoints == null || availablePoints.signum() <= 0) {
+            return 0;
         }
-        if (getEggSpeedLevel(player) < getEggSpeedMaxLevel(player) && upgradeEggSpeed(player)) {
-            return true;
+
+        int selected = 0;
+        BigInteger cheapest = null;
+
+        if (getPlayerLimit(player) < getMaxSheepLimit(player.getUniqueId())) {
+            BigInteger cost = getUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)) {
+                selected = 1;
+                cheapest = cost;
+            }
         }
-        if (getWoolRegenLevel(player) < getWoolRegenMaxLevel(player) && upgradeWoolRegen(player)) {
-            return true;
+        if (getEggSpeedLevel(player) < getEggSpeedMaxLevel(player)) {
+            BigInteger cost = getEggSpeedUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 2;
+                cheapest = cost;
+            }
         }
-        if (getHigherTierChanceLevel(player) < getHigherTierChanceMaxLevel(player) && upgradeHigherTierChance(player)) {
-            return true;
+        if (getWoolRegenLevel(player) < getWoolRegenMaxLevel(player)) {
+            BigInteger cost = getWoolRegenUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 3;
+                cheapest = cost;
+            }
         }
-        if (getComboDecayUpgradeLevel(player) < COMBO_DECAY_MAX_LEVEL && upgradeComboDecay(player)) {
-            return true;
+        if (getHigherTierChanceLevel(player) < getHigherTierChanceMaxLevel(player)) {
+            BigInteger cost = getHigherTierChanceUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 4;
+                cheapest = cost;
+            }
         }
-        if (getComboGainUpgradeLevel(player) < COMBO_GAIN_MAX_LEVEL && upgradeComboGain(player)) {
-            return true;
+        if (getComboDecayUpgradeLevel(player) < COMBO_DECAY_MAX_LEVEL) {
+            BigInteger cost = getComboDecayUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 5;
+                cheapest = cost;
+            }
         }
-        if (getShearWoolSaveLevel(player) < SHEAR_WOOL_SAVE_MAX_LEVEL && upgradeShearWoolSave(player)) {
-            return true;
+        if (getComboGainUpgradeLevel(player) < COMBO_GAIN_MAX_LEVEL) {
+            BigInteger cost = getComboGainUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 6;
+                cheapest = cost;
+            }
         }
-        if (getShearTierBoostLevel(player) < SHEAR_TIER_BOOST_MAX_LEVEL && upgradeShearTierBoost(player)) {
-            return true;
+        if (getShearWoolSaveLevel(player) < SHEAR_WOOL_SAVE_MAX_LEVEL) {
+            BigInteger cost = getShearWoolSaveUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 7;
+                cheapest = cost;
+            }
         }
-        return upgradeShearShop(player);
+        if (getShearTierBoostLevel(player) < SHEAR_TIER_BOOST_MAX_LEVEL) {
+            BigInteger cost = getShearTierBoostUpgradeCost(player);
+            if (canAutoBuyUpgradeNow(player, availablePoints, cost)
+                    && (cheapest == null || cost.compareTo(cheapest) < 0)) {
+                selected = 8;
+                cheapest = cost;
+            }
+        }
+
+        BigInteger shearShopCost = getShearUpgradeCost(player);
+        if (canAutoBuyUpgradeNow(player, availablePoints, shearShopCost)
+                && (cheapest == null || shearShopCost.compareTo(cheapest) < 0)) {
+            selected = 9;
+        }
+        return selected;
+    }
+
+    private static boolean canAutoBuyUpgradeNow(Player player, BigInteger availablePoints, BigInteger cost) {
+        return player != null
+                && availablePoints != null
+                && cost != null
+                && cost.signum() > 0
+                && availablePoints.compareTo(cost) >= 0
+                && canSpendUpgradePointsDuringTutorial(player, cost);
     }
 
     private static boolean tryAutoActivateAbility(Player player) {
@@ -2926,7 +3020,7 @@ public final class SheepMergeManager {
             return AUTOMATION_AUTO_BUY_INTERVAL_MS;
         }
         if (level >= AUTOMATION_AUTO_BUY_MAX_LEVEL) {
-            return AUTOMATION_MIN_INTERVAL_MS;
+            return 0L;
         }
         long step = Math.max(1L, (AUTOMATION_AUTO_BUY_INTERVAL_MS - AUTOMATION_MIN_INTERVAL_MS)
                 / Math.max(1, AUTOMATION_AUTO_BUY_MAX_LEVEL - 1));
@@ -9066,12 +9160,16 @@ public final class SheepMergeManager {
                 List.of(
                         "Level: " + getAutomationAutoBuyUpgradeLevel(player) + " / " + AUTOMATION_AUTO_BUY_MAX_LEVEL,
                         "Status: " + (isAutomationAutoBuyEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + formatDuration(getAutomationAutoBuyIntervalMs(player)),
+                        "Runs every " + (getAutomationAutoBuyIntervalMs(player) <= 0L
+                                ? "instant"
+                                : formatDuration(getAutomationAutoBuyIntervalMs(player))),
                         getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
                                 ? "Cost: MAXED"
                                 : "Cost: " + formatPoints(getAutomationAutoBuyUpgradeCost(player))
                                         + " automation points",
-                        "Buys one affordable upgrade",
+                        getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
+                                ? "Instantly buys cheapest upgrades"
+                                : "Buys the cheapest affordable upgrade",
                         getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
                                 ? "Click: maxed"
                                 : "Click: unlock")));
