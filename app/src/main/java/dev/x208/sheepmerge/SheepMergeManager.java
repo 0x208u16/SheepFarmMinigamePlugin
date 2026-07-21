@@ -414,7 +414,7 @@ public final class SheepMergeManager {
     public static final int SHOP_MENU_OPEN_SLOT = 24;
     public static final int COMBO_MENU_OPEN_SLOT = 18;
     public static final int AUTOMATION_MENU_OPEN_SLOT = 26;
-    public static final int SACRIFICE_MENU_OPEN_SLOT = 8;
+    public static final int SACRIFICE_MENU_OPEN_SLOT = 2;
     public static final int REBIRTH_MENU_OPEN_SLOT = 6;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
