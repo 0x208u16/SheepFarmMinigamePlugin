@@ -3903,15 +3903,21 @@ public final class SheepMergeManager {
         questUpgradeDurationByPlayer.remove(id);
         questUpgradePowerByPlayer.remove(id);
         activeLuckyBurstUntilByPlayer.remove(id);
+        activeLuckyBurstUsesByPlayer.remove(id);
+        luckyBurstEnabledByPlayer.remove(id);
         activeWoolRushUntilByPlayer.remove(id);
         activeJackpotShearsUntilByPlayer.remove(id);
         activeAutoMergeUntilByPlayer.remove(id);
+        activeAutoMergeUsesByPlayer.remove(id);
+        autoMergeEnabledByPlayer.remove(id);
         pausedLuckyBurstRemainingMsByPlayer.remove(id);
         pausedWoolRushRemainingMsByPlayer.remove(id);
         pausedJackpotShearsRemainingMsByPlayer.remove(id);
         pausedAutoMergeRemainingMsByPlayer.remove(id);
         nextAutoMergeAtByPlayer.remove(id);
         activeAutoShearUntilByPlayer.remove(id);
+        activeAutoShearUsesByPlayer.remove(id);
+        autoShearEnabledByPlayer.remove(id);
         pausedAutoShearRemainingMsByPlayer.remove(id);
         nextAutoShearAtByPlayer.remove(id);
         EGG_MODULE.clearRuntimeState(id);
@@ -5320,10 +5326,16 @@ public final class SheepMergeManager {
         questUpgradeDurationByPlayer.clear();
         questUpgradePowerByPlayer.clear();
         activeLuckyBurstUntilByPlayer.clear();
+        activeLuckyBurstUsesByPlayer.clear();
+        luckyBurstEnabledByPlayer.clear();
         activeWoolRushUntilByPlayer.clear();
         activeJackpotShearsUntilByPlayer.clear();
         activeAutoMergeUntilByPlayer.clear();
+        activeAutoMergeUsesByPlayer.clear();
+        autoMergeEnabledByPlayer.clear();
         activeAutoShearUntilByPlayer.clear();
+        activeAutoShearUsesByPlayer.clear();
+        autoShearEnabledByPlayer.clear();
         pausedLuckyBurstRemainingMsByPlayer.clear();
         pausedWoolRushRemainingMsByPlayer.clear();
         pausedJackpotShearsRemainingMsByPlayer.clear();
@@ -9319,10 +9331,16 @@ public final class SheepMergeManager {
             dataConfig.set("questUpgradeDuration", null);
             dataConfig.set("questUpgradePower", null);
             dataConfig.set("activeLuckyBurstUntil", null);
+            dataConfig.set("activeLuckyBurstUses", null);
+            dataConfig.set("luckyBurstEnabled", null);
             dataConfig.set("activeWoolRushUntil", null);
             dataConfig.set("activeJackpotShearsUntil", null);
             dataConfig.set("activeAutoMergeUntil", null);
+            dataConfig.set("activeAutoMergeUses", null);
+            dataConfig.set("autoMergeEnabled", null);
             dataConfig.set("activeAutoShearUntil", null);
+            dataConfig.set("activeAutoShearUses", null);
+            dataConfig.set("autoShearEnabled", null);
             dataConfig.set("pausedLuckyBurstRemaining", null);
             dataConfig.set("pausedWoolRushRemaining", null);
             dataConfig.set("pausedJackpotShearsRemaining", null);
@@ -9478,6 +9496,12 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Long> entry : activeLuckyBurstUntilByPlayer.entrySet()) {
                 dataConfig.set("activeLuckyBurstUntil." + entry.getKey().toString(), entry.getValue());
             }
+            for (Map.Entry<UUID, Integer> entry : activeLuckyBurstUsesByPlayer.entrySet()) {
+                dataConfig.set("activeLuckyBurstUses." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : luckyBurstEnabledByPlayer.entrySet()) {
+                dataConfig.set("luckyBurstEnabled." + entry.getKey().toString(), entry.getValue());
+            }
             for (Map.Entry<UUID, Long> entry : activeWoolRushUntilByPlayer.entrySet()) {
                 dataConfig.set("activeWoolRushUntil." + entry.getKey().toString(), entry.getValue());
             }
@@ -9487,8 +9511,20 @@ public final class SheepMergeManager {
             for (Map.Entry<UUID, Long> entry : activeAutoMergeUntilByPlayer.entrySet()) {
                 dataConfig.set("activeAutoMergeUntil." + entry.getKey().toString(), entry.getValue());
             }
+            for (Map.Entry<UUID, Integer> entry : activeAutoMergeUsesByPlayer.entrySet()) {
+                dataConfig.set("activeAutoMergeUses." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : autoMergeEnabledByPlayer.entrySet()) {
+                dataConfig.set("autoMergeEnabled." + entry.getKey().toString(), entry.getValue());
+            }
             for (Map.Entry<UUID, Long> entry : activeAutoShearUntilByPlayer.entrySet()) {
                 dataConfig.set("activeAutoShearUntil." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : activeAutoShearUsesByPlayer.entrySet()) {
+                dataConfig.set("activeAutoShearUses." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : autoShearEnabledByPlayer.entrySet()) {
+                dataConfig.set("autoShearEnabled." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Long> entry : pausedLuckyBurstRemainingMsByPlayer.entrySet()) {
                 dataConfig.set("pausedLuckyBurstRemaining." + entry.getKey().toString(), entry.getValue());
@@ -10047,6 +10083,28 @@ public final class SheepMergeManager {
                 }
             });
         }
+        if (dataConfig.isConfigurationSection("activeLuckyBurstUses")) {
+            dataConfig.getConfigurationSection("activeLuckyBurstUses").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    activeLuckyBurstUsesByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("activeLuckyBurstUses." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("luckyBurstEnabled")) {
+            dataConfig.getConfigurationSection("luckyBurstEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    luckyBurstEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("luckyBurstEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
         if (dataConfig.isConfigurationSection("activeWoolRushUntil")) {
             dataConfig.getConfigurationSection("activeWoolRushUntil").getKeys(false).forEach(key -> {
                 try {
@@ -10080,12 +10138,56 @@ public final class SheepMergeManager {
                 }
             });
         }
+        if (dataConfig.isConfigurationSection("activeAutoMergeUses")) {
+            dataConfig.getConfigurationSection("activeAutoMergeUses").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    activeAutoMergeUsesByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("activeAutoMergeUses." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("autoMergeEnabled")) {
+            dataConfig.getConfigurationSection("autoMergeEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    autoMergeEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("autoMergeEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
         if (dataConfig.isConfigurationSection("activeAutoShearUntil")) {
             dataConfig.getConfigurationSection("activeAutoShearUntil").getKeys(false).forEach(key -> {
                 try {
                     UUID uuid = UUID.fromString(key);
                     activeAutoShearUntilByPlayer.put(uuid,
                             Math.max(0L, dataConfig.getLong("activeAutoShearUntil." + key, 0L)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("activeAutoShearUses")) {
+            dataConfig.getConfigurationSection("activeAutoShearUses").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    activeAutoShearUsesByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("activeAutoShearUses." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("autoShearEnabled")) {
+            dataConfig.getConfigurationSection("autoShearEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    autoShearEnabledByPlayer.put(uuid,
+                            dataConfig.getBoolean("autoShearEnabled." + key, true));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
