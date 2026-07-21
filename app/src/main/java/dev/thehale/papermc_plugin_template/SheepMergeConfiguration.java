@@ -103,7 +103,7 @@ public final class SheepMergeConfiguration {
         tutorialStatusFeedRepeatMs = getLong(configuration, "gameplay.reminders.tutorialStatusFeed.repeatMs", 12_000L,
                 1L);
         tutorialFocusNotificationCooldownMs = getLong(configuration,
-                "gameplay.reminders.tutorialFocus.cooldownMs", 5_000L, 0L);
+                "gameplay.reminders.tutorialFocus.cooldownMs", 8_000L, 0L);
         tutorialMergePointsReminderRepeatMs = getLong(configuration,
                 "gameplay.reminders.tutorialMergePoints.repeatMs", 15_000L, 1L);
 

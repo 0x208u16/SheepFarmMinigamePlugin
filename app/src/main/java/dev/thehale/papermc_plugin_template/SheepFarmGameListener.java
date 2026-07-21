@@ -282,6 +282,10 @@ public class SheepFarmGameListener implements Listener {
         }
 
         if (player.isSneaking() && !SheepMergeManager.hasPickedUpSheep(player)) {
+            if (SheepMergeManager.tryAutoMergeOnPickup(player, targetSheep)) {
+                event.setCancelled(true);
+                return;
+            }
             SheepMergeManager.storePickedUpSheep(player, targetSheep);
             return;
         }

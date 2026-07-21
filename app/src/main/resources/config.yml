@@ -96,6 +96,6 @@ gameplay:
     tutorialStatusFeed:
       repeatMs: 12000
     tutorialFocus:
-      cooldownMs: 5000
+      cooldownMs: 8000
     tutorialMergePoints:
       repeatMs: 15000
