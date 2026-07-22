@@ -1070,8 +1070,8 @@ public final class SheepMergeManager {
         List<ChunkApplyCursor> cursors = new ArrayList<>();
         for (String chunkKey : chunksSection.getKeys(false)) {
             String chunkPath = "chunks." + chunkKey;
-            int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
-            int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
+            int chunkX = resolveChunkCoordinate(chunkKey, chunkPath + ".x", 0);
+            int chunkZ = resolveChunkCoordinate(chunkKey, chunkPath + ".z", 1);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
                 continue;
             }
@@ -1252,8 +1252,8 @@ public final class SheepMergeManager {
 
         for (String chunkKey : chunksSection.getKeys(false)) {
             String chunkPath = "chunks." + chunkKey;
-            int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
-            int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
+            int chunkX = resolveChunkCoordinate(chunkKey, chunkPath + ".x", 0);
+            int chunkZ = resolveChunkCoordinate(chunkKey, chunkPath + ".z", 1);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
                 continue;
             }
@@ -1782,6 +1782,36 @@ public final class SheepMergeManager {
         }
     }
 
+    private static int parseChunkCoordinateFromKey(String chunkKey, int axisIndex, int fallback) {
+        if (chunkKey == null || chunkKey.isBlank()) {
+            return fallback;
+        }
+        String[] parts = chunkKey.split(",", 2);
+        if (parts.length < 2) {
+            return fallback;
+        }
+        String raw = axisIndex <= 0 ? parts[0] : parts[1];
+        if (raw == null || raw.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    private static int resolveChunkCoordinate(String chunkKey, String configuredPath, int axisIndex) {
+        if (farmLayoutConfig == null) {
+            return Integer.MIN_VALUE;
+        }
+        int configured = farmLayoutConfig.getInt(configuredPath, Integer.MIN_VALUE);
+        if (configured != Integer.MIN_VALUE) {
+            return configured;
+        }
+        return parseChunkCoordinateFromKey(chunkKey, axisIndex, Integer.MIN_VALUE);
+    }
+
     private static void loadFarmLayout() {
         if (plugin == null || farmLayoutFile == null) {
             return;
@@ -1827,8 +1857,8 @@ public final class SheepMergeManager {
         Map<String, String> directBlocks = new HashMap<>();
         for (String chunkKey : chunksSection.getKeys(false)) {
             String chunkPath = "chunks." + chunkKey;
-            int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
-            int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
+            int chunkX = resolveChunkCoordinate(chunkKey, chunkPath + ".x", 0);
+            int chunkZ = resolveChunkCoordinate(chunkKey, chunkPath + ".z", 1);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE
                     || !chunkIntersectsFarmBounds(chunkX, chunkZ)) {
                 continue;
