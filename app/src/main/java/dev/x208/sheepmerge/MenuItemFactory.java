@@ -10,7 +10,6 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.ShieldMeta;
 
 final class MenuItemFactory {
 
@@ -45,9 +44,13 @@ final class MenuItemFactory {
     static ItemStack createShieldWithWhiteBanner(String name, List<String> lore) {
         ItemStack item = create(Material.SHIELD, name, lore, true);
         ItemMeta meta = item.getItemMeta();
-        if (meta instanceof ShieldMeta shieldMeta) {
-            shieldMeta.setBaseColor(DyeColor.WHITE);
-            item.setItemMeta(shieldMeta);
+        if (meta != null) {
+            try {
+                meta.getClass().getMethod("setBaseColor", DyeColor.class).invoke(meta, DyeColor.WHITE);
+            } catch (ReflectiveOperationException ignored) {
+                // The API version in use may not expose shield banner colors.
+            }
+            item.setItemMeta(meta);
         }
         return item;
     }

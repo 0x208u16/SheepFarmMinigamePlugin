@@ -15,6 +15,7 @@ buildscript {
     classpath 'org.yaml:snakeyaml:1.29'  // To manipulate the plugin.yml
     // auto-version MUST be here so I can apply it *after* setting the project version.
     classpath 'org.shipkit:shipkit-auto-version:1.1.19'  // Discovers last released version
+    classpath 'org.shipkit:shipkit-changelog:1.1.15'  // Auto-generates the Changelog
   }
 }
 
@@ -22,7 +23,6 @@ buildscript {
 plugins {
   id 'java-library'
   id 'jacoco'
-  id 'org.shipkit.shipkit-changelog' version '1.1.15'      // Auto-generates the Changelog
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -80,6 +80,7 @@ project.ext {
 }
 // Project version MUST be manually set *before* applying the auto-version plugin
 project.version = getPluginYml().version  
+apply plugin: 'org.shipkit.shipkit-changelog'
 apply plugin: 'org.shipkit.shipkit-auto-version'
 
 test {
