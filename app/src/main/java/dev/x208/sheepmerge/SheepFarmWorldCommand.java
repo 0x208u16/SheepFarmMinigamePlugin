@@ -62,6 +62,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static final Map<String, List<Consumer<World>>> pendingManagedWorldStateCallbacks = new HashMap<>();
     private static final Set<String> farmWorldsInitializing = new HashSet<>();
     private static final Map<String, List<Consumer<World>>> pendingFarmWorldCallbacks = new HashMap<>();
+    private static final Object PLAYER_FARM_LOAD_LOCK = new Object();
+    private static final Set<UUID> playersWithFarmLoadInProgress = new HashSet<>();
+    private static final Map<UUID, Integer> farmLoadTimeoutTaskIdByPlayer = new HashMap<>();
+    private static final long PLAYER_FARM_LOAD_TIMEOUT_TICKS = 25L * 20L;
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of(
             "help",
@@ -368,21 +372,29 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         String worldName = getWorldName(player.getUniqueId());
+        if (!beginFarmLoadForPlayer(player)) {
+            player.sendMessage("Your farm is already loading. Please wait.");
+            return true;
+        }
         player.sendMessage("Loading your sheep farm world...");
         ensureFarmWorldAsync(worldName, world -> {
+            UUID playerId = player.getUniqueId();
             if (world == null) {
                 if (player.isOnline()) {
                     player.sendMessage("Unable to create your sheep farm world right now.");
                 }
+                finishFarmLoadForPlayer(playerId, false);
                 return;
             }
             if (!player.isOnline()) {
+                finishFarmLoadForPlayer(playerId, false);
                 return;
             }
             applyConfiguredSpawn(world);
             teleportPlayerToConfiguredSpawnAsync(player, world,
                     () -> player.sendMessage("You were teleported to your sheep farm world."),
-                    "Unable to teleport to your sheep farm world right now.");
+                    "Unable to teleport to your sheep farm world right now.",
+                    () -> finishFarmLoadForPlayer(playerId, false));
         });
         return true;
     }
@@ -618,15 +630,22 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         String ownerWorldName = getWorldName(ownerId);
+        if (!beginFarmLoadForPlayer(player)) {
+            player.sendMessage("A farm is already loading for you. Please wait.");
+            return true;
+        }
         player.sendMessage("Loading " + owner.getName() + "'s sheep farm...");
         ensureFarmWorldAsync(ownerWorldName, ownerWorld -> {
+            UUID playerId = player.getUniqueId();
             if (ownerWorld == null) {
                 if (player.isOnline()) {
                     player.sendMessage("Unable to open that farm world right now.");
                 }
+                finishFarmLoadForPlayer(playerId, false);
                 return;
             }
             if (!player.isOnline()) {
+                finishFarmLoadForPlayer(playerId, false);
                 return;
             }
 
@@ -643,7 +662,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                         10,
                         60,
                         10);
-            }, "Unable to teleport to that farm world right now.");
+            }, "Unable to teleport to that farm world right now.",
+                    () -> finishFarmLoadForPlayer(playerId, false));
         });
         return true;
     }
@@ -1765,28 +1785,94 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private static void teleportPlayerToConfiguredSpawnAsync(Player player, World world, Runnable onSuccess,
             String failureMessage) {
+        teleportPlayerToConfiguredSpawnAsync(player, world, onSuccess, failureMessage, null);
+    }
+
+    private static void teleportPlayerToConfiguredSpawnAsync(Player player, World world, Runnable onSuccess,
+            String failureMessage, Runnable onComplete) {
         if (player == null || world == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
         }
         player.teleportAsync(getConfiguredFarmTeleportLocation(world)).whenComplete((success, throwable) -> {
             if (SheepMergePlugin.instance == null) {
+                if (onComplete != null) {
+                    onComplete.run();
+                }
                 return;
             }
             Bukkit.getScheduler().runTask(SheepMergePlugin.instance, () -> {
                 if (!player.isOnline()) {
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
                     return;
                 }
                 if (throwable == null && Boolean.TRUE.equals(success)) {
                     if (onSuccess != null) {
                         onSuccess.run();
                     }
-                    return;
-                }
-                if (failureMessage != null && !failureMessage.isBlank()) {
+                } else if (failureMessage != null && !failureMessage.isBlank()) {
                     player.sendMessage(failureMessage);
+                }
+                if (onComplete != null) {
+                    onComplete.run();
                 }
             });
         });
+    }
+
+    private static boolean beginFarmLoadForPlayer(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        synchronized (PLAYER_FARM_LOAD_LOCK) {
+            if (playersWithFarmLoadInProgress.contains(playerId)) {
+                return false;
+            }
+            playersWithFarmLoadInProgress.add(playerId);
+        }
+
+        if (SheepMergePlugin.instance != null) {
+            int taskId = Bukkit.getScheduler().scheduleSyncDelayedTask(SheepMergePlugin.instance,
+                    () -> finishFarmLoadForPlayer(playerId, true),
+                    PLAYER_FARM_LOAD_TIMEOUT_TICKS);
+            synchronized (PLAYER_FARM_LOAD_LOCK) {
+                farmLoadTimeoutTaskIdByPlayer.put(playerId, taskId);
+            }
+        }
+        return true;
+    }
+
+    private static void finishFarmLoadForPlayer(UUID playerId, boolean timedOut) {
+        if (playerId == null) {
+            return;
+        }
+
+        Integer taskId;
+        boolean removed;
+        synchronized (PLAYER_FARM_LOAD_LOCK) {
+            removed = playersWithFarmLoadInProgress.remove(playerId);
+            taskId = farmLoadTimeoutTaskIdByPlayer.remove(playerId);
+        }
+        if (!removed) {
+            return;
+        }
+
+        if (taskId != null && SheepMergePlugin.instance != null) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
+
+        if (!timedOut) {
+            return;
+        }
+        Player onlinePlayer = Bukkit.getPlayer(playerId);
+        if (onlinePlayer != null && onlinePlayer.isOnline()) {
+            onlinePlayer.sendMessage("Farm loading took too long and was cancelled. Please try again.");
+        }
     }
 
     private static void completeFarmWorldAsync(String worldName, World world) {

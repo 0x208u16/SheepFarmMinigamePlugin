@@ -829,14 +829,17 @@ public final class SheepMergeManager {
         farmLayoutConfig.set("chunks", null);
         farmLayoutConfig.set("blocks", null);
 
-        int minY = sourceWorld.getMinHeight();
-        int maxY = sourceWorld.getMaxHeight();
+        int minY = Math.max(sourceWorld.getMinHeight(), FARM_MIN_Y);
+        int maxY = Math.min(sourceWorld.getMaxHeight(), FARM_MAX_Y + 1);
         if (minY >= maxY) {
             return false;
         }
         for (org.bukkit.Chunk chunk : sourceWorld.getLoadedChunks()) {
             int chunkX = chunk.getX();
             int chunkZ = chunk.getZ();
+            if (!chunkIntersectsFarmBounds(chunkX, chunkZ)) {
+                continue;
+            }
 
             String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
             farmLayoutConfig.set(chunkPath + ".x", chunkX);
@@ -1077,8 +1080,12 @@ public final class SheepMergeManager {
             return;
         }
 
-        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
-        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
+        int minY = Math.max(
+                Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight())),
+                FARM_MIN_Y);
+        int maxY = Math.min(
+                Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight())),
+                FARM_MAX_Y + 1);
         if (minY >= maxY) {
             if (onComplete != null) {
                 onComplete.run();
@@ -1092,6 +1099,9 @@ public final class SheepMergeManager {
             int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
             int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                continue;
+            }
+            if (!chunkIntersectsFarmBounds(chunkX, chunkZ)) {
                 continue;
             }
 
@@ -1235,8 +1245,12 @@ public final class SheepMergeManager {
             return;
         }
 
-        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
-        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
+        int minY = Math.max(
+                Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight())),
+                FARM_MIN_Y);
+        int maxY = Math.min(
+                Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight())),
+                FARM_MAX_Y + 1);
         if (minY >= maxY) {
             return;
         }
@@ -1246,6 +1260,9 @@ public final class SheepMergeManager {
             int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
             int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                continue;
+            }
+            if (!chunkIntersectsFarmBounds(chunkX, chunkZ)) {
                 continue;
             }
             List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
@@ -1316,6 +1333,17 @@ public final class SheepMergeManager {
                 }
             }
         }
+    }
+
+    private static boolean chunkIntersectsFarmBounds(int chunkX, int chunkZ) {
+        int chunkMinX = chunkX << 4;
+        int chunkMaxX = chunkMinX + 15;
+        int chunkMinZ = chunkZ << 4;
+        int chunkMaxZ = chunkMinZ + 15;
+        return chunkMaxX >= FARM_MIN_XZ
+                && chunkMinX <= FARM_MAX_XZ
+                && chunkMaxZ >= FARM_MIN_XZ
+                && chunkMinZ <= FARM_MAX_XZ;
     }
 
     public static void saveSheepSnapshotForWorld(World world) {
