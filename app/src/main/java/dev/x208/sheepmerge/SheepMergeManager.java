@@ -836,13 +836,37 @@ public final class SheepMergeManager {
         if (farmLayoutConfig == null) {
             farmLayoutConfig = new YamlConfiguration();
         }
+        int minChunkX = Integer.MAX_VALUE;
+        int maxChunkX = Integer.MIN_VALUE;
+        int minChunkZ = Integer.MAX_VALUE;
+        int maxChunkZ = Integer.MIN_VALUE;
+        for (Chunk loadedChunk : sourceWorld.getLoadedChunks()) {
+            if (loadedChunk == null) {
+                continue;
+            }
+            minChunkX = Math.min(minChunkX, loadedChunk.getX());
+            maxChunkX = Math.max(maxChunkX, loadedChunk.getX());
+            minChunkZ = Math.min(minChunkZ, loadedChunk.getZ());
+            maxChunkZ = Math.max(maxChunkZ, loadedChunk.getZ());
+        }
+        if (minChunkX > maxChunkX || minChunkZ > maxChunkZ) {
+            minChunkX = Math.floorDiv(FARM_MIN_XZ, 16);
+            maxChunkX = Math.floorDiv(FARM_MAX_XZ, 16);
+            minChunkZ = Math.floorDiv(FARM_MIN_XZ, 16);
+            maxChunkZ = Math.floorDiv(FARM_MAX_XZ, 16);
+        }
+        int minX = minChunkX << 4;
+        int maxX = (maxChunkX << 4) + 15;
+        int minZ = minChunkZ << 4;
+        int maxZ = (maxChunkZ << 4) + 15;
+
         farmLayoutConfig.set("version", 3);
         farmLayoutConfig.set("world.minY", sourceWorld.getMinHeight());
         farmLayoutConfig.set("world.maxY", sourceWorld.getMaxHeight());
-        farmLayoutConfig.set("world.minX", FARM_MIN_XZ);
-        farmLayoutConfig.set("world.maxX", FARM_MAX_XZ);
-        farmLayoutConfig.set("world.minZ", FARM_MIN_XZ);
-        farmLayoutConfig.set("world.maxZ", FARM_MAX_XZ);
+        farmLayoutConfig.set("world.minX", minX);
+        farmLayoutConfig.set("world.maxX", maxX);
+        farmLayoutConfig.set("world.minZ", minZ);
+        farmLayoutConfig.set("world.maxZ", maxZ);
         farmLayoutConfig.set("world.name", sourceWorld.getName());
         farmLayoutConfig.set("world.savedAt", System.currentTimeMillis());
         farmLayoutConfig.set("chunks", null);
@@ -850,9 +874,9 @@ public final class SheepMergeManager {
 
         int minY = sourceWorld.getMinHeight();
         int maxY = sourceWorld.getMaxHeight();
-        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
+        for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y < maxY; y++) {
-                for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
+                for (int z = minZ; z <= maxZ; z++) {
                     String serializedBlockData = sourceWorld.getBlockAt(x, y, z)
                             .getBlockData()
                             .getAsString();
@@ -883,12 +907,13 @@ public final class SheepMergeManager {
             return;
         }
         clearFarmPlatformBoundingBox(world);
-        if (hasSavedFarmLayout()) {
+        boolean hasSavedLayout = hasSavedFarmLayout();
+        if (hasSavedLayout) {
             applySavedFarmLayout(world);
         } else {
             applyDefaultFarmLayout(world);
+            enforceFarmPerimeter(world);
         }
-        enforceFarmPerimeter(world);
         ensureMandatoryFarmBaseLayer(world);
     }
 
@@ -1077,9 +1102,6 @@ public final class SheepMergeManager {
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
                 continue;
             }
-            if (!chunkIntersectsFarmBounds(chunkX, chunkZ)) {
-                continue;
-            }
 
             List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
             List<BlockData> paletteData = new ArrayList<>();
@@ -1262,9 +1284,6 @@ public final class SheepMergeManager {
             int chunkX = resolveChunkCoordinate(chunkKey, chunkPath + ".x", 0);
             int chunkZ = resolveChunkCoordinate(chunkKey, chunkPath + ".z", 1);
             if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
-                continue;
-            }
-            if (!chunkIntersectsFarmBounds(chunkX, chunkZ)) {
                 continue;
             }
             List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
@@ -1908,8 +1927,7 @@ public final class SheepMergeManager {
             String chunkPath = "chunks." + chunkKey;
             int chunkX = resolveChunkCoordinate(chunkKey, chunkPath + ".x", 0);
             int chunkZ = resolveChunkCoordinate(chunkKey, chunkPath + ".z", 1);
-            if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE
-                    || !chunkIntersectsFarmBounds(chunkX, chunkZ)) {
+            if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
                 continue;
             }
 
