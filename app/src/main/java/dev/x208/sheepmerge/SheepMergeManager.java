@@ -62,7 +62,6 @@ import org.bukkit.entity.Sheep;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -772,7 +771,7 @@ public final class SheepMergeManager {
                     "Merge 500 sheep pairs", "Reward: +7 achievement points", 7),
             new AchievementDefinition("quest_cadet", Material.BOOK, "Quest Cadet",
                     "Complete 1 full quest cycle", "Reward: +3 achievement points", 3),
-            new AchievementDefinition("quest_veteran", Material.ENCHANTED_BOOK, "Quest Veteran",
+            new AchievementDefinition("quest_veteran", Material.WRITABLE_BOOK, "Quest Veteran",
                     "Complete 5 full quest cycles", "Reward: +6 achievement points", 6),
             new AchievementDefinition("upgrade_mechanic", Material.CRAFTING_TABLE, "Upgrade Mechanic",
                     "Reach 8 total regular upgrade levels", "Reward: +3 achievement points", 3),
@@ -818,7 +817,7 @@ public final class SheepMergeManager {
                     "Reach rebirth level 3", "Reward: +10 achievement points", 10),
             new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
                     "Reach the maximum sheep limit", "Reward: +8 achievement points", 8),
-            new AchievementDefinition("wool_guardian", Material.WHITE_WOOL, "Wool Guardian",
+            new AchievementDefinition("wool_guardian", Material.SHIELD, "Wool Guardian",
                     "Max out wool regen", "Reward: +11 achievement points", 11));
 
     private static final int ACHIEVEMENT_MILESTONE_COUNT = 17;
@@ -10943,16 +10942,25 @@ public final class SheepMergeManager {
             }
             AchievementDefinition achievement = ACHIEVEMENT_DEFINITIONS.get(index);
             boolean unlockedAchievement = unlocked.contains(achievement.id);
-            inventory.setItem(slots.get(index), MenuItemFactory.create(
-                    achievement.material,
-                    achievement.name,
-                    List.of(
-                            "Objective: " + achievement.objective,
-                            achievement.reward,
-                            "Achievement points: +" + achievement.achievementPoints,
-                            "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
-                            "Key: " + achievement.id),
-                    unlockedAchievement));
+            ItemStack item = "wool_guardian".equals(achievement.id)
+                    ? MenuItemFactory.createShieldWithWhiteBanner(achievement.name,
+                            List.of(
+                                    "Objective: " + achievement.objective,
+                                    achievement.reward,
+                                    "Achievement points: +" + achievement.achievementPoints,
+                                    "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
+                                    "Key: " + achievement.id))
+                    : MenuItemFactory.create(
+                            achievement.material,
+                            achievement.name,
+                            List.of(
+                                    "Objective: " + achievement.objective,
+                                    achievement.reward,
+                                    "Achievement points: +" + achievement.achievementPoints,
+                                    "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
+                                    "Key: " + achievement.id),
+                            unlockedAchievement);
+            inventory.setItem(slots.get(index), item);
         }
 
         inventory.setItem(ACHIEVEMENTS_VIEW_BACK_SLOT, MenuItemFactory.create(
