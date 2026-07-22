@@ -291,6 +291,12 @@ public final class SheepMergeManager {
     private static final double PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL = 0.25D;
     private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
     private static final long REBIRTH_RESPEC_COOLDOWN_MS = 30L * 60L * 1000L;
+    private static final int REGULAR_POINTS_UPGRADE_COST_MULTIPLIER = 6;
+    private static final String MILESTONE_ITEM_NAME_RAW_COPPER = "Raw Copper";
+    private static final String MILESTONE_ITEM_NAME_RAW_COPPER_BLOCK = "Raw Copper Block";
+    private static final String MILESTONE_ITEM_NAME_COPPER_NUGGET = "Copper Nugget";
+    private static final String MILESTONE_ITEM_NAME_COPPER_INGOT = "Copper Ingot";
+    private static final String MILESTONE_ITEM_NAME_COPPER_BLOCK = "Copper Block";
     private static final String FARM_BUILD_WORLD_NAME = "sheepfarm_build";
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
@@ -834,19 +840,20 @@ public final class SheepMergeManager {
                 new AchievementMilestoneDefinition("points_2", getAchievementMilestoneTarget(total, 2),
                         Material.COAL_BLOCK, "Coal Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_3", getAchievementMilestoneTarget(total, 3),
-                        resolveMaterial("RAW_COPPER", Material.RAW_COPPER), "Raw Copper",
+                    resolveMaterial("RAW_COPPER", Material.RAW_COPPER), MILESTONE_ITEM_NAME_RAW_COPPER,
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_4", getAchievementMilestoneTarget(total, 4),
-                        resolveMaterial("RAW_COPPER_BLOCK", Material.COPPER_BLOCK), "Raw Copper Block",
+                    resolveMaterial("RAW_COPPER_BLOCK", Material.COPPER_BLOCK),
+                    MILESTONE_ITEM_NAME_RAW_COPPER_BLOCK,
                         AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_5", getAchievementMilestoneTarget(total, 5),
-                        resolveMaterial("COPPER_NUGGET", Material.GOLD_NUGGET), "Copper Nugget",
+                    resolveMaterial("COPPER_NUGGET", Material.GOLD_NUGGET), MILESTONE_ITEM_NAME_COPPER_NUGGET,
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_6", getAchievementMilestoneTarget(total, 6),
-                        Material.COPPER_INGOT, "Copper Ingot",
+                    Material.COPPER_INGOT, MILESTONE_ITEM_NAME_COPPER_INGOT,
                         AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_7", getAchievementMilestoneTarget(total, 7),
-                        Material.COPPER_BLOCK, "Copper Block",
+                    Material.COPPER_BLOCK, MILESTONE_ITEM_NAME_COPPER_BLOCK,
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_8", getAchievementMilestoneTarget(total, 8),
                         resolveMaterial("RAW_IRON", Material.IRON_INGOT), "Raw Iron",
@@ -978,7 +985,7 @@ public final class SheepMergeManager {
             new QuickAccessDefinition("automation_toggle_auto_ability", Material.REDSTONE_TORCH,
                     "Toggle Auto Ability", "Toggle automation: Auto Ability"),
             new QuickAccessDefinition("automation_toggle_auto_merge", Material.PISTON,
-                    "Toggle Slow Auto Merge", "Toggle automation: Slow Auto Merge"),
+                    "Toggle Auto Merge", "Toggle automation: Auto Merge"),
             new QuickAccessDefinition("automation_toggle_auto_spawn", Material.FIREWORK_STAR,
                     "Toggle Auto Spawn", "Toggle automation: Auto Spawn"),
             new QuickAccessDefinition("automation_toggle_auto_prestige", Material.BEACON,
@@ -4807,14 +4814,18 @@ public final class SheepMergeManager {
         return 0;
     }
 
+    public static int getShearPointGainUpgradeLevel(Player player) {
+        return Math.max(1, getShearShopLevel(player) + 1);
+    }
+
     public static int getShearPointMultiplier(Player player) {
-        int level = getShearShopLevel(player);
-        long multiplier = (long) level + 1L;
+        long multiplier = getShearPointGainUpgradeLevel(player);
         return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, multiplier));
     }
 
     public static BigInteger getShearUpgradeCost(Player player) {
-        return getDoubledUpgradeCostBig(SHEAR_SHOP_BASE_COST, getShearShopLevel(player));
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(SHEAR_SHOP_BASE_COST),
+                getShearShopLevel(player));
     }
 
     public static int getShearWoolSaveChancePercent(Player player) {
@@ -4827,11 +4838,13 @@ public final class SheepMergeManager {
     }
 
     public static BigInteger getShearWoolSaveUpgradeCost(Player player) {
-        return getDoubledUpgradeCostBig(SHEAR_WOOL_SAVE_BASE_COST, getShearWoolSaveLevel(player));
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(SHEAR_WOOL_SAVE_BASE_COST),
+                getShearWoolSaveLevel(player));
     }
 
     public static BigInteger getShearTierBoostUpgradeCost(Player player) {
-        return getDoubledUpgradeCostBig(SHEAR_TIER_BOOST_BASE_COST, getShearTierBoostLevel(player));
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(SHEAR_TIER_BOOST_BASE_COST),
+                getShearTierBoostLevel(player));
     }
 
     public static int getComboDecayUpgradeLevel(Player player) {
@@ -5197,11 +5210,13 @@ public final class SheepMergeManager {
     }
 
     private static BigInteger getComboDecayUpgradeCost(Player player) {
-        return getDoubledUpgradeCostBig(COMBO_DECAY_BASE_COST, getComboDecayUpgradeLevel(player));
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(COMBO_DECAY_BASE_COST),
+                getComboDecayUpgradeLevel(player));
     }
 
     private static BigInteger getComboGainUpgradeCost(Player player) {
-        return getDoubledUpgradeCostBig(COMBO_GAIN_BASE_COST, getComboGainUpgradeLevel(player));
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(COMBO_GAIN_BASE_COST),
+                getComboGainUpgradeLevel(player));
     }
 
     private static int getComboMaxUpgradePrestigeCost(Player player) {
@@ -8855,7 +8870,8 @@ public final class SheepMergeManager {
     }
 
     public static BigInteger getUpgradeCost(Player player) {
-        return getDoubledUpgradeCostBig(LIMIT_UPGRADE_COST, getLimitUpgradeLevel(player));
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(LIMIT_UPGRADE_COST),
+                getLimitUpgradeLevel(player));
     }
 
     public static int getLimitUpgradeStep() {
@@ -10033,7 +10049,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear Shop",
                 List.of(
-                        "Shear level: " + getShearShopLevel(player),
+                "Shear level: " + getShearPointGainUpgradeLevel(player),
                         "Points multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
@@ -10290,7 +10306,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear Shop",
                 List.of(
-                        "Shear level: " + getShearShopLevel(player),
+                "Shear level: " + getShearPointGainUpgradeLevel(player),
                         "Points multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
@@ -11920,7 +11936,7 @@ public final class SheepMergeManager {
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
-                "Slow Auto Merge",
+                "Auto Merge",
                 List.of(
                         "&7Level: &e" + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
                                 + AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
@@ -12004,7 +12020,7 @@ public final class SheepMergeManager {
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
-                "Toggle Slow Auto Merge",
+                "Toggle Auto Merge",
                 List.of(
                         isAutomationSlowAutoMergeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
                         getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
@@ -12012,7 +12028,7 @@ public final class SheepMergeManager {
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
-                "Toggle Slow Auto Shear",
+                "Toggle Auto Shear",
                 List.of(
                         isAutomationSlowAutoShearEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
                         getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "&aClick: Toggle"
@@ -12081,24 +12097,24 @@ public final class SheepMergeManager {
             }
             case AUTOMATION_SLOW_AUTO_MERGE_SLOT -> {
                 if (getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL) {
-                    player.sendMessage(warning("Slow Auto Merge is already maxed."));
+                    player.sendMessage(warning("Auto Merge is already maxed."));
                     break;
                 }
                 if (upgradeAutomationSlowAutoMerge(player)) {
                     playUpgradeSound(player);
-                    player.sendMessage(action("Slow Auto Merge upgraded."));
+                    player.sendMessage(action("Auto Merge upgraded."));
                 } else {
                     player.sendMessage(warning("Not enough automation points."));
                 }
             }
             case AUTOMATION_SLOW_AUTO_SHEAR_SLOT -> {
                 if (getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL) {
-                    player.sendMessage(warning("Slow Auto Shear is already maxed."));
+                    player.sendMessage(warning("Auto Shear is already maxed."));
                     break;
                 }
                 if (upgradeAutomationSlowAutoShear(player)) {
                     playUpgradeSound(player);
-                    player.sendMessage(action("Slow Auto Shear upgraded."));
+                    player.sendMessage(action("Auto Shear upgraded."));
                 } else {
                     player.sendMessage(warning("Not enough automation points."));
                 }
@@ -12147,19 +12163,19 @@ public final class SheepMergeManager {
             }
             case AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT -> {
                 if (getAutomationSlowAutoMergeUpgradeLevel(player) <= 0) {
-                    player.sendMessage(warning("Buy Slow Auto Merge level 1 first."));
+                    player.sendMessage(warning("Buy Auto Merge level 1 first."));
                     break;
                 }
                 boolean enabled = toggleAutomationEnabled(player, automationSlowAutoMergeEnabledByPlayer);
-                player.sendMessage(action("Slow Auto Merge " + (enabled ? "enabled" : "disabled") + "."));
+                player.sendMessage(action("Auto Merge " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT -> {
                 if (getAutomationSlowAutoShearUpgradeLevel(player) <= 0) {
-                    player.sendMessage(warning("Buy Slow Auto Shear level 1 first."));
+                    player.sendMessage(warning("Buy Auto Shear level 1 first."));
                     break;
                 }
                 boolean enabled = toggleAutomationEnabled(player, automationSlowAutoShearEnabledByPlayer);
-                player.sendMessage(action("Slow Auto Shear " + (enabled ? "enabled" : "disabled") + "."));
+                player.sendMessage(action("Auto Shear " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT -> {
                 if (getAutomationAutoPrestigeUpgradeLevel(player) <= 0) {
@@ -12997,7 +13013,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear Value",
                 List.of(
-                        "Level: " + getShearShopLevel(player),
+                "Level: " + getShearPointGainUpgradeLevel(player),
                         "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
                         "Points: base x" + getShearPointMultiplier(player),
                         "Wool reward scales with level",
@@ -13087,17 +13103,27 @@ public final class SheepMergeManager {
 
     private static BigInteger getEggSpeedUpgradeCost(Player player) {
         int level = getEggSpeedLevel(player);
-        return getDoubledUpgradeCostBig(EGG_SPEED_UPGRADE_BASE_COST, level);
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(EGG_SPEED_UPGRADE_BASE_COST), level);
     }
 
     private static BigInteger getWoolRegenUpgradeCost(Player player) {
         int level = getWoolRegenLevel(player);
-        return getDoubledUpgradeCostBig(WOOL_REGEN_UPGRADE_BASE_COST, level);
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(WOOL_REGEN_UPGRADE_BASE_COST), level);
     }
 
     private static BigInteger getHigherTierChanceUpgradeCost(Player player) {
         int level = getHigherTierChanceLevel(player);
-        return getDoubledUpgradeCostBig(HIGHER_TIER_CHANCE_UPGRADE_BASE_COST, level);
+        return getDoubledUpgradeCostBig(scaleRegularPointsUpgradeBaseCost(HIGHER_TIER_CHANCE_UPGRADE_BASE_COST),
+                level);
+    }
+
+    private static int scaleRegularPointsUpgradeBaseCost(int baseCost) {
+        long normalized = Math.max(1L, baseCost);
+        long scaled = normalized * REGULAR_POINTS_UPGRADE_COST_MULTIPLIER;
+        if ((scaled & 1L) != 0L) {
+            scaled++;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, scaled);
     }
 
     private static boolean upgradeEggSpeed(Player player) {
