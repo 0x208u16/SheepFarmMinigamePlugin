@@ -2072,8 +2072,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        if (SheepMergeManager.isFarmBuildWorld(world)
-                && (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing)) {
+        if (SheepMergeManager.isFarmBuildWorld(world)) {
+            if (!applyDefaultLayoutWhenMissing) {
+                completeManagedWorldInitialization(managedWorldName, worldId);
+                return;
+            }
             SheepMergeManager.applyFarmLayoutAsync(world,
                     () -> completeManagedWorldInitialization(managedWorldName, worldId));
             return;
@@ -2102,7 +2105,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             }
             postLayout.run();
         } else if (SheepMergeManager.isFarmBuildWorld(world)) {
-            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
+            if (applyDefaultLayoutWhenMissing) {
                 SheepMergeManager.applyFarmLayout(world);
             }
             completeManagedWorldInitialization(managedWorldName, worldId);
