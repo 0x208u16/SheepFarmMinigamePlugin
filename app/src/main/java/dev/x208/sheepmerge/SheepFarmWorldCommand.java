@@ -909,8 +909,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Unable to open the farm build world right now.");
                 return true;
             }
-            buildWorld.save();
-            if (SheepMergeManager.saveSharedFarmLayoutFromWorld(buildWorld)) {
+            if (SheepMergeManager.saveBuildWorldToLayoutFile()) {
                 player.sendMessage("Saved the shared farm build world and layout snapshot.");
             } else {
                 player.sendMessage("Saved the shared farm build world, but layout snapshot save failed.");

@@ -816,6 +816,18 @@ public final class SheepMergeManager {
         return world != null && FARM_BUILD_WORLD_NAME.equals(world.getName());
     }
 
+    public static boolean saveBuildWorldToLayoutFile() {
+        if (plugin == null) {
+            return false;
+        }
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (!isFarmBuildWorld(buildWorld)) {
+            return false;
+        }
+        buildWorld.save();
+        return saveSharedFarmLayoutFromWorld(buildWorld);
+    }
+
     public static boolean saveSharedFarmLayoutFromWorld(World sourceWorld) {
         if (sourceWorld == null || (!isSheepFarmWorld(sourceWorld) && !isFarmBuildWorld(sourceWorld))) {
             return false;
@@ -1537,7 +1549,12 @@ public final class SheepMergeManager {
     }
 
     public static int startLoadSavedFarmLayoutToBuildAndLoadedFarms(Player initiator) {
-        if (plugin == null || farmCommitInProgress || !hasSavedFarmLayout()) {
+        if (plugin == null || farmCommitInProgress) {
+            return -1;
+        }
+
+        loadFarmLayout();
+        if (!hasSavedFarmLayout()) {
             return -1;
         }
 
