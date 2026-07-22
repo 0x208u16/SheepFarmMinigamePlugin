@@ -10712,10 +10712,10 @@ public final class SheepMergeManager {
         if (!(rawMeta instanceof SkullMeta skullMeta)) {
             return MenuItemFactory.create(
                     Material.PLAYER_HEAD,
-                    ChatColor.RESET + "" + ChatColor.GREEN + "Socials",
+                    ChatColor.RESET + "" + ChatColor.YELLOW + "Socials",
                     List.of(
                             ChatColor.RED + "" + ChatColor.BOLD + "Author:",
-                            ChatColor.YELLOW + "" + ChatColor.ITALIC + "0x208u16 (unknown)"));
+                            ChatColor.GREEN + "" + ChatColor.ITALIC + "0x208u16 (unknown)"));
         }
 
         OfflinePlayer author = Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID);
