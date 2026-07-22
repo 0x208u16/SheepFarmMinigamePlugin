@@ -518,6 +518,8 @@ public final class SheepMergeManager {
     private static final int REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE = 5;
     private static final int REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH = 6;
     private static final int REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE = 7;
+    private static final int REBIRTH_SKILL_WOOL_REGEN_X10 = 8;
+    private static final int REBIRTH_SKILL_QUEST_MASTER = 9;
     private static final int FARM_EGG_ITEM_SLOT = 7;
 
     private static SheepMergePlugin plugin;
@@ -674,6 +676,22 @@ public final class SheepMergeManager {
                     Material.TOTEM_OF_UNDYING,
                     "Sacrifice Tide",
                     "x10 sacrifice points"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_WOOL_REGEN_X10,
+                    REBIRTH_SKILL_QUEST_POINTS_X10,
+                    4,
+                    18,
+                    Material.LIME_WOOL,
+                    "Wool Surge",
+                    "x10 wool regen speed"),
+            new RebirthSkillNode(
+                    REBIRTH_SKILL_QUEST_MASTER,
+                    REBIRTH_SKILL_QUEST_POINTS_X10,
+                    4,
+                    19,
+                    Material.ENCHANTED_BOOK,
+                    "Quest Master",
+                    "2x quest size, 2x rewards, 2.5m resets"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH,
                     REBIRTH_SKILL_POINTS_X10_ROOT,
@@ -2665,6 +2683,20 @@ public final class SheepMergeManager {
                 : 1;
     }
 
+    private static boolean hasQuestMaster(Player player) {
+        return player != null && hasActiveRebirthSkill(player.getUniqueId(), REBIRTH_SKILL_QUEST_MASTER);
+    }
+
+    private static int getQuestTarget(Player player, int baseTarget) {
+        int effectiveBase = Math.max(1, baseTarget);
+        return hasQuestMaster(player) ? effectiveBase * 2 : effectiveBase;
+    }
+
+    private static int getQuestReward(Player player, int baseReward) {
+        int effectiveBase = Math.max(1, baseReward);
+        return hasQuestMaster(player) ? effectiveBase * 2 : effectiveBase;
+    }
+
     private static void addQuestPoints(Player player, int amount) {
         if (player == null || amount <= 0) {
             return;
@@ -2689,6 +2721,9 @@ public final class SheepMergeManager {
     }
 
     private static long getQuestResetIntervalMs(Player player) {
+        if (hasQuestMaster(player)) {
+            return 150_000L;
+        }
         int prestige = getPrestigeLevel(player);
         long interval = BASE_QUEST_RESET_MS - (prestige * QUEST_RESET_REDUCTION_PER_PRESTIGE_MS);
         return Math.max(MIN_QUEST_RESET_MS, interval);
@@ -2701,8 +2736,13 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
         long nextReset = nextQuestResetTimestampByPlayer.getOrDefault(playerId, 0L);
+        long interval = getQuestResetIntervalMs(player);
+        if (nextReset > now + interval) {
+            nextReset = now + interval;
+            nextQuestResetTimestampByPlayer.put(playerId, nextReset);
+        }
         if (nextReset <= 0L) {
-            nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
+            nextQuestResetTimestampByPlayer.put(playerId, now + interval);
             return;
         }
         if (now < nextReset) {
@@ -2715,7 +2755,7 @@ public final class SheepMergeManager {
         questShearsCompleteByPlayer.put(playerId, false);
         questSpawnsCompleteByPlayer.put(playerId, false);
         questMergesCompleteByPlayer.put(playerId, false);
-        nextQuestResetTimestampByPlayer.put(playerId, now + getQuestResetIntervalMs(player));
+        nextQuestResetTimestampByPlayer.put(playerId, now + interval);
         player.sendTitle(color("&eNew quests"), color("&7Quest board refreshed"), 10, 40, 10);
     }
 
@@ -2794,18 +2834,24 @@ public final class SheepMergeManager {
     }
 
     public static void recordQuestShear(Player player) {
-        updateQuestProgress(player, questShearsByPlayer, questShearsCompleteByPlayer, QUEST_SHEARS_TARGET,
-                QUEST_SHEARS_REWARD, "Shearing quest complete", Sound.ENTITY_PLAYER_LEVELUP);
+        updateQuestProgress(player, questShearsByPlayer, questShearsCompleteByPlayer,
+                getQuestTarget(player, QUEST_SHEARS_TARGET),
+                getQuestReward(player, QUEST_SHEARS_REWARD),
+                "Shearing quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     public static void recordQuestSpawn(Player player) {
-        updateQuestProgress(player, questSpawnsByPlayer, questSpawnsCompleteByPlayer, QUEST_SPAWNS_TARGET,
-                QUEST_SPAWNS_REWARD, "Spawning quest complete", Sound.ENTITY_PLAYER_LEVELUP);
+        updateQuestProgress(player, questSpawnsByPlayer, questSpawnsCompleteByPlayer,
+                getQuestTarget(player, QUEST_SPAWNS_TARGET),
+                getQuestReward(player, QUEST_SPAWNS_REWARD),
+                "Spawning quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     public static void recordQuestMerge(Player player) {
-        updateQuestProgress(player, questMergesByPlayer, questMergesCompleteByPlayer, QUEST_MERGES_TARGET,
-                QUEST_MERGES_REWARD, "Merging quest complete", Sound.ENTITY_PLAYER_LEVELUP);
+        updateQuestProgress(player, questMergesByPlayer, questMergesCompleteByPlayer,
+                getQuestTarget(player, QUEST_MERGES_TARGET),
+                getQuestReward(player, QUEST_MERGES_REWARD),
+                "Merging quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     private static void updateQuestProgress(Player player, Map<UUID, Integer> progress,
@@ -5571,6 +5617,9 @@ public final class SheepMergeManager {
         int regenLevel = getWoolRegenLevel(sheep.getWorld());
         double multiplier = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, regenLevel);
         UUID ownerId = getOwnerId(sheep.getWorld());
+        if (hasActiveRebirthSkill(ownerId, REBIRTH_SKILL_WOOL_REGEN_X10)) {
+            multiplier *= 0.1D;
+        }
         if (isAbilityActive(activeWoolRushUntilByPlayer, ownerId)) {
             multiplier *= 0.1D;
         }
@@ -9047,11 +9096,11 @@ public final class SheepMergeManager {
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
                         "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
-                                + QUEST_SHEARS_TARGET,
+                                + getQuestTarget(player, QUEST_SHEARS_TARGET),
                         "Spawn " + questSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
-                                + QUEST_SPAWNS_TARGET,
+                                + getQuestTarget(player, QUEST_SPAWNS_TARGET),
                         "Merge " + questMergesByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
-                                + QUEST_MERGES_TARGET,
+                                + getQuestTarget(player, QUEST_MERGES_TARGET),
                         "Click to open")));
 
         inventory.setItem(SHOP_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -9274,11 +9323,11 @@ public final class SheepMergeManager {
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
                         "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
-                                + QUEST_SHEARS_TARGET,
+                                + getQuestTarget(player, QUEST_SHEARS_TARGET),
                         "Spawn " + questSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
-                                + QUEST_SPAWNS_TARGET,
+                                + getQuestTarget(player, QUEST_SPAWNS_TARGET),
                         "Merge " + questMergesByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
-                                + QUEST_MERGES_TARGET,
+                                + getQuestTarget(player, QUEST_MERGES_TARGET),
                         "Click to open")));
 
         setMenuItemIfChanged(inventory, SHOP_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -9442,14 +9491,17 @@ public final class SheepMergeManager {
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
                         (shearsComplete ? "DONE " : "TODO ")
-                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SHEARS_TARGET
-                                + " (" + formatPoints(QUEST_SHEARS_REWARD) + " pts)",
+                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + getQuestTarget(player, QUEST_SHEARS_TARGET)
+                                + " (" + formatPoints(getQuestReward(player, QUEST_SHEARS_REWARD)) + " pts)",
                         (spawnsComplete ? "DONE " : "TODO ")
-                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SPAWNS_TARGET
-                                + " (" + formatPoints(QUEST_SPAWNS_REWARD) + " pts)",
+                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + getQuestTarget(player, QUEST_SPAWNS_TARGET)
+                                + " (" + formatPoints(getQuestReward(player, QUEST_SPAWNS_REWARD)) + " pts)",
                         (mergesComplete ? "DONE " : "TODO ")
-                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_MERGES_TARGET
-                                + " (" + formatPoints(QUEST_MERGES_REWARD) + " pts)")));
+                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/"
+                                + getQuestTarget(player, QUEST_MERGES_TARGET)
+                                + " (" + formatPoints(getQuestReward(player, QUEST_MERGES_REWARD)) + " pts)")));
 
         setMenuItemIfChanged(inventory, QUEST_ABILITY_LUCKY_BURST_SLOT, MenuItemFactory.create(
                 Material.ENDER_EYE,
@@ -10957,14 +11009,17 @@ public final class SheepMergeManager {
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
                         (shearsComplete ? "DONE " : "TODO ")
-                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SHEARS_TARGET
-                                + " (" + formatPoints(QUEST_SHEARS_REWARD) + " pts)",
+                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + getQuestTarget(player, QUEST_SHEARS_TARGET)
+                                + " (" + formatPoints(getQuestReward(player, QUEST_SHEARS_REWARD)) + " pts)",
                         (spawnsComplete ? "DONE " : "TODO ")
-                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_SPAWNS_TARGET
-                                + " (" + formatPoints(QUEST_SPAWNS_REWARD) + " pts)",
+                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + getQuestTarget(player, QUEST_SPAWNS_TARGET)
+                                + " (" + formatPoints(getQuestReward(player, QUEST_SPAWNS_REWARD)) + " pts)",
                         (mergesComplete ? "DONE " : "TODO ")
-                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/" + QUEST_MERGES_TARGET
-                                + " (" + formatPoints(QUEST_MERGES_REWARD) + " pts)")));
+                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/"
+                                + getQuestTarget(player, QUEST_MERGES_TARGET)
+                                + " (" + formatPoints(getQuestReward(player, QUEST_MERGES_REWARD)) + " pts)")));
 
         inventory.setItem(QUEST_ABILITY_LUCKY_BURST_SLOT, MenuItemFactory.create(
                 Material.ENDER_EYE,
@@ -11749,11 +11804,14 @@ public final class SheepMergeManager {
             lines.add(makeScoreboardSpacer(lines.size() + 1));
             lines.add("Quest Reset: " + formatDuration(getQuestResetRemainingMs(player)));
             lines.add(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
-                    QUEST_SHEARS_TARGET, questShearsCompleteByPlayer.getOrDefault(playerId, false)));
+                    getQuestTarget(player, QUEST_SHEARS_TARGET),
+                    questShearsCompleteByPlayer.getOrDefault(playerId, false)));
             lines.add(getQuestScoreLine("Spawn", questSpawnsByPlayer.getOrDefault(playerId, 0),
-                    QUEST_SPAWNS_TARGET, questSpawnsCompleteByPlayer.getOrDefault(playerId, false)));
+                    getQuestTarget(player, QUEST_SPAWNS_TARGET),
+                    questSpawnsCompleteByPlayer.getOrDefault(playerId, false)));
             lines.add(getQuestScoreLine("Merge", questMergesByPlayer.getOrDefault(playerId, 0),
-                    QUEST_MERGES_TARGET, questMergesCompleteByPlayer.getOrDefault(playerId, false)));
+                    getQuestTarget(player, QUEST_MERGES_TARGET),
+                    questMergesCompleteByPlayer.getOrDefault(playerId, false)));
         }
 
         if (!compact && shouldShowScoreboardAbilityStatus(player)) {
