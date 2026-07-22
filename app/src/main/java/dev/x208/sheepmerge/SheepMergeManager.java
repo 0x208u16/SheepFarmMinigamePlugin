@@ -40,12 +40,14 @@ import java.util.zip.ZipOutputStream;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
+import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.banner.PatternType;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.Fence;
 import org.bukkit.boss.BarColor;
@@ -61,6 +63,7 @@ import org.bukkit.entity.Sheep;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -9528,13 +9531,7 @@ public final class SheepMergeManager {
                         "Gain: +1 per " + formatDuration(AUTOMATION_POINT_INTERVAL_MS),
                         "Click to open")));
 
-        inventory.setItem(ACHIEVEMENTS_MENU_OPEN_SLOT, MenuItemFactory.create(
-                Material.NETHER_STAR,
-                "Achievements",
-                List.of(
-                        "Framework: active",
-                        "Track milestones and claim upgrade paths",
-                        "Click to open")));
+        inventory.setItem(ACHIEVEMENTS_MENU_OPEN_SLOT, createAchievementsMenuOpenItem());
 
         inventory.setItem(SACRIFICE_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.TOTEM_OF_UNDYING,
@@ -9791,13 +9788,7 @@ public final class SheepMergeManager {
                         "Gain: +1 per " + formatDuration(AUTOMATION_POINT_INTERVAL_MS),
                         "Click to open")));
 
-        setMenuItemIfChanged(inventory, ACHIEVEMENTS_MENU_OPEN_SLOT, MenuItemFactory.create(
-                Material.NETHER_STAR,
-                "Achievements",
-                List.of(
-                        "Framework: active",
-                        "Track milestones and claim upgrade paths",
-                        "Click to open")));
+        setMenuItemIfChanged(inventory, ACHIEVEMENTS_MENU_OPEN_SLOT, createAchievementsMenuOpenItem());
 
         setMenuItemIfChanged(inventory, SACRIFICE_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.TOTEM_OF_UNDYING,
@@ -10706,6 +10697,39 @@ public final class SheepMergeManager {
         return head;
     }
 
+    private static ItemStack createAchievementsMenuOpenItem() {
+        ItemStack banner = new ItemStack(Material.RED_BANNER, 1);
+        ItemMeta rawMeta = banner.getItemMeta();
+        if (!(rawMeta instanceof BannerMeta bannerMeta)) {
+            return MenuItemFactory.create(
+                    Material.RED_BANNER,
+                    "Achievements",
+                    List.of(
+                            "Framework: active",
+                            "Track milestones and claim upgrade paths",
+                            "Click to open"));
+        }
+
+        bannerMeta.setDisplayName("Achievements");
+        bannerMeta.setLore(List.of(
+                "Framework: active",
+                "Track milestones and claim upgrade paths",
+                "Click to open"));
+        bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
+                DyeColor.WHITE,
+                resolveWhiteStarPatternType()));
+        banner.setItemMeta(bannerMeta);
+        return banner;
+    }
+
+    private static PatternType resolveWhiteStarPatternType() {
+        try {
+            return PatternType.valueOf("STAR");
+        } catch (IllegalArgumentException ignored) {
+            return PatternType.CROSS;
+        }
+    }
+
     private static ItemStack createSocialsMenuOpenItem() {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD, 1);
         ItemMeta rawMeta = head.getItemMeta();
@@ -10720,10 +10744,10 @@ public final class SheepMergeManager {
 
         OfflinePlayer author = Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID);
         skullMeta.setOwningPlayer(author);
-        skullMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.GREEN + "Socials");
+        skullMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.YELLOW + "Socials");
         skullMeta.setLore(List.of(
                 ChatColor.RED + "" + ChatColor.BOLD + "Author:",
-                ChatColor.YELLOW + "" + ChatColor.ITALIC + getAuthorCredentialsText(author)));
+                ChatColor.GREEN + "" + ChatColor.ITALIC + getAuthorCredentialsText(author)));
         head.setItemMeta(skullMeta);
         return head;
     }
