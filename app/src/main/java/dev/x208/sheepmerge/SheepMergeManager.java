@@ -1951,6 +1951,50 @@ public final class SheepMergeManager {
             return;
         }
         farmLayoutConfig = YamlConfiguration.loadConfiguration(farmLayoutFile);
+        if (pruneFarmLayoutChunksToFarmBounds()) {
+            saveFarmLayout();
+        }
+    }
+
+    private static boolean pruneFarmLayoutChunksToFarmBounds() {
+        if (farmLayoutConfig == null || !farmLayoutConfig.isConfigurationSection("chunks")) {
+            return false;
+        }
+
+        org.bukkit.configuration.ConfigurationSection chunksSection = farmLayoutConfig
+                .getConfigurationSection("chunks");
+        if (chunksSection == null || chunksSection.getKeys(false).isEmpty()) {
+            return false;
+        }
+
+        int minChunkX = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxChunkX = Math.floorDiv(FARM_MAX_XZ, 16);
+        int minChunkZ = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxChunkZ = Math.floorDiv(FARM_MAX_XZ, 16);
+
+        boolean modified = false;
+        for (String chunkKey : new ArrayList<>(chunksSection.getKeys(false))) {
+            String chunkPath = "chunks." + chunkKey;
+            int chunkX = resolveChunkCoordinate(chunkKey, chunkPath + ".x", 0);
+            int chunkZ = resolveChunkCoordinate(chunkKey, chunkPath + ".z", 1);
+            if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                farmLayoutConfig.set(chunkPath, null);
+                modified = true;
+                continue;
+            }
+            if (chunkX < minChunkX || chunkX > maxChunkX || chunkZ < minChunkZ || chunkZ > maxChunkZ) {
+                farmLayoutConfig.set(chunkPath, null);
+                modified = true;
+            }
+        }
+
+        if (modified) {
+            farmLayoutConfig.set("world.minX", FARM_MIN_XZ);
+            farmLayoutConfig.set("world.maxX", FARM_MAX_XZ);
+            farmLayoutConfig.set("world.minZ", FARM_MIN_XZ);
+            farmLayoutConfig.set("world.maxZ", FARM_MAX_XZ);
+        }
+        return modified;
     }
 
     private static boolean saveFarmLayout() {
@@ -2102,6 +2146,14 @@ public final class SheepMergeManager {
         return world != null
                 && !isFarmBuildWorld(world)
                 && (world.getName().startsWith("sheepfarm_") || world.getName().startsWith("sheeptutorial_"));
+    }
+
+    public static boolean needsFarmLayoutBootstrap(World world) {
+        if (world == null || (!isSheepFarmWorld(world) && !isFarmBuildWorld(world))) {
+            return false;
+        }
+        return world.getBlockAt(0, FARM_MIN_Y, 0).getType().isAir()
+                || world.getBlockAt(0, FARM_BASE_Y, 0).getType().isAir();
     }
 
     public static UUID getFarmOwnerId(World world) {

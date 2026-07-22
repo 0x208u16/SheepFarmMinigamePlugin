@@ -2059,6 +2059,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (SheepMergeManager.isSheepFarmWorld(world)) {
+            boolean needsBootstrap = SheepMergeManager.needsFarmLayoutBootstrap(world);
             Runnable postLayout = () -> {
                 if (world.getEntitiesByClass(Sheep.class).isEmpty()) {
                     SheepMergeManager.restoreSavedSheepForWorldAsync(world,
@@ -2068,7 +2069,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 completeManagedWorldInitialization(managedWorldName, worldId);
             };
 
-            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
+            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing || needsBootstrap) {
                 SheepMergeManager.applyFarmLayoutAsync(world, postLayout);
             } else {
                 postLayout.run();
@@ -2077,7 +2078,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (SheepMergeManager.isFarmBuildWorld(world)) {
-            if (!applyDefaultLayoutWhenMissing && !SheepMergeManager.hasSavedFarmLayout()) {
+            boolean needsBootstrap = SheepMergeManager.needsFarmLayoutBootstrap(world);
+            if (!applyDefaultLayoutWhenMissing && !SheepMergeManager.hasSavedFarmLayout() && !needsBootstrap) {
                 completeManagedWorldInitialization(managedWorldName, worldId);
                 return;
             }
@@ -2097,6 +2099,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         if (SheepMergeManager.isSheepFarmWorld(world)) {
+            boolean needsBootstrap = SheepMergeManager.needsFarmLayoutBootstrap(world);
             Runnable postLayout = () -> {
                 if (world.getEntitiesByClass(Sheep.class).isEmpty()) {
                     SheepMergeManager.restoreSavedSheepForWorld(world);
@@ -2104,12 +2107,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 completeManagedWorldInitialization(managedWorldName, worldId);
             };
 
-            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
+            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing || needsBootstrap) {
                 SheepMergeManager.applyFarmLayout(world);
             }
             postLayout.run();
         } else if (SheepMergeManager.isFarmBuildWorld(world)) {
-            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
+            if (SheepMergeManager.hasSavedFarmLayout()
+                    || applyDefaultLayoutWhenMissing
+                    || SheepMergeManager.needsFarmLayoutBootstrap(world)) {
                 SheepMergeManager.applyFarmLayout(world);
             }
             completeManagedWorldInitialization(managedWorldName, worldId);
