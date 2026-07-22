@@ -1499,12 +1499,7 @@ public final class SheepMergeManager {
             return -1;
         }
 
-        List<World> farmWorlds = new ArrayList<>();
-        for (World world : plugin.getServer().getWorlds()) {
-            if (isSheepFarmWorld(world)) {
-                farmWorlds.add(world);
-            }
-        }
+        List<World> farmWorlds = collectFarmWorldsForLayoutRefresh();
         if (farmWorlds.isEmpty()) {
             saveData();
             return 0;
@@ -1536,12 +1531,7 @@ public final class SheepMergeManager {
             buildWorld.save();
         }
 
-        List<World> farmWorlds = new ArrayList<>();
-        for (World world : plugin.getServer().getWorlds()) {
-            if (isSheepFarmWorld(world)) {
-                farmWorlds.add(world);
-            }
-        }
+        List<World> farmWorlds = collectFarmWorldsForLayoutRefresh();
         if (farmWorlds.isEmpty()) {
             saveData();
             return 0;
@@ -1563,12 +1553,7 @@ public final class SheepMergeManager {
             return -1;
         }
 
-        List<World> farmWorlds = new ArrayList<>();
-        for (World world : plugin.getServer().getWorlds()) {
-            if (isSheepFarmWorld(world)) {
-                farmWorlds.add(world);
-            }
-        }
+        List<World> farmWorlds = collectFarmWorldsForLayoutRefresh();
         if (farmWorlds.isEmpty()) {
             saveData();
             return 0;
@@ -1642,6 +1627,34 @@ public final class SheepMergeManager {
         plugin.getServer().getScheduler().runTaskLater(plugin,
                 () -> processFarmLayoutLoadBatch(farmWorlds, fallbackWorld, initiator, nextIndex, nextUpdatedCount),
                 1L);
+    }
+
+    private static List<World> collectFarmWorldsForLayoutRefresh() {
+        if (plugin == null || plugin.getServer() == null) {
+            return List.of();
+        }
+
+        Map<String, World> worldsByName = new HashMap<>();
+        for (World world : plugin.getServer().getWorlds()) {
+            if (world == null || !isSheepFarmWorld(world) || isTutorialWorld(world)) {
+                continue;
+            }
+            worldsByName.put(world.getName(), world);
+        }
+
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null || !online.isOnline() || !hasUnlockedFarm(online)) {
+                continue;
+            }
+            String worldName = SheepFarmWorldCommand.getWorldName(online.getUniqueId());
+            World farmWorld = SheepFarmWorldCommand.ensureFarmWorld(worldName);
+            if (farmWorld == null || isTutorialWorld(farmWorld)) {
+                continue;
+            }
+            worldsByName.put(farmWorld.getName(), farmWorld);
+        }
+
+        return new ArrayList<>(worldsByName.values());
     }
 
     public static void saveBuildWorldIfIdle() {
@@ -1848,11 +1861,13 @@ public final class SheepMergeManager {
             return;
         }
 
-        int minY = Math.max(farmLayoutConfig.getInt("world.minY", FARM_MIN_Y), FARM_MIN_Y);
-        int maxY = Math.min(farmLayoutConfig.getInt("world.maxY", FARM_MAX_Y + 1), FARM_MAX_Y + 1);
-        if (minY >= maxY) {
+        int sourceMinY = farmLayoutConfig.getInt("world.minY", FARM_MIN_Y);
+        int sourceMaxY = farmLayoutConfig.getInt("world.maxY", FARM_MAX_Y + 1);
+        if (sourceMinY >= sourceMaxY) {
             return;
         }
+        int targetMinY = FARM_MIN_Y;
+        int targetMaxY = FARM_MAX_Y + 1;
 
         Map<String, String> directBlocks = new HashMap<>();
         for (String chunkKey : chunksSection.getKeys(false)) {
@@ -1867,7 +1882,7 @@ public final class SheepMergeManager {
             List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
             String encodedRuns = farmLayoutConfig.getString(chunkPath + ".data", "");
             if (!palette.isEmpty() && encodedRuns != null && !encodedRuns.isBlank()) {
-                int totalBlocks = (maxY - minY) * 16 * 16;
+                int totalBlocks = (sourceMaxY - sourceMinY) * 16 * 16;
                 int blockIndex = 0;
                 for (String token : encodedRuns.split(";")) {
                     if (token == null || token.isBlank() || blockIndex >= totalBlocks) {
@@ -1891,9 +1906,10 @@ public final class SheepMergeManager {
                         int localZ = withinLayer % 16;
                         int worldX = (chunkX << 4) + localX;
                         int worldZ = (chunkZ << 4) + localZ;
-                        int y = minY + yOffset;
-                        if (worldX >= FARM_MIN_XZ && worldX <= FARM_MAX_XZ && worldZ >= FARM_MIN_XZ
-                                && worldZ <= FARM_MAX_XZ) {
+                        int y = sourceMinY + yOffset;
+                        if (y >= targetMinY && y < targetMaxY
+                                && worldX >= FARM_MIN_XZ && worldX <= FARM_MAX_XZ
+                                && worldZ >= FARM_MIN_XZ && worldZ <= FARM_MAX_XZ) {
                             directBlocks.put(keyFor(worldX, y, worldZ), serialized);
                         }
                         blockIndex++;
@@ -1903,12 +1919,13 @@ public final class SheepMergeManager {
             }
 
             int blockIndex = 0;
-            for (int y = minY; y < maxY; y++) {
+            for (int y = sourceMinY; y < sourceMaxY; y++) {
                 for (int localX = 0; localX < 16; localX++) {
                     for (int localZ = 0; localZ < 16; localZ++) {
                         int worldX = (chunkX << 4) + localX;
                         int worldZ = (chunkZ << 4) + localZ;
-                        if (worldX < FARM_MIN_XZ || worldX > FARM_MAX_XZ || worldZ < FARM_MIN_XZ
+                        if (y < targetMinY || y >= targetMaxY
+                                || worldX < FARM_MIN_XZ || worldX > FARM_MAX_XZ || worldZ < FARM_MIN_XZ
                                 || worldZ > FARM_MAX_XZ) {
                             blockIndex++;
                             continue;
