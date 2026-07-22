@@ -10261,7 +10261,7 @@ public final class SheepMergeManager {
         inventory.setItem(UNIVERSAL_LAYOUT_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back",
-                List.of("Click: Scoreboard settings")));
+                List.of("Click: Sheep Merge menu")));
         player.openInventory(inventory);
     }
 
@@ -10272,7 +10272,7 @@ public final class SheepMergeManager {
         switch (slot) {
             case UNIVERSAL_LAYOUT_SCOREBOARD_SLOT -> openScoreboardMenu(player);
             case UNIVERSAL_LAYOUT_INVENTORY_SLOT -> openInventoryLayoutMenu(player);
-            case UNIVERSAL_LAYOUT_BACK_SLOT -> openScoreboardMenu(player);
+            case UNIVERSAL_LAYOUT_BACK_SLOT -> openUpgradeMenu(player);
             default -> {
                 return;
             }
