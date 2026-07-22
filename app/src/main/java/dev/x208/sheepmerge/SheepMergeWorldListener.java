@@ -189,6 +189,7 @@ public class SheepMergeWorldListener implements Listener {
                 && !SheepMergeManager.isSacrificeMenuTitle(title)
                 && !SheepMergeManager.isRebirthMenuTitle(title)
                 && !SheepMergeManager.isRebirthTreeMenuTitle(title)
+                && !SheepMergeManager.isSocialsMenuTitle(title)
                 && !SheepMergeManager.isScoreboardMenuTitle(title)) {
             return;
         }
@@ -240,6 +241,10 @@ public class SheepMergeWorldListener implements Listener {
         }
         if (SheepMergeManager.isRebirthTreeMenuTitle(title)) {
             SheepMergeManager.handleRebirthTreeMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isSocialsMenuTitle(title)) {
+            SheepMergeManager.handleSocialsMenuClick(player, event.getRawSlot(), event.getCurrentItem());
             return;
         }
         if (SheepMergeManager.isScoreboardMenuTitle(title)) {

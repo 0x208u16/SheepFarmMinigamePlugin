@@ -43,6 +43,7 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
@@ -61,6 +62,7 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
@@ -413,7 +415,7 @@ public final class SheepMergeManager {
     private static int TUTORIAL_MERGE_TARGET = 1;
     private static int TUTORIAL_MENU_SECTION_TARGET = 8;
     private static int PRESTIGE_LEVEL_BASE_COST = 500;
-    public static final String UPGRADE_MENU_TITLE = "Sheep Merge Upgrades";
+    public static final String UPGRADE_MENU_TITLE = "Sheep Merge Menu";
     public static final String PRESTIGE_MENU_TITLE = "Prestige Upgrades";
     public static final String QUEST_MENU_TITLE = "Quest Abilities";
     public static final String QUEST_UPGRADES_MENU_TITLE = "Quest Upgrades";
@@ -427,6 +429,7 @@ public final class SheepMergeManager {
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
     public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
+    public static final String SOCIALS_MENU_TITLE = "Socials";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
     public static final int WOOL_REGEN_UPGRADE_SLOT = 14;
@@ -439,6 +442,7 @@ public final class SheepMergeManager {
     public static final int ACHIEVEMENTS_MENU_OPEN_SLOT = 8;
     public static final int SACRIFICE_MENU_OPEN_SLOT = 2;
     public static final int REBIRTH_MENU_OPEN_SLOT = 6;
+    public static final int SOCIALS_MENU_OPEN_SLOT = 25;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
@@ -505,6 +509,10 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 20;
     public static final int SCOREBOARD_ABILITIES_SLOT = 22;
     public static final int SCOREBOARD_BACK_SLOT = 26;
+    public static final int SOCIALS_TOP_POINTS_SLOT = 4;
+    public static final int SOCIALS_AUTHOR_SLOT = 45;
+    public static final int SOCIALS_RETURN_HOME_SLOT = 49;
+    public static final int SOCIALS_BACK_SLOT = 53;
     public static final int ACHIEVEMENTS_VIEW_SLOT = 11;
     public static final int ACHIEVEMENTS_UPGRADES_SLOT = 15;
     public static final int ACHIEVEMENTS_BACK_SLOT = 26;
@@ -530,6 +538,7 @@ public final class SheepMergeManager {
     private static final int REBIRTH_SKILL_WOOL_REGEN_X10 = 8;
     private static final int REBIRTH_SKILL_QUEST_MASTER = 9;
     private static final int FARM_EGG_ITEM_SLOT = 7;
+    private static final UUID SOCIALS_AUTHOR_UUID = UUID.fromString("27268675-a9b7-4abd-9628-e6c4515a5cf6");
 
     private static SheepMergePlugin plugin;
     private static final SheepEggModule EGG_MODULE = new SheepEggModule();
@@ -760,7 +769,7 @@ public final class SheepMergeManager {
 
     private static final List<String> GAMEPLAY_TIPS = List.of(
             "&7Use &e/sheepmerge &7to jump to your farm. Use it again while visiting to return home.",
-            "&7Your upgrade item is the &bNether Star &7in hotbar slot 9. Right-click it to open upgrades.",
+            "&7Your menu item is the &bNether Star &7in hotbar slot 9. Right-click it to open Sheep Merge Menu.",
             "&7Eggs are shown as your XP level. The XP bar shows time until the next egg.",
             "&7Spawn eggs are in hotbar slot 8. No eggs? Wait for the timer or raise egg speed.",
             "&7Merge faster: sneak-right-click a sheep to carry it, then right-click a same-tier sheep.",
@@ -2349,6 +2358,10 @@ public final class SheepMergeManager {
 
     private static NamespacedKey getRainbowTierKey() {
         return new NamespacedKey(plugin, "rainbow-tier");
+    }
+
+    private static NamespacedKey getSocialVisitOwnerKey() {
+        return new NamespacedKey(plugin, "social-visit-owner");
     }
 
     private static NamespacedKey getLegacyRainbowMergedCountKey() {
@@ -7881,9 +7894,9 @@ public final class SheepMergeManager {
         ItemStack item = new ItemStack(Material.NETHER_STAR, 1);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(color("&bSheep Merge Upgrades"));
+            meta.setDisplayName(color("&bSheep Merge Menu"));
             meta.setLore(List.of(
-                    hint("Right-click to open upgrades"),
+                    hint("Right-click to open menu"),
                     hint("Hotbar slot 9")));
             item.setItemMeta(meta);
         }
@@ -9216,6 +9229,13 @@ public final class SheepMergeManager {
                                 : "Buy now: +0 rebirth level(s)",
                         "Click to open")));
 
+        inventory.setItem(SOCIALS_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.PLAYER_HEAD,
+                "Socials",
+                List.of(
+                        "Top points and farm visits",
+                        "Click to open")));
+
         player.openInventory(inventory);
     }
 
@@ -9275,6 +9295,10 @@ public final class SheepMergeManager {
         return SCOREBOARD_MENU_TITLE.equals(title);
     }
 
+    public static boolean isSocialsMenuTitle(String title) {
+        return SOCIALS_MENU_TITLE.equals(title);
+    }
+
     public static void tickOpenMenuStatRefresh(Player player) {
         if (player == null || player.getOpenInventory() == null) {
             return;
@@ -9293,6 +9317,8 @@ public final class SheepMergeManager {
             refreshOpenQuestMenuItems(player, openInventory);
         } else if (isComboShopMenuTitle(title)) {
             refreshOpenComboMenuItems(player, openInventory);
+        } else if (isSocialsMenuTitle(title)) {
+            refreshOpenSocialsMenuItems(player, openInventory);
         }
     }
 
@@ -9462,6 +9488,20 @@ public final class SheepMergeManager {
                                         + formatPoints(rebirthReward) + " rebirth points"
                                 : "Buy now: +0 rebirth level(s)",
                         "Click to open")));
+
+        setMenuItemIfChanged(inventory, SOCIALS_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.PLAYER_HEAD,
+                "Socials",
+                List.of(
+                        "Top points and farm visits",
+                        "Click to open")));
+    }
+
+    private static void refreshOpenSocialsMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        populateSocialsMenuItems(player, inventory);
     }
 
     private static void refreshOpenPrestigeMenuItems(Player player, Inventory inventory) {
@@ -9982,6 +10022,208 @@ public final class SheepMergeManager {
         }
     }
 
+    public static void openSocialsMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 54, SOCIALS_MENU_TITLE);
+        populateSocialsMenuItems(player, inventory);
+        player.openInventory(inventory);
+    }
+
+    private static void populateSocialsMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+
+        List<String> topLines = getTopPointsLines(5);
+        List<String> topLore = new ArrayList<>();
+        topLore.add("Top players by points:");
+        topLore.addAll(topLines);
+        setMenuItemIfChanged(inventory, SOCIALS_TOP_POINTS_SLOT, MenuItemFactory.create(
+                Material.GOLD_INGOT,
+                "Top Points",
+                topLore));
+
+        setMenuItemIfChanged(inventory, SOCIALS_AUTHOR_SLOT, createAuthorCreditsItem());
+
+        boolean visitingAnotherFarm = isSheepFarmWorld(player.getWorld()) && !isFarmOwner(player, player.getWorld());
+        setMenuItemIfChanged(inventory, SOCIALS_RETURN_HOME_SLOT, MenuItemFactory.create(
+                Material.COMPASS,
+                "Return To Your Farm",
+                List.of(
+                        visitingAnotherFarm ? "You are currently visiting." : "You are already in your own world.",
+                        "Click to return home")));
+
+        setMenuItemIfChanged(inventory, SOCIALS_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Open menu")));
+
+        clearSocialVisitEntries(inventory);
+        List<Player> visitableOwners = getVisitableFarmOwners(player);
+        int slot = 10;
+        for (Player owner : visitableOwners) {
+            if (owner == null || slot >= 44) {
+                break;
+            }
+            ItemStack visitItem = createSocialVisitItem(owner);
+            if (visitItem != null) {
+                setMenuItemIfChanged(inventory, slot, visitItem);
+                slot++;
+                if (slot % 9 == 8) {
+                    slot += 2;
+                }
+            }
+        }
+    }
+
+    private static void clearSocialVisitEntries(Inventory inventory) {
+        if (inventory == null) {
+            return;
+        }
+        for (int slot = 10; slot < 44; slot++) {
+            if (slot % 9 == 8) {
+                continue;
+            }
+            inventory.setItem(slot, null);
+        }
+    }
+
+    private static List<Player> getVisitableFarmOwners(Player viewer) {
+        if (viewer == null) {
+            return List.of();
+        }
+
+        UUID viewerId = viewer.getUniqueId();
+        List<Player> owners = new ArrayList<>();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null || !online.isOnline()) {
+                continue;
+            }
+            UUID ownerId = online.getUniqueId();
+            if (ownerId == null || ownerId.equals(viewerId)) {
+                continue;
+            }
+            if (!viewer.isOp() && !isFarmVisitable(ownerId)) {
+                continue;
+            }
+            owners.add(online);
+        }
+        owners.sort((left, right) -> left.getName().compareToIgnoreCase(right.getName()));
+        return owners;
+    }
+
+    private static ItemStack createSocialVisitItem(Player owner) {
+        if (owner == null) {
+            return null;
+        }
+
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD, 1);
+        ItemMeta rawMeta = head.getItemMeta();
+        if (!(rawMeta instanceof SkullMeta skullMeta)) {
+            return MenuItemFactory.create(Material.PLAYER_HEAD, "Visit " + owner.getName(), List.of("Click to visit"));
+        }
+
+        skullMeta.setOwningPlayer(owner);
+        skullMeta.setDisplayName("Visit " + owner.getName());
+        skullMeta.setLore(List.of(
+                "Farm owner: " + owner.getName(),
+                "Click to visit"));
+        NamespacedKey key = getSocialVisitOwnerKey();
+        if (key != null) {
+            skullMeta.getPersistentDataContainer().set(key, PersistentDataType.STRING, owner.getUniqueId().toString());
+        }
+        head.setItemMeta(skullMeta);
+        return head;
+    }
+
+    private static ItemStack createAuthorCreditsItem() {
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD, 1);
+        ItemMeta rawMeta = head.getItemMeta();
+        if (!(rawMeta instanceof SkullMeta skullMeta)) {
+            return MenuItemFactory.create(Material.PLAYER_HEAD, "Author", List.of("0x208u16 (unknown)"));
+        }
+
+        OfflinePlayer author = Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID);
+        skullMeta.setOwningPlayer(author);
+        String minecraftUsername = author == null ? null : author.getName();
+        if (minecraftUsername == null || minecraftUsername.isBlank()) {
+            minecraftUsername = "unknown";
+        }
+        skullMeta.setDisplayName("Author");
+        skullMeta.setLore(List.of("0x208u16 (" + minecraftUsername + ")"));
+        head.setItemMeta(skullMeta);
+        return head;
+    }
+
+    private static UUID getSocialVisitOwnerId(ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType() != Material.PLAYER_HEAD) {
+            return null;
+        }
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) {
+            return null;
+        }
+        NamespacedKey key = getSocialVisitOwnerKey();
+        if (key == null) {
+            return null;
+        }
+        String uuidRaw = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+        if (uuidRaw == null || uuidRaw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(uuidRaw);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    public static void handleSocialsMenuClick(Player player, int slot, ItemStack clickedItem) {
+        if (player == null) {
+            return;
+        }
+        if (slot == SOCIALS_BACK_SLOT) {
+            openUpgradeMenu(player);
+            return;
+        }
+        if (slot == SOCIALS_RETURN_HOME_SLOT) {
+            if (isSheepFarmWorld(player.getWorld()) && !isFarmOwner(player, player.getWorld())) {
+                player.closeInventory();
+                if (plugin != null) {
+                    Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("sheepmerge"));
+                }
+            } else {
+                player.sendMessage(hint("You are already in your own world."));
+            }
+            return;
+        }
+
+        UUID ownerId = getSocialVisitOwnerId(clickedItem);
+        if (ownerId == null) {
+            return;
+        }
+
+        Player owner = Bukkit.getPlayer(ownerId);
+        if (owner == null || !owner.isOnline()) {
+            player.sendMessage(warning("That player is no longer online."));
+            openSocialsMenu(player);
+            return;
+        }
+        if (!player.isOp() && !isFarmVisitable(ownerId)) {
+            player.sendMessage(warning("That farm is closed to visitors."));
+            openSocialsMenu(player);
+            return;
+        }
+
+        player.closeInventory();
+        if (plugin != null) {
+            String targetName = owner.getName();
+            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("sheepmerge visit " + targetName));
+        }
+    }
+
     public static void handleUpgradeMenuClick(Player player, int slot) {
         if (player == null) {
             return;
@@ -10076,6 +10318,10 @@ public final class SheepMergeManager {
             }
             case REBIRTH_MENU_OPEN_SLOT -> {
                 openRebirthMenu(player);
+                return;
+            }
+            case SOCIALS_MENU_OPEN_SLOT -> {
+                openSocialsMenu(player);
                 return;
             }
             default -> {
