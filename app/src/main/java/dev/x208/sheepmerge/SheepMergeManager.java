@@ -195,6 +195,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowSacrificePointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> scoreboardShowPrestigeStatsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestProgressByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAbilityStatusByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
@@ -483,6 +484,7 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
     public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 14;
     public static final int SCOREBOARD_SACRIFICE_POINTS_SLOT = 16;
+    public static final int SCOREBOARD_PRESTIGE_STATS_SLOT = 18;
     public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 20;
     public static final int SCOREBOARD_ABILITIES_SLOT = 22;
     public static final int SCOREBOARD_BACK_SLOT = 26;
@@ -4479,6 +4481,7 @@ public final class SheepMergeManager {
         scoreboardShowQuestPointsByPlayer.remove(id);
         scoreboardShowAutomationPointsByPlayer.remove(id);
         scoreboardShowSacrificePointsByPlayer.remove(id);
+        scoreboardShowPrestigeStatsByPlayer.remove(id);
         scoreboardShowQuestProgressByPlayer.remove(id);
         scoreboardShowAbilityStatusByPlayer.remove(id);
         sacrificePointsByPlayer.remove(id);
@@ -6047,6 +6050,7 @@ public final class SheepMergeManager {
         scoreboardShowQuestPointsByPlayer.clear();
         scoreboardShowAutomationPointsByPlayer.clear();
         scoreboardShowSacrificePointsByPlayer.clear();
+        scoreboardShowPrestigeStatsByPlayer.clear();
         scoreboardShowQuestProgressByPlayer.clear();
         scoreboardShowAbilityStatusByPlayer.clear();
         sacrificePointsByPlayer.clear();
@@ -8630,6 +8634,10 @@ public final class SheepMergeManager {
         return player != null && scoreboardShowSacrificePointsByPlayer.getOrDefault(player.getUniqueId(), false);
     }
 
+    private static boolean shouldShowScoreboardPrestigeStats(Player player) {
+        return player != null && scoreboardShowPrestigeStatsByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
     private static boolean shouldShowScoreboardQuestProgress(Player player) {
         return player != null && scoreboardShowQuestProgressByPlayer.getOrDefault(player.getUniqueId(), true);
     }
@@ -8674,6 +8682,13 @@ public final class SheepMergeManager {
                         "Status: " + (shouldShowScoreboardSacrificePoints(player) ? "Shown" : "Hidden"),
                         shouldShowScoreboardSacrificePoints(player) ? "Click: Hide" : "Click: Show")));
 
+        inventory.setItem(SCOREBOARD_PRESTIGE_STATS_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Prestige Stats",
+                List.of(
+                        "Status: " + (shouldShowScoreboardPrestigeStats(player) ? "Shown" : "Hidden"),
+                        shouldShowScoreboardPrestigeStats(player) ? "Click: Hide" : "Click: Show")));
+
         inventory.setItem(SCOREBOARD_QUEST_PROGRESS_SLOT, MenuItemFactory.create(
                 Material.MAP,
                 "Quest Progress",
@@ -8710,6 +8725,8 @@ public final class SheepMergeManager {
                     !shouldShowScoreboardAutomationPoints(player));
             case SCOREBOARD_SACRIFICE_POINTS_SLOT -> scoreboardShowSacrificePointsByPlayer.put(playerId,
                     !shouldShowScoreboardSacrificePoints(player));
+            case SCOREBOARD_PRESTIGE_STATS_SLOT -> scoreboardShowPrestigeStatsByPlayer.put(playerId,
+                    !shouldShowScoreboardPrestigeStats(player));
             case SCOREBOARD_QUEST_PROGRESS_SLOT -> scoreboardShowQuestProgressByPlayer.put(playerId,
                     !shouldShowScoreboardQuestProgress(player));
             case SCOREBOARD_ABILITIES_SLOT -> scoreboardShowAbilityStatusByPlayer.put(playerId,
@@ -10737,8 +10754,10 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         List<String> lines = new ArrayList<>();
         lines.add("Points: " + formatPoints(getPlayerPointsBig(player)));
-        lines.add("Prestige Lv: " + getPrestigeLevel(player));
-        lines.add("Prestige Pts: " + formatPoints(getPrestigePoints(player)));
+        if (shouldShowScoreboardPrestigeStats(player)) {
+            lines.add("Prestige Lv: " + getPrestigeLevel(player));
+            lines.add("Prestige Pts: " + formatPoints(getPrestigePoints(player)));
+        }
 
         if (shouldShowScoreboardQuestPoints(player)) {
             lines.add("Quest Pts: " + formatPoints(getQuestPoints(player)));
@@ -10941,6 +10960,7 @@ public final class SheepMergeManager {
             dataConfig.set("scoreboardShowQuestPoints", null);
             dataConfig.set("scoreboardShowAutomationPoints", null);
             dataConfig.set("scoreboardShowSacrificePoints", null);
+            dataConfig.set("scoreboardShowPrestigeStats", null);
             dataConfig.set("scoreboardShowQuestProgress", null);
             dataConfig.set("scoreboardShowAbilityStatus", null);
             dataConfig.set("sacrificePoints", null);
@@ -11182,6 +11202,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : scoreboardShowSacrificePointsByPlayer.entrySet()) {
                 dataConfig.set("scoreboardShowSacrificePoints." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : scoreboardShowPrestigeStatsByPlayer.entrySet()) {
+                dataConfig.set("scoreboardShowPrestigeStats." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Boolean> entry : scoreboardShowQuestProgressByPlayer.entrySet()) {
                 dataConfig.set("scoreboardShowQuestProgress." + entry.getKey().toString(), entry.getValue());
@@ -12067,6 +12090,17 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     scoreboardShowSacrificePointsByPlayer.put(uuid,
                             dataConfig.getBoolean("scoreboardShowSacrificePoints." + key, false));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("scoreboardShowPrestigeStats")) {
+            dataConfig.getConfigurationSection("scoreboardShowPrestigeStats").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    scoreboardShowPrestigeStatsByPlayer.put(uuid,
+                            dataConfig.getBoolean("scoreboardShowPrestigeStats." + key, true));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
