@@ -1508,11 +1508,11 @@ public final class SheepMergeManager {
 
     public static int commitFarmBuildWorldToLoadedFarms() {
         if (plugin == null || farmCommitInProgress) {
-            return 0;
+            return -1;
         }
         World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
         if (buildWorld == null || !isFarmBuildWorld(buildWorld) || !saveSharedFarmLayoutFromWorld(buildWorld)) {
-            return 0;
+            return -1;
         }
 
         List<World> farmWorlds = new ArrayList<>();
@@ -1536,14 +1536,42 @@ public final class SheepMergeManager {
         return farmCommitInProgress;
     }
 
+    public static int startLoadSavedFarmLayoutToBuildAndLoadedFarms(Player initiator) {
+        if (plugin == null || farmCommitInProgress || !hasSavedFarmLayout()) {
+            return -1;
+        }
+
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (isFarmBuildWorld(buildWorld)) {
+            applyFarmLayout(buildWorld);
+            buildWorld.save();
+        }
+
+        List<World> farmWorlds = new ArrayList<>();
+        for (World world : plugin.getServer().getWorlds()) {
+            if (isSheepFarmWorld(world)) {
+                farmWorlds.add(world);
+            }
+        }
+        if (farmWorlds.isEmpty()) {
+            saveData();
+            return 0;
+        }
+
+        World fallbackWorld = plugin.getServer().getWorlds().isEmpty() ? null : plugin.getServer().getWorlds().get(0);
+        farmCommitInProgress = true;
+        processFarmLayoutLoadBatch(farmWorlds, fallbackWorld, initiator, 0, 0);
+        return farmWorlds.size();
+    }
+
     public static int startCommitFarmBuildWorldToLoadedFarms(Player initiator) {
         if (plugin == null || farmCommitInProgress) {
-            return 0;
+            return -1;
         }
 
         World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
         if (buildWorld == null || !isFarmBuildWorld(buildWorld) || !saveSharedFarmLayoutFromWorld(buildWorld)) {
-            return 0;
+            return -1;
         }
 
         List<World> farmWorlds = new ArrayList<>();
@@ -1592,6 +1620,38 @@ public final class SheepMergeManager {
         final int nextUpdatedCount = updatedCount;
         plugin.getServer().getScheduler().runTaskLater(plugin,
                 () -> processFarmCommitBatch(farmWorlds, fallbackWorld, initiator, nextIndex, nextUpdatedCount),
+                1L);
+    }
+
+    private static void processFarmLayoutLoadBatch(List<World> farmWorlds, World fallbackWorld, Player initiator,
+            int index, int updatedCount) {
+        if (plugin == null) {
+            farmCommitInProgress = false;
+            return;
+        }
+
+        if (index >= farmWorlds.size()) {
+            saveData();
+            farmCommitInProgress = false;
+            if (initiator != null && initiator.isOnline()) {
+                initiator.sendMessage(action("Loaded the saved farm layout into " + updatedCount
+                        + " loaded farm world(s)."));
+            }
+            return;
+        }
+
+        World world = farmWorlds.get(index);
+        if (world != null) {
+            teleportPlayersOutOfWorld(world, fallbackWorld);
+            saveSheepSnapshotForWorld(world);
+            rebuildFarmWorld(world);
+            updatedCount++;
+        }
+
+        final int nextIndex = index + 1;
+        final int nextUpdatedCount = updatedCount;
+        plugin.getServer().getScheduler().runTaskLater(plugin,
+                () -> processFarmLayoutLoadBatch(farmWorlds, fallbackWorld, initiator, nextIndex, nextUpdatedCount),
                 1L);
     }
 

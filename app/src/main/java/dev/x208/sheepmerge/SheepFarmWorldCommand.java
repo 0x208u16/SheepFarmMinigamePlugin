@@ -904,13 +904,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
             }
-            if (!SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
-                player.sendMessage(
-                        "Use this command while standing in the shared farm build world. Use /sheepmerge world to travel there.");
+            World buildWorld = ensureFarmBuildWorld();
+            if (buildWorld == null) {
+                player.sendMessage("Unable to open the farm build world right now.");
                 return true;
             }
-            player.getWorld().save();
-            if (SheepMergeManager.saveSharedFarmLayoutFromWorld(player.getWorld())) {
+            buildWorld.save();
+            if (SheepMergeManager.saveSharedFarmLayoutFromWorld(buildWorld)) {
                 player.sendMessage("Saved the shared farm build world and layout snapshot.");
             } else {
                 player.sendMessage("Saved the shared farm build world, but layout snapshot save failed.");
@@ -923,17 +923,22 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("Only server operators can use this command.");
                 return true;
             }
-            if (!SheepMergeManager.isFarmBuildWorld(player.getWorld())) {
-                player.sendMessage("Use this command while standing in the shared farm build world.");
+            World buildWorld = ensureFarmBuildWorld();
+            if (buildWorld == null) {
+                player.sendMessage("Unable to open the farm build world right now.");
                 return true;
             }
             if (SheepMergeManager.isFarmBuildCommitInProgress()) {
                 player.sendMessage("A farm refresh is already in progress.");
                 return true;
             }
-            int updated = SheepMergeManager.startCommitFarmBuildWorldToLoadedFarms(player);
-            if (updated <= 0) {
-                player.sendMessage("Unable to commit the shared farm build world right now.");
+            int updated = SheepMergeManager.startLoadSavedFarmLayoutToBuildAndLoadedFarms(player);
+            if (updated < 0) {
+                player.sendMessage("Unable to load the saved shared farm layout right now.");
+                return true;
+            }
+            if (updated == 0) {
+                player.sendMessage("Loaded the saved shared farm layout. No farm worlds are currently loaded.");
                 return true;
             }
             player.sendMessage(
