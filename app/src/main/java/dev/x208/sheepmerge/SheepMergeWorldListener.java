@@ -173,6 +173,9 @@ public class SheepMergeWorldListener implements Listener {
                 && !SheepMergeManager.isShopMenuTitle(title)
                 && !SheepMergeManager.isComboShopMenuTitle(title)
                 && !SheepMergeManager.isAutomationMenuTitle(title)
+                && !SheepMergeManager.isAchievementsMenuTitle(title)
+                && !SheepMergeManager.isAchievementsViewMenuTitle(title)
+                && !SheepMergeManager.isAchievementsUpgradesMenuTitle(title)
                 && !SheepMergeManager.isSacrificeMenuTitle(title)
                 && !SheepMergeManager.isRebirthMenuTitle(title)
                 && !SheepMergeManager.isRebirthTreeMenuTitle(title)
@@ -203,6 +206,18 @@ public class SheepMergeWorldListener implements Listener {
         }
         if (SheepMergeManager.isAutomationMenuTitle(title)) {
             SheepMergeManager.handleAutomationMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isAchievementsMenuTitle(title)) {
+            SheepMergeManager.handleAchievementsMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isAchievementsViewMenuTitle(title)) {
+            SheepMergeManager.handleAchievementsViewMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isAchievementsUpgradesMenuTitle(title)) {
+            SheepMergeManager.handleAchievementsUpgradesMenuClick(player, event.getRawSlot());
             return;
         }
         if (SheepMergeManager.isSacrificeMenuTitle(title)) {

@@ -420,6 +420,9 @@ public final class SheepMergeManager {
     public static final String SHOP_MENU_TITLE = "Shear Shop";
     public static final String COMBO_SHOP_MENU_TITLE = "Combo Upgrades";
     public static final String AUTOMATION_MENU_TITLE = "Automation Upgrades";
+    public static final String ACHIEVEMENTS_MENU_TITLE = "Achievements";
+    public static final String ACHIEVEMENTS_VIEW_MENU_TITLE = "Achievement List";
+    public static final String ACHIEVEMENTS_UPGRADES_MENU_TITLE = "Achievement Upgrades";
     public static final String SACRIFICE_MENU_TITLE = "Sacrifice Unlocks";
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
@@ -433,6 +436,7 @@ public final class SheepMergeManager {
     public static final int SHOP_MENU_OPEN_SLOT = 24;
     public static final int COMBO_MENU_OPEN_SLOT = 18;
     public static final int AUTOMATION_MENU_OPEN_SLOT = 26;
+    public static final int ACHIEVEMENTS_MENU_OPEN_SLOT = 8;
     public static final int SACRIFICE_MENU_OPEN_SLOT = 2;
     public static final int REBIRTH_MENU_OPEN_SLOT = 6;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
@@ -501,6 +505,11 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 20;
     public static final int SCOREBOARD_ABILITIES_SLOT = 22;
     public static final int SCOREBOARD_BACK_SLOT = 26;
+    public static final int ACHIEVEMENTS_VIEW_SLOT = 11;
+    public static final int ACHIEVEMENTS_UPGRADES_SLOT = 15;
+    public static final int ACHIEVEMENTS_BACK_SLOT = 26;
+    public static final int ACHIEVEMENTS_VIEW_BACK_SLOT = 49;
+    public static final int ACHIEVEMENTS_UPGRADES_BACK_SLOT = 26;
 
     private static final int SACRIFICE_UNLOCK_NO_REGULAR_RESETS = 1;
     private static final int SACRIFICE_UNLOCK_NO_COMBO_RESETS = 2;
@@ -642,6 +651,36 @@ public final class SheepMergeManager {
             this.effectLine = effectLine;
         }
     }
+
+    private static final class AchievementDefinition {
+        private final String id;
+        private final Material material;
+        private final String name;
+        private final String objective;
+        private final String reward;
+
+        private AchievementDefinition(String id, Material material, String name, String objective, String reward) {
+            this.id = id;
+            this.material = material;
+            this.name = name;
+            this.objective = objective;
+            this.reward = reward;
+        }
+    }
+
+    private static final List<AchievementDefinition> ACHIEVEMENT_DEFINITIONS = List.of(
+            new AchievementDefinition("first_shear", Material.SHEARS, "First Cut",
+                    "Shear 1 sheep", "Reward: 100 points"),
+            new AchievementDefinition("breeder", Material.SHEEP_SPAWN_EGG, "Breeder",
+                    "Spawn 100 sheep", "Reward: 500 points"),
+            new AchievementDefinition("merger", Material.ANVIL, "Merger",
+                    "Merge 250 pairs", "Reward: 500 points"),
+            new AchievementDefinition("storm_chaser", Material.LIGHTNING_ROD, "Storm Chaser",
+                    "Catch 50 sky drops", "Reward: 5 quest points"),
+            new AchievementDefinition("prestige_path", Material.NETHER_STAR, "Prestige Path",
+                    "Reach Prestige 10", "Reward: 3 prestige points"),
+            new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
+                    "Rebirth 1 time", "Reward: 1 rebirth point"));
 
     private static final List<RebirthSkillNode> REBIRTH_SKILL_NODES = List.of(
             new RebirthSkillNode(
@@ -9128,6 +9167,14 @@ public final class SheepMergeManager {
                         "Gain: +1 per " + formatDuration(AUTOMATION_POINT_INTERVAL_MS),
                         "Click to open")));
 
+        inventory.setItem(ACHIEVEMENTS_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Achievements",
+                List.of(
+                        "Framework: active",
+                        "Track milestones and claim upgrade paths",
+                        "Click to open")));
+
         inventory.setItem(SACRIFICE_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.TOTEM_OF_UNDYING,
                 "Sacrifice",
@@ -9183,6 +9230,18 @@ public final class SheepMergeManager {
 
     public static boolean isAutomationMenuTitle(String title) {
         return AUTOMATION_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isAchievementsMenuTitle(String title) {
+        return ACHIEVEMENTS_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isAchievementsViewMenuTitle(String title) {
+        return ACHIEVEMENTS_VIEW_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isAchievementsUpgradesMenuTitle(String title) {
+        return ACHIEVEMENTS_UPGRADES_MENU_TITLE.equals(title);
     }
 
     public static boolean isSacrificeMenuTitle(String title) {
@@ -9353,6 +9412,14 @@ public final class SheepMergeManager {
                 List.of(
                         "Automation points: " + formatPoints(getAutomationPoints(player)),
                         "Gain: +1 per " + formatDuration(AUTOMATION_POINT_INTERVAL_MS),
+                        "Click to open")));
+
+        setMenuItemIfChanged(inventory, ACHIEVEMENTS_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Achievements",
+                List.of(
+                        "Framework: active",
+                        "Track milestones and claim upgrade paths",
                         "Click to open")));
 
         setMenuItemIfChanged(inventory, SACRIFICE_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -9773,6 +9840,133 @@ public final class SheepMergeManager {
         openScoreboardMenu(player);
     }
 
+    public static void openAchievementsMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        Inventory inventory = Bukkit.createInventory(null, 27, ACHIEVEMENTS_MENU_TITLE);
+        inventory.setItem(4, MenuItemFactory.create(
+                Material.BOOK,
+                "Achievements Hub",
+                List.of(
+                        "Track progression milestones",
+                        "Unlock passive boosts over time")));
+
+        inventory.setItem(ACHIEVEMENTS_VIEW_SLOT, MenuItemFactory.create(
+                Material.MAP,
+                "View Achievements",
+                List.of(
+                        "Browse goals and rewards",
+                        "Click to open")));
+
+        inventory.setItem(ACHIEVEMENTS_UPGRADES_SLOT, MenuItemFactory.create(
+                Material.ENCHANTED_BOOK,
+                "Achievement Upgrades",
+                List.of(
+                        "Spend future achievement currency",
+                        "Click to open")));
+
+        inventory.setItem(ACHIEVEMENTS_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Open upgrades")));
+
+        player.openInventory(inventory);
+    }
+
+    public static void openAchievementsViewMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        Inventory inventory = Bukkit.createInventory(null, 54, ACHIEVEMENTS_VIEW_MENU_TITLE);
+        int slot = 10;
+        for (AchievementDefinition achievement : ACHIEVEMENT_DEFINITIONS) {
+            if (slot >= 44) {
+                break;
+            }
+            inventory.setItem(slot, MenuItemFactory.create(
+                    achievement.material,
+                    achievement.name,
+                    List.of(
+                            "Objective: " + achievement.objective,
+                            achievement.reward,
+                            "Status: coming soon",
+                            "Key: " + achievement.id)));
+            slot++;
+            if (slot % 9 == 8) {
+                slot += 2;
+            }
+        }
+
+        inventory.setItem(ACHIEVEMENTS_VIEW_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Achievements hub")));
+        player.openInventory(inventory);
+    }
+
+    public static void openAchievementsUpgradesMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        Inventory inventory = Bukkit.createInventory(null, 27, ACHIEVEMENTS_UPGRADES_MENU_TITLE);
+        inventory.setItem(13, MenuItemFactory.create(
+                Material.BARRIER,
+                "Coming Soon",
+                List.of(
+                        "Upgrade paths will unlock here",
+                        "This is the initial framework scaffold")));
+        inventory.setItem(ACHIEVEMENTS_UPGRADES_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Achievements hub")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleAchievementsMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        switch (slot) {
+            case ACHIEVEMENTS_VIEW_SLOT -> {
+                openAchievementsViewMenu(player);
+                return;
+            }
+            case ACHIEVEMENTS_UPGRADES_SLOT -> {
+                openAchievementsUpgradesMenu(player);
+                return;
+            }
+            case ACHIEVEMENTS_BACK_SLOT -> {
+                openUpgradeMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+    }
+
+    public static void handleAchievementsViewMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        if (slot == ACHIEVEMENTS_VIEW_BACK_SLOT) {
+            openAchievementsMenu(player);
+        }
+    }
+
+    public static void handleAchievementsUpgradesMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        if (slot == ACHIEVEMENTS_UPGRADES_BACK_SLOT) {
+            openAchievementsMenu(player);
+        }
+    }
+
     public static void handleUpgradeMenuClick(Player player, int slot) {
         if (player == null) {
             return;
@@ -9855,6 +10049,10 @@ public final class SheepMergeManager {
             }
             case AUTOMATION_MENU_OPEN_SLOT -> {
                 openAutomationMenu(player);
+                return;
+            }
+            case ACHIEVEMENTS_MENU_OPEN_SLOT -> {
+                openAchievementsMenu(player);
                 return;
             }
             case SACRIFICE_MENU_OPEN_SLOT -> {
