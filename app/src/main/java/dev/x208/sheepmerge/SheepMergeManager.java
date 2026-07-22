@@ -186,6 +186,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, BigInteger> lastPointsOverlayByPlayer = new HashMap<>();
     private static final Map<UUID, BossBar> comboBossBarByPlayer = new HashMap<>();
     private static final Map<UUID, BossBar> visitFarmBossBarByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> socialsPageByPlayer = new HashMap<>();
     private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
     private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
     private static final Map<UUID, org.bukkit.Location> sheepRescueOriginByEntity = new HashMap<>();
@@ -522,6 +523,8 @@ public final class SheepMergeManager {
     public static final int INVENTORY_LAYOUT_SELECTED_SLOT = 4;
     public static final int INVENTORY_LAYOUT_BACK_SLOT = 49;
     public static final int SOCIALS_TOP_POINTS_SLOT = 4;
+    public static final int SOCIALS_PREVIOUS_PAGE_SLOT = 0;
+    public static final int SOCIALS_NEXT_PAGE_SLOT = 1;
     public static final int SOCIALS_AUTHOR_SLOT = 45;
     public static final int SOCIALS_RETURN_HOME_SLOT = 49;
     public static final int SOCIALS_BACK_SLOT = 53;
@@ -555,6 +558,7 @@ public final class SheepMergeManager {
     private static final int INVENTORY_QUICK_ACCESS_LAST_SLOT = INVENTORY_QUICK_ACCESS_FIRST_SLOT
             + INVENTORY_QUICK_ACCESS_MAX_ITEMS - 1;
     private static final UUID SOCIALS_AUTHOR_UUID = UUID.fromString("27268675-a9b7-4abd-9628-e6c4515a5cf6");
+    private static final int SOCIALS_VISIT_PAGE_SIZE = 31;
 
     private static SheepMergePlugin plugin;
     private static final SheepEggModule EGG_MODULE = new SheepEggModule();
@@ -5803,6 +5807,7 @@ public final class SheepMergeManager {
         scoreboardShowPrestigeStatsByPlayer.remove(id);
         scoreboardShowQuestProgressByPlayer.remove(id);
         scoreboardShowAbilityStatusByPlayer.remove(id);
+        socialsPageByPlayer.remove(id);
         inventoryQuickAccessByPlayer.remove(id);
         sacrificePointsByPlayer.remove(id);
         sacrificeUnlockState.remove(id);
@@ -7395,6 +7400,7 @@ public final class SheepMergeManager {
         scoreboardShowPrestigeStatsByPlayer.clear();
         scoreboardShowQuestProgressByPlayer.clear();
         scoreboardShowAbilityStatusByPlayer.clear();
+        socialsPageByPlayer.clear();
         inventoryQuickAccessByPlayer.clear();
         sacrificePointsByPlayer.clear();
         sacrificeUnlockState.clear();
@@ -9526,12 +9532,7 @@ public final class SheepMergeManager {
                                 : "Buy now: +0 rebirth level(s)",
                         "Click to open")));
 
-        inventory.setItem(SOCIALS_MENU_OPEN_SLOT, MenuItemFactory.create(
-                Material.PLAYER_HEAD,
-                "Socials",
-                List.of(
-                        "Top points and farm visits",
-                        "Click to open")));
+        inventory.setItem(SOCIALS_MENU_OPEN_SLOT, createAuthorCreditsItem());
 
         player.openInventory(inventory);
     }
@@ -9794,19 +9795,14 @@ public final class SheepMergeManager {
                                 : "Buy now: +0 rebirth level(s)",
                         "Click to open")));
 
-        setMenuItemIfChanged(inventory, SOCIALS_MENU_OPEN_SLOT, MenuItemFactory.create(
-                Material.PLAYER_HEAD,
-                "Socials",
-                List.of(
-                        "Top points and farm visits",
-                        "Click to open")));
+        setMenuItemIfChanged(inventory, SOCIALS_MENU_OPEN_SLOT, createAuthorCreditsItem());
     }
 
     private static void refreshOpenSocialsMenuItems(Player player, Inventory inventory) {
         if (player == null || inventory == null) {
             return;
         }
-        populateSocialsMenuItems(player, inventory);
+        populateSocialsMenuItems(player, inventory, getCurrentSocialsPage(player));
     }
 
     private static void refreshOpenPrestigeMenuItems(Player player, Inventory inventory) {
@@ -10509,18 +10505,41 @@ public final class SheepMergeManager {
     }
 
     public static void openSocialsMenu(Player player) {
+        openSocialsMenu(player, 0);
+    }
+
+    private static void openSocialsMenu(Player player, int requestedPage) {
         if (player == null) {
             return;
         }
         Inventory inventory = Bukkit.createInventory(null, 54, SOCIALS_MENU_TITLE);
-        populateSocialsMenuItems(player, inventory);
+        populateSocialsMenuItems(player, inventory, requestedPage);
         player.openInventory(inventory);
     }
 
-    private static void populateSocialsMenuItems(Player player, Inventory inventory) {
+    private static void populateSocialsMenuItems(Player player, Inventory inventory, int requestedPage) {
         if (player == null || inventory == null) {
             return;
         }
+
+        List<Player> visitableOwners = getVisitableFarmOwners(player);
+        int totalPages = Math.max(1, (int) Math.ceil(visitableOwners.size() / (double) SOCIALS_VISIT_PAGE_SIZE));
+        int page = Math.max(0, Math.min(totalPages - 1, requestedPage));
+        socialsPageByPlayer.put(player.getUniqueId(), page);
+
+        setMenuItemIfChanged(inventory, SOCIALS_PREVIOUS_PAGE_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Previous Page",
+                List.of(
+                        "Page " + (page + 1) + " / " + totalPages,
+                        page > 0 ? "Click to go back" : "Already at first page")));
+
+        setMenuItemIfChanged(inventory, SOCIALS_NEXT_PAGE_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Next Page",
+                List.of(
+                        "Page " + (page + 1) + " / " + totalPages,
+                        page + 1 < totalPages ? "Click to advance" : "Already at last page")));
 
         List<String> topLines = getTopPointsLines(5);
         List<String> topLore = new ArrayList<>();
@@ -10547,31 +10566,47 @@ public final class SheepMergeManager {
                 List.of("Click: Open menu")));
 
         clearSocialVisitEntries(inventory);
-        List<Player> visitableOwners = getVisitableFarmOwners(player);
-        int slot = 10;
-        for (Player owner : visitableOwners) {
-            if (owner == null || slot >= 44) {
+        List<Integer> displaySlots = getSocialVisitDisplaySlots();
+        int startIndex = page * SOCIALS_VISIT_PAGE_SIZE;
+        for (int offset = 0; offset < SOCIALS_VISIT_PAGE_SIZE; offset++) {
+            int ownerIndex = startIndex + offset;
+            if (ownerIndex >= visitableOwners.size() || offset >= displaySlots.size()) {
                 break;
+            }
+            Player owner = visitableOwners.get(ownerIndex);
+            if (owner == null) {
+                continue;
             }
             ItemStack visitItem = createSocialVisitItem(owner);
             if (visitItem != null) {
-                setMenuItemIfChanged(inventory, slot, visitItem);
-                slot++;
-                if (slot % 9 == 8) {
-                    slot += 2;
-                }
+                setMenuItemIfChanged(inventory, displaySlots.get(offset), visitItem);
             }
         }
+    }
+
+    private static int getCurrentSocialsPage(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        return Math.max(0, socialsPageByPlayer.getOrDefault(player.getUniqueId(), 0));
+    }
+
+    private static List<Integer> getSocialVisitDisplaySlots() {
+        List<Integer> slots = new ArrayList<>();
+        for (int slot = 10; slot < 44; slot++) {
+            if (slot % 9 == 8) {
+                continue;
+            }
+            slots.add(slot);
+        }
+        return slots;
     }
 
     private static void clearSocialVisitEntries(Inventory inventory) {
         if (inventory == null) {
             return;
         }
-        for (int slot = 10; slot < 44; slot++) {
-            if (slot % 9 == 8) {
-                continue;
-            }
+        for (int slot : getSocialVisitDisplaySlots()) {
             inventory.setItem(slot, null);
         }
     }
@@ -10670,6 +10705,14 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
+        if (slot == SOCIALS_PREVIOUS_PAGE_SLOT) {
+            openSocialsMenu(player, getCurrentSocialsPage(player) - 1);
+            return;
+        }
+        if (slot == SOCIALS_NEXT_PAGE_SLOT) {
+            openSocialsMenu(player, getCurrentSocialsPage(player) + 1);
+            return;
+        }
         if (slot == SOCIALS_BACK_SLOT) {
             openUpgradeMenu(player);
             return;
@@ -10694,12 +10737,12 @@ public final class SheepMergeManager {
         Player owner = Bukkit.getPlayer(ownerId);
         if (owner == null || !owner.isOnline()) {
             player.sendMessage(warning("That player is no longer online."));
-            openSocialsMenu(player);
+            openSocialsMenu(player, getCurrentSocialsPage(player));
             return;
         }
         if (!player.isOp() && !isFarmVisitable(ownerId)) {
             player.sendMessage(warning("That farm is closed to visitors."));
-            openSocialsMenu(player);
+            openSocialsMenu(player, getCurrentSocialsPage(player));
             return;
         }
 
