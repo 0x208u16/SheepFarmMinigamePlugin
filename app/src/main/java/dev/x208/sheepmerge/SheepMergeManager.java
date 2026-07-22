@@ -447,7 +447,8 @@ public final class SheepMergeManager {
     public static final int ACHIEVEMENTS_MENU_OPEN_SLOT = 8;
     public static final int SACRIFICE_MENU_OPEN_SLOT = 2;
     public static final int REBIRTH_MENU_OPEN_SLOT = 6;
-    public static final int SOCIALS_MENU_OPEN_SLOT = 0;
+    public static final int LAYOUTS_MENU_OPEN_SLOT = 0;
+    public static final int SOCIALS_MENU_OPEN_SLOT = 4;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
@@ -9364,8 +9365,8 @@ public final class SheepMergeManager {
         markTutorialUpgradeOpened(player);
 
         Inventory inventory = Bukkit.createInventory(null, 27, UPGRADE_MENU_TITLE);
-        inventory.setItem(4, MenuItemFactory.create(
-                Material.BOOK,
+        inventory.setItem(LAYOUTS_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.ENDER_CHEST,
                 "Layouts",
                 List.of(
                         "Scoreboard and inventory layout",
@@ -9626,8 +9627,8 @@ public final class SheepMergeManager {
         if (player == null || inventory == null) {
             return;
         }
-        setMenuItemIfChanged(inventory, 4, MenuItemFactory.create(
-                Material.BOOK,
+        setMenuItemIfChanged(inventory, LAYOUTS_MENU_OPEN_SLOT, MenuItemFactory.create(
+                Material.ENDER_CHEST,
                 "Layouts",
                 List.of(
                         "Scoreboard and inventory layout",
@@ -10769,7 +10770,7 @@ public final class SheepMergeManager {
             return;
         }
         switch (slot) {
-            case 4 -> {
+            case LAYOUTS_MENU_OPEN_SLOT -> {
                 openUniversalLayoutMenu(player);
                 return;
             }
