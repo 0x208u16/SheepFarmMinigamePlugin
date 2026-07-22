@@ -6,13 +6,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +31,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -520,6 +526,7 @@ public final class SheepMergeManager {
     private static File dataFile;
     private static FileConfiguration farmLayoutConfig;
     private static File farmLayoutFile;
+    private static File farmStructureCacheDirectory;
     private static long nextRandomEventRollAtMs = 0L;
     private static long sheepRainEventEndsAtMs = 0L;
     private static long nextSheepRainSpawnAtMs = 0L;
@@ -703,6 +710,7 @@ public final class SheepMergeManager {
             "&7Shear Shop boosts shear value and adds procs like Wool Keeper and Tier Booster.",
             "&7Quest objectives reset over time. Finish them to earn quest points for active abilities.",
             "&7Quest Upgrades increase ability duration and lower ability costs.",
+            "&7Merge Assist auto-merges carried sheep while charges remain.",
             "&7Combo score multiplies your gains. Keep merging to avoid decay and maintain high value.",
             "&7Combo Upgrades improve decay, gain, and max combo cap.",
             "&7Prestige resets normal progress and grants prestige points for permanent account upgrades.",
@@ -710,7 +718,8 @@ public final class SheepMergeManager {
             "&7Prestige refund lets you respec prestige upgrades after cooldown.",
             "&7Automation points are earned over playtime. Spend them in Automation Upgrades.",
             "&7Automation tracks start disabled. Buy and toggle each track on when you are ready.",
-            "&7Auto Spawn uses eggs and can be upgraded down to near-instant checks.",
+            "&7Auto Spawn now drops sheep from the sky and still spends eggs.",
+            "&7Farm worlds now load from a cached structure copy instead of rebuilding every block.",
             "&7Auto Prestige can run automatically once unlocked and toggled on.",
             "&7Use &e/sheepmerge visit <player> &7to visit open farms and &e/sheepmerge visit -toggle &7to manage access.",
             "&7Use &e/sheepmerge status &7to quickly check your points, quests, combo, and prestige progress.",
@@ -724,6 +733,7 @@ public final class SheepMergeManager {
         SheepMergeManager.plugin = plugin;
         dataFile = new File(plugin.getDataFolder(), "scores.yml");
         farmLayoutFile = new File(plugin.getDataFolder(), "farm-layout.yml");
+        farmStructureCacheDirectory = new File(plugin.getDataFolder(), "farm-structure-cache");
         loadData();
         loadFarmLayout();
     }
@@ -850,7 +860,138 @@ public final class SheepMergeManager {
             return false;
         }
         buildWorld.save();
-        return saveSharedFarmLayoutFromWorld(buildWorld);
+        boolean saved = saveSharedFarmLayoutFromWorld(buildWorld);
+        if (saved) {
+            refreshFarmWorldStructureCache();
+        }
+        return saved;
+    }
+
+    public static boolean prepareTransientWorldStructure(String worldName) {
+        if (plugin == null || worldName == null || worldName.isBlank() || farmStructureCacheDirectory == null
+                || !farmStructureCacheDirectory.exists() || isFarmBuildWorldName(worldName)) {
+            return false;
+        }
+
+        File targetWorldFolder = new File(Bukkit.getWorldContainer(), worldName);
+        if (targetWorldFolder.exists()) {
+            return false;
+        }
+
+        try {
+            copyWorldDirectory(farmStructureCacheDirectory.toPath(), targetWorldFolder.toPath());
+            return true;
+        } catch (IOException exception) {
+            if (targetWorldFolder.exists()) {
+                try {
+                    deleteDirectory(targetWorldFolder.toPath());
+                } catch (IOException ignored) {
+                }
+            }
+            if (plugin != null) {
+                plugin.getLogger().warning("Unable to prepare cached farm world structure for '" + worldName
+                        + "': " + exception.getMessage());
+            }
+            return false;
+        }
+    }
+
+    public static boolean refreshFarmWorldStructureCache() {
+        if (plugin == null || farmStructureCacheDirectory == null) {
+            return false;
+        }
+
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (!isFarmBuildWorld(buildWorld) || buildWorld.getWorldFolder() == null
+                || !buildWorld.getWorldFolder().exists()) {
+            return false;
+        }
+
+        buildWorld.save();
+
+        File tempDirectory = new File(plugin.getDataFolder(), "farm-structure-cache.tmp");
+        try {
+            if (tempDirectory.exists()) {
+                deleteDirectory(tempDirectory.toPath());
+            }
+            copyWorldDirectory(buildWorld.getWorldFolder().toPath(), tempDirectory.toPath());
+
+            if (farmStructureCacheDirectory.exists()) {
+                deleteDirectory(farmStructureCacheDirectory.toPath());
+            }
+            if (!tempDirectory.renameTo(farmStructureCacheDirectory)) {
+                copyWorldDirectory(tempDirectory.toPath(), farmStructureCacheDirectory.toPath());
+                deleteDirectory(tempDirectory.toPath());
+            }
+            return true;
+        } catch (IOException exception) {
+            if (plugin != null) {
+                plugin.getLogger().warning("Unable to refresh farm structure cache: " + exception.getMessage());
+            }
+            return false;
+        }
+    }
+
+    private static boolean isFarmBuildWorldName(String worldName) {
+        return worldName != null && FARM_BUILD_WORLD_NAME.equals(worldName);
+    }
+
+    private static void copyWorldDirectory(Path sourceRoot, Path targetRoot) throws IOException {
+        try (Stream<Path> paths = Files.walk(sourceRoot)) {
+            paths.forEach(currentPath -> {
+                Path relative = sourceRoot.relativize(currentPath);
+                if (relative.getNameCount() > 0 && shouldSkipWorldCachePath(relative)) {
+                    return;
+                }
+
+                Path targetPath = targetRoot.resolve(relative.toString());
+                try {
+                    if (Files.isDirectory(currentPath)) {
+                        Files.createDirectories(targetPath);
+                    } else {
+                        Path parent = targetPath.getParent();
+                        if (parent != null) {
+                            Files.createDirectories(parent);
+                        }
+                        Files.copy(currentPath, targetPath,
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.COPY_ATTRIBUTES);
+                    }
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
+                }
+            });
+        } catch (UncheckedIOException exception) {
+            throw exception.getCause();
+        }
+    }
+
+    private static boolean shouldSkipWorldCachePath(Path relativePath) {
+        String topLevelName = relativePath.getName(0).toString();
+        return "session.lock".equals(topLevelName)
+                || "uid.dat".equals(topLevelName)
+                || "playerdata".equals(topLevelName)
+                || "stats".equals(topLevelName)
+                || "advancements".equals(topLevelName)
+                || "entities".equals(topLevelName);
+    }
+
+    private static void deleteDirectory(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            return;
+        }
+
+        try (Stream<Path> paths = Files.walk(directory)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
+                }
+            });
+        } catch (UncheckedIOException exception) {
+            throw exception.getCause();
+        }
     }
 
     public static boolean saveSharedFarmLayoutFromWorld(World sourceWorld) {
@@ -1598,6 +1739,7 @@ public final class SheepMergeManager {
         if (buildWorld == null || !isFarmBuildWorld(buildWorld) || !saveSharedFarmLayoutFromWorld(buildWorld)) {
             return -1;
         }
+        refreshFarmWorldStructureCache();
 
         List<World> farmWorlds = collectFarmWorldsForLayoutRefresh();
         if (farmWorlds.isEmpty()) {
@@ -1629,6 +1771,7 @@ public final class SheepMergeManager {
         if (isFarmBuildWorld(buildWorld)) {
             applyFarmLayout(buildWorld);
             buildWorld.save();
+            refreshFarmWorldStructureCache();
         }
 
         List<World> farmWorlds = collectFarmWorldsForLayoutRefresh();
@@ -1652,6 +1795,7 @@ public final class SheepMergeManager {
         if (buildWorld == null || !isFarmBuildWorld(buildWorld) || !saveSharedFarmLayoutFromWorld(buildWorld)) {
             return -1;
         }
+        refreshFarmWorldStructureCache();
 
         List<World> farmWorlds = collectFarmWorldsForLayoutRefresh();
         if (farmWorlds.isEmpty()) {
@@ -1795,6 +1939,7 @@ public final class SheepMergeManager {
             }
         }
         buildWorld.save();
+        refreshFarmWorldStructureCache();
     }
 
     private static void clearSheepEntities(World world) {
@@ -2871,11 +3016,7 @@ public final class SheepMergeManager {
         if (isWorldAtLimit(player.getWorld())) {
             return;
         }
-        Location spawnLocation = player.getLocation().clone();
-        if (spawnLocation.getY() < FARM_BASE_Y + 1.0D) {
-            spawnLocation.setY(FARM_BASE_Y + 1.0D);
-        }
-        if (spawnSheepFromEgg(player, spawnLocation)) {
+        if (spawnAutomationSheepFromSky(player)) {
             recordQuestSpawn(player);
             recordTutorialSpawn(player);
         }
@@ -3354,13 +3495,17 @@ public final class SheepMergeManager {
         return SHEEP_RAIN_MIN_INTERVAL_MS + RANDOM.nextInt((int) range + 1);
     }
 
-    private static void spawnRainSheep(World world) {
+    private static Location createSkySheepSpawnLocation(World world) {
         double min = FARM_MIN_XZ + SHEEP_RAIN_HORIZONTAL_PADDING;
         double max = FARM_MAX_XZ - SHEEP_RAIN_HORIZONTAL_PADDING;
         double x = min + RANDOM.nextDouble() * Math.max(0.01D, max - min);
         double z = min + RANDOM.nextDouble() * Math.max(0.01D, max - min);
         double y = FARM_BASE_Y + SHEEP_RAIN_SPAWN_HEIGHT;
-        Location spawnLocation = new Location(world, x, y, z);
+        return new Location(world, x, y, z);
+    }
+
+    private static void spawnRainSheep(World world) {
+        Location spawnLocation = createSkySheepSpawnLocation(world);
 
         Sheep sheep = world.spawn(spawnLocation, Sheep.class);
         setSheepTier(sheep, rollSpawnTier(world));
@@ -7921,17 +8066,45 @@ public final class SheepMergeManager {
     }
 
     public static boolean spawnSheepFromEgg(Player player, Location spawnLocation) {
-        if (player == null || spawnLocation == null || spawnLocation.getWorld() == null) {
+        Sheep sheep = spawnOwnedSheep(player, spawnLocation);
+        return sheep != null;
+    }
+
+    private static boolean spawnAutomationSheepFromSky(Player player) {
+        if (player == null || player.getWorld() == null) {
             return false;
+        }
+
+        Sheep sheep = spawnOwnedSheep(player, createSkySheepSpawnLocation(player.getWorld()));
+        if (sheep == null) {
+            return false;
+        }
+
+        Location spawnLocation = sheep.getLocation();
+        sheep.setVelocity(new Vector(0.0D, -0.1D, 0.0D));
+        sheep.getWorld().spawnParticle(org.bukkit.Particle.CLOUD,
+                spawnLocation.clone().add(0.0D, 0.4D, 0.0D),
+                10,
+                0.2D,
+                0.4D,
+                0.2D,
+                0.02D);
+        sheep.getWorld().playSound(spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.6f, 1.45f);
+        return true;
+    }
+
+    private static Sheep spawnOwnedSheep(Player player, Location spawnLocation) {
+        if (player == null || spawnLocation == null || spawnLocation.getWorld() == null) {
+            return null;
         }
         if (!isSheepFarmWorld(player.getWorld()) || !isFarmOwner(player, player.getWorld())) {
-            return false;
+            return null;
         }
         if (isWorldAtLimit(player.getWorld())) {
-            return false;
+            return null;
         }
         if (!tryConsumeEgg(player)) {
-            return false;
+            return null;
         }
 
         Sheep sheep = player.getWorld().spawn(spawnLocation, Sheep.class);
@@ -7941,7 +8114,7 @@ public final class SheepMergeManager {
             consumeCountAbilityUse(activeLuckyBurstUsesByPlayer, playerId);
             saveData();
         }
-        return true;
+        return sheep;
     }
 
     public static int getPrestigeDoublePointsChanceLevel(Player player) {
@@ -8562,7 +8735,7 @@ public final class SheepMergeManager {
     private static String getAbilityMenuStatus(Map<UUID, Long> activeUntil, Map<UUID, Long> pausedRemainingMsByPlayer,
             UUID playerId) {
         long remaining = getAbilityRemainingMs(activeUntil, playerId);
-        return remaining > 0L ? "Status: active (" + formatDuration(remaining) + " left)" : "Status: inactive";
+        return remaining > 0L ? "&aStatus: ON &7(" + formatDuration(remaining) + " left)" : "&8Status: OFF";
     }
 
     private static String getAbilityScoreLine(String label, Map<UUID, Long> activeUntil,
@@ -9282,10 +9455,10 @@ public final class SheepMergeManager {
                 Material.ENDER_EYE,
                 "Lucky Burst",
                 List.of(
-                        "Cost: " + formatPoints(luckyCost) + " quest points",
-                        "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
-                        "Uses per activation: " + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
-                        "In stock: " + (currentQuestPoints >= luckyCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(luckyCost) + " qp",
+                        "&bBoost: &f+" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% tier chance",
+                        "&7Uses: &f" + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
+                        currentQuestPoints >= luckyCost ? "&aReady to buy" : "&cNeed more quest points",
                         getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
                                 playerId)),
@@ -9295,39 +9468,39 @@ public final class SheepMergeManager {
                 Material.WHITE_WOOL,
                 "Wool Rush",
                 List.of(
-                        "Cost: " + formatPoints(woolRushCost) + " quest points",
-                        "Effect: 90% faster wool regen",
-                        "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
-                        "In stock: " + (currentQuestPoints >= woolRushCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(woolRushCost) + " qp",
+                        "&bBoost: &fwool grows 90% faster",
+                        "&7Time: &f" + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
+                        currentQuestPoints >= woolRushCost ? "&aReady to buy" : "&cNeed more quest points",
                         getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
                         isAbilityActive(activeWoolRushUntilByPlayer, playerId)
-                                ? "Already active"
-                                : "Click to activate"),
+                                ? "&eClick: Extend"
+                                : "&aClick: Activate"),
                 woolRushGlint));
 
         setMenuItemIfChanged(inventory, QUEST_ABILITY_JACKPOT_SHEARS_SLOT, MenuItemFactory.create(
                 Material.GOLD_INGOT,
                 "Jackpot Shears",
                 List.of(
-                        "Cost: " + formatPoints(jackpotCost) + " quest points",
-                        "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
-                        "Duration: "
+                        "&6Cost: &f" + formatPoints(jackpotCost) + " qp",
+                        "&bBoost: &fx" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
+                        "&7Time: &f"
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
-                        "In stock: " + (currentQuestPoints >= jackpotCost ? "yes" : "no"),
+                        currentQuestPoints >= jackpotCost ? "&aReady to buy" : "&cNeed more quest points",
                         getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
                         isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
-                                ? "Already active"
-                                : "Click to activate"),
+                                ? "&eClick: Extend"
+                                : "&aClick: Activate"),
                 jackpotGlint));
 
         setMenuItemIfChanged(inventory, QUEST_ABILITY_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
-                "Auto Merge",
+                "Merge Assist",
                 List.of(
-                        "Cost: " + formatPoints(autoMergeCost) + " quest points",
-                        "Effect: Instantly merges when you pick up a sheep",
-                        "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
-                        "In stock: " + (currentQuestPoints >= autoMergeCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(autoMergeCost) + " qp",
+                        "&bBoost: &fauto-merges carried sheep",
+                        "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
+                        currentQuestPoints >= autoMergeCost ? "&aReady to buy" : "&cNeed more quest points",
                         getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
                                 playerId)),
@@ -9337,10 +9510,10 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear All Sheep",
                 List.of(
-                        "Cost: " + formatPoints(autoShearCost) + " quest points",
-                        "Effect: Shears every ready sheep in the farm",
-                        "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
-                        "In stock: " + (currentQuestPoints >= autoShearCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(autoShearCost) + " qp",
+                        "&bBoost: &fshears every ready sheep",
+                        "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
+                        currentQuestPoints >= autoShearCost ? "&aReady to buy" : "&cNeed more quest points",
                         getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
                                 playerId)),
@@ -9350,17 +9523,17 @@ public final class SheepMergeManager {
                 Material.ENCHANTED_BOOK,
                 "Quest Upgrades",
                 List.of(
-                        "Duration Lv: " + getQuestUpgradeDurationLevel(player),
-                        "Power Lv: " + getQuestUpgradePowerLevel(player),
-                        "Click to open")));
+                        "&7Duration Lv: &e" + getQuestUpgradeDurationLevel(player),
+                        "&7Power Lv: &e" + getQuestUpgradePowerLevel(player),
+                        "&aClick: Open")));
 
         setMenuItemIfChanged(inventory, QUEST_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
                 List.of(
-                        "Quest points: " + formatPoints(getQuestPoints(player)),
-                        remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
-                        "Click to go back")));
+                        "&7Quest Points: &e" + formatPoints(getQuestPoints(player)),
+                        remaining > 0L ? "&7Reset: &b" + formatDuration(remaining) : "&7Reset: &bincoming",
+                        "&aClick: Back")));
     }
 
     private static void refreshOpenComboMenuItems(Player player, Inventory inventory) {
@@ -10022,180 +10195,177 @@ public final class SheepMergeManager {
                 Material.EXPERIENCE_BOTTLE,
                 "Automation Points",
                 List.of(
-                        "Current: " + formatPoints(getAutomationPoints(player)),
-                        "Earned over time while playing")));
+                        "&7Current: &e" + formatPoints(getAutomationPoints(player)),
+                        "&bEarned while farming")));
 
         inventory.setItem(AUTOMATION_AUTO_BUY_SLOT, MenuItemFactory.create(
                 Material.HOPPER,
                 "Auto Buy Upgrades",
                 List.of(
-                        "Level: " + getAutomationAutoBuyUpgradeLevel(player) + " / " + AUTOMATION_AUTO_BUY_MAX_LEVEL,
-                        "Status: " + (isAutomationAutoBuyEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + (getAutomationAutoBuyIntervalMs(player) <= 0L
+                        "&7Level: &e" + getAutomationAutoBuyUpgradeLevel(player) + " / "
+                                + AUTOMATION_AUTO_BUY_MAX_LEVEL,
+                        isAutomationAutoBuyEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + (getAutomationAutoBuyIntervalMs(player) <= 0L
                                 ? "instant"
                                 : formatDuration(getAutomationAutoBuyIntervalMs(player))),
                         getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
-                                ? "Cost: MAXED"
-                                : "Cost: " + formatPoints(getAutomationAutoBuyUpgradeCost(player))
-                                        + " automation points",
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoBuyUpgradeCost(player)) + " AP",
+                        "&fBuys cheap upgrades",
                         getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
-                                ? "Instantly buys cheapest upgrades"
-                                : "Buys the cheapest affordable upgrade",
-                        getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
-                                ? "Click: maxed"
-                                : "Click: unlock")));
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         inventory.setItem(AUTOMATION_AUTO_ABILITY_SLOT, MenuItemFactory.create(
                 Material.BREWING_STAND,
                 "Auto Activate Abilities",
                 List.of(
-                        "Level: " + getAutomationAutoAbilityUpgradeLevel(player) + " / "
+                        "&7Level: &e" + getAutomationAutoAbilityUpgradeLevel(player) + " / "
                                 + AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
-                        "Status: " + (isAutomationAutoAbilityEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every "
+                        isAutomationAutoAbilityEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b"
                                 + (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
                                         ? "instant"
                                         : formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS)),
                         getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                                ? "Cost: MAXED"
-                                : "Cost: " + formatPoints(getAutomationAutoAbilityUpgradeCost(player))
-                                        + " automation points",
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoAbilityUpgradeCost(player)) + " AP",
                         getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                                ? "Instantly buys all missing abilities"
+                                ? "&fInstant ability refill"
                                 : getAutomationAutoAbilityUpgradeLevel(player) >= 2
-                                        ? "Buys all missing abilities each cycle"
-                                        : "Buys one missing ability each cycle",
+                                        ? "&fBuys every missing ability"
+                                        : "&fBuys one missing ability",
                         getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                                ? "Instantly re-buys abilities that run out"
-                                : "Upgrade further for instant refill",
+                                ? "&bFully automatic"
+                                : "&7Upgrade for instant refill",
                         getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                                ? "Click: maxed"
-                                : "Click: unlock")));
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
-                "Auto Merge",
+                "Slow Auto Merge",
                 List.of(
-                        "Level: " + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
+                        "&7Level: &e" + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
                                 + AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
-                        "Status: " + (isAutomationSlowAutoMergeEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + formatDuration(getAutomationSlowAutoMergeIntervalMs(player)),
+                        isAutomationSlowAutoMergeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + formatDuration(getAutomationSlowAutoMergeIntervalMs(player)),
                         getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
-                                ? "Cost: MAXED"
-                                : "Cost: " + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player))
-                                        + " automation points",
-                        "Slower passive auto-merge",
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player)) + " AP",
+                        "&fMerges one pair each cycle",
                         getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
-                                ? "Click: maxed"
-                                : "Click: unlock")));
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         inventory.setItem(AUTOMATION_AUTO_PRESTIGE_SLOT, MenuItemFactory.create(
                 Material.NETHER_STAR,
                 "Auto Prestige",
                 List.of(
-                        "Level: " + getAutomationAutoPrestigeUpgradeLevel(player) + " / 1",
-                        "Status: " + (isAutomationAutoPrestigeEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + formatDuration(AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS),
+                        "&7Level: &e" + getAutomationAutoPrestigeUpgradeLevel(player) + " / 1",
+                        isAutomationAutoPrestigeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + formatDuration(AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS),
                         getAutomationAutoPrestigeUpgradeLevel(player) > 0
-                                ? "Cost: MAXED"
-                                : "Cost: " + formatPoints(getAutomationAutoPrestigeUpgradeCost(player))
-                                        + " automation points",
-                        "Automatically prestiges when affordable",
-                        "Click: unlock")));
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoPrestigeUpgradeCost(player)) + " AP",
+                        "&fPrestiges when affordable",
+                        getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Maxed" : "&aClick: Unlock")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_SHEAR_SLOT, MenuItemFactory.create(
                 Material.SHEARS,
                 "Auto Shear",
                 List.of(
-                        "Level: " + getAutomationSlowAutoShearUpgradeLevel(player) + " / "
+                        "&7Level: &e" + getAutomationSlowAutoShearUpgradeLevel(player) + " / "
                                 + AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
-                        "Status: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + formatDuration(getAutomationSlowAutoShearIntervalMs(player)),
+                        isAutomationSlowAutoShearEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + formatDuration(getAutomationSlowAutoShearIntervalMs(player)),
                         getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
-                                ? "Cost: MAXED"
-                                : "Cost: " + formatPoints(getAutomationSlowAutoShearUpgradeCost(player))
-                                        + " automation points",
-                        "Slower passive auto-shear",
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationSlowAutoShearUpgradeCost(player)) + " AP",
+                        "&fShears ready sheep each cycle",
                         getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
-                                ? "Click: maxed"
-                                : "Click: unlock")));
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         long autoSpawnInterval = getAutomationAutoSpawnIntervalMs(player);
         inventory.setItem(AUTOMATION_AUTO_SPAWN_SLOT, MenuItemFactory.create(
                 Material.SHEEP_SPAWN_EGG,
                 "Auto Spawn Sheep",
                 List.of(
-                        "Level: " + getAutomationAutoSpawnUpgradeLevel(player) + " / "
+                        "&7Level: &e" + getAutomationAutoSpawnUpgradeLevel(player) + " / "
                                 + AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
-                        "Status: " + (isAutomationAutoSpawnEnabled(player) ? "ENABLED" : "DISABLED"),
-                        "Runs every " + (autoSpawnInterval <= 0L ? "instant" : formatDuration(autoSpawnInterval)),
-                        "Consumes spawn eggs",
+                        isAutomationAutoSpawnEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + (autoSpawnInterval <= 0L ? "instant" : formatDuration(autoSpawnInterval)),
+                        "&fDrops sheep from the sky",
                         getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
-                                ? "Cost: MAXED"
-                                : "Cost: " + formatPoints(getAutomationAutoSpawnUpgradeCost(player))
-                                        + " automation points",
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoSpawnUpgradeCost(player)) + " AP",
+                        "&7Uses eggs automatically",
                         getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
-                                ? "Click: maxed"
-                                : "Click: upgrade")));
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         inventory.setItem(AUTOMATION_AUTO_BUY_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
                 "Toggle Auto Buy",
                 List.of(
-                        "Current: " + (isAutomationAutoBuyEnabled(player) ? "ENABLED" : "DISABLED"),
-                        getAutomationAutoBuyUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+                        isAutomationAutoBuyEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoBuyUpgradeLevel(player) > 0 ? "&aClick: Toggle" : "&cBuy level 1 first")));
 
         inventory.setItem(AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
                 "Toggle Auto Ability",
                 List.of(
-                        "Current: " + (isAutomationAutoAbilityEnabled(player) ? "ENABLED" : "DISABLED"),
-                        getAutomationAutoAbilityUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+                        isAutomationAutoAbilityEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoAbilityUpgradeLevel(player) > 0 ? "&aClick: Toggle" : "&cBuy level 1 first")));
 
         inventory.setItem(AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
                 "Toggle Auto Spawn",
                 List.of(
-                        "Current: " + (isAutomationAutoSpawnEnabled(player) ? "ENABLED" : "DISABLED"),
-                        getAutomationAutoSpawnUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+                        isAutomationAutoSpawnEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoSpawnUpgradeLevel(player) > 0 ? "&aClick: Toggle" : "&cBuy level 1 first")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
                 "Toggle Slow Auto Merge",
                 List.of(
-                        "Current: " + (isAutomationSlowAutoMergeEnabled(player) ? "ENABLED" : "DISABLED"),
-                        getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+                        isAutomationSlowAutoMergeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         inventory.setItem(AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
                 "Toggle Slow Auto Shear",
                 List.of(
-                        "Current: " + (isAutomationSlowAutoShearEnabled(player) ? "ENABLED" : "DISABLED"),
-                        getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+                        isAutomationSlowAutoShearEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         inventory.setItem(AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT, MenuItemFactory.create(
                 Material.LEVER,
                 "Toggle Auto Prestige",
                 List.of(
-                        "Current: " + (isAutomationAutoPrestigeEnabled(player) ? "ENABLED" : "DISABLED"),
-                        getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "Click to toggle" : "Buy level 1 first")));
+                        isAutomationAutoPrestigeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         int unlockedAutomations = getUnlockedAutomationCount(player);
         inventory.setItem(AUTOMATION_ENABLE_ALL_SLOT, MenuItemFactory.create(
                 Material.LIME_DYE,
                 "Enable All",
                 List.of(
-                        "Unlocked: " + unlockedAutomations + " / 6",
-                        unlockedAutomations > 0 ? "Click to enable unlocked automations"
-                                : "Unlock an automation first")));
+                        "&7Unlocked: &e" + unlockedAutomations + " / 6",
+                        unlockedAutomations > 0 ? "&aClick: Enable unlocked tracks"
+                                : "&cUnlock an automation first")));
 
         inventory.setItem(AUTOMATION_DISABLE_ALL_SLOT, MenuItemFactory.create(
                 Material.GRAY_DYE,
                 "Disable All",
                 List.of(
-                        "Unlocked: " + unlockedAutomations + " / 6",
-                        unlockedAutomations > 0 ? "Click to disable unlocked automations"
-                                : "Unlock an automation first")));
+                        "&7Unlocked: &e" + unlockedAutomations + " / 6",
+                        unlockedAutomations > 0 ? "&cClick: Disable unlocked tracks"
+                                : "&cUnlock an automation first")));
 
         inventory.setItem(AUTOMATION_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -10800,10 +10970,10 @@ public final class SheepMergeManager {
                 Material.ENDER_EYE,
                 "Lucky Burst",
                 List.of(
-                        "Cost: " + formatPoints(luckyCost) + " quest points",
-                        "Effect: +" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% spawn chance",
-                        "Uses per activation: " + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
-                        "In stock: " + (currentQuestPoints >= luckyCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(luckyCost) + " qp",
+                        "&bBoost: &f+" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% tier chance",
+                        "&7Uses: &f" + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
+                        currentQuestPoints >= luckyCost ? "&aReady to buy" : "&cNeed more quest points",
                         getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
                                 playerId)),
@@ -10813,39 +10983,39 @@ public final class SheepMergeManager {
                 Material.WHITE_WOOL,
                 "Wool Rush",
                 List.of(
-                        "Cost: " + formatPoints(woolRushCost) + " quest points",
-                        "Effect: 90% faster wool regen",
-                        "Duration: " + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
-                        "In stock: " + (currentQuestPoints >= woolRushCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(woolRushCost) + " qp",
+                        "&bBoost: &fwool grows 90% faster",
+                        "&7Time: &f" + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
+                        currentQuestPoints >= woolRushCost ? "&aReady to buy" : "&cNeed more quest points",
                         getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
                         isAbilityActive(activeWoolRushUntilByPlayer, playerId)
-                                ? "Already active"
-                                : "Click to activate"),
+                                ? "&eClick: Extend"
+                                : "&aClick: Activate"),
                 woolRushGlint));
 
         inventory.setItem(QUEST_ABILITY_JACKPOT_SHEARS_SLOT, MenuItemFactory.create(
                 Material.GOLD_INGOT,
                 "Jackpot Shears",
                 List.of(
-                        "Cost: " + formatPoints(jackpotCost) + " quest points",
-                        "Effect: x" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
-                        "Duration: "
+                        "&6Cost: &f" + formatPoints(jackpotCost) + " qp",
+                        "&bBoost: &fx" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
+                        "&7Time: &f"
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
-                        "In stock: " + (currentQuestPoints >= jackpotCost ? "yes" : "no"),
+                        currentQuestPoints >= jackpotCost ? "&aReady to buy" : "&cNeed more quest points",
                         getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
                         isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
-                                ? "Already active"
-                                : "Click to activate"),
+                                ? "&eClick: Extend"
+                                : "&aClick: Activate"),
                 jackpotGlint));
 
         inventory.setItem(QUEST_ABILITY_AUTO_MERGE_SLOT, MenuItemFactory.create(
                 Material.ANVIL,
-                "Auto Merge",
+                "Merge Assist",
                 List.of(
-                        "Cost: " + formatPoints(autoMergeCost) + " quest points",
-                        "Effect: Instantly merges when you pick up a sheep",
-                        "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
-                        "In stock: " + (currentQuestPoints >= autoMergeCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(autoMergeCost) + " qp",
+                        "&bBoost: &fauto-merges carried sheep",
+                        "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
+                        currentQuestPoints >= autoMergeCost ? "&aReady to buy" : "&cNeed more quest points",
                         getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
                                 playerId)),
@@ -10855,10 +11025,10 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear All Sheep",
                 List.of(
-                        "Cost: " + formatPoints(autoShearCost) + " quest points",
-                        "Effect: Shears every ready sheep in the farm",
-                        "Uses per activation: " + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
-                        "In stock: " + (currentQuestPoints >= autoShearCost ? "yes" : "no"),
+                        "&6Cost: &f" + formatPoints(autoShearCost) + " qp",
+                        "&bBoost: &fshears every ready sheep",
+                        "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
+                        currentQuestPoints >= autoShearCost ? "&aReady to buy" : "&cNeed more quest points",
                         getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
                         getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
                                 playerId)),
@@ -10868,17 +11038,17 @@ public final class SheepMergeManager {
                 Material.ENCHANTED_BOOK,
                 "Quest Upgrades",
                 List.of(
-                        "Duration Lv: " + getQuestUpgradeDurationLevel(player),
-                        "Power Lv: " + getQuestUpgradePowerLevel(player),
-                        "Click to open")));
+                        "&7Duration Lv: &e" + getQuestUpgradeDurationLevel(player),
+                        "&7Power Lv: &e" + getQuestUpgradePowerLevel(player),
+                        "&aClick: Open")));
 
         inventory.setItem(QUEST_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
                 List.of(
-                        "Quest points: " + formatPoints(getQuestPoints(player)),
-                        remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
-                        "Click to go back")));
+                        "&7Quest Points: &e" + formatPoints(getQuestPoints(player)),
+                        remaining > 0L ? "&7Reset: &b" + formatDuration(remaining) : "&7Reset: &bincoming",
+                        "&aClick: Back")));
         player.openInventory(inventory);
     }
 
@@ -10981,7 +11151,7 @@ public final class SheepMergeManager {
             case QUEST_ABILITY_AUTO_MERGE_SLOT -> {
                 if (toggleCountAbilityEnabled(player, activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer)) {
                     boolean enabled = autoMergeEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
-                    player.sendMessage(action("Auto Merge "
+                    player.sendMessage(action("Merge Assist "
                             + (enabled ? "enabled." : "disabled.")));
                     break;
                 }
@@ -11002,7 +11172,7 @@ public final class SheepMergeManager {
                     player.getWorld().spawnParticle(org.bukkit.Particle.WAX_ON,
                             player.getLocation().add(0, 1.0, 0), 26, 0.5, 0.4, 0.5, 0.03);
                     playSound(player, Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.3f);
-                    player.sendMessage(action("Auto Merge active."));
+                    player.sendMessage(action("Merge Assist active."));
                 } else {
                     player.sendMessage(warning("Not enough quest points."));
                 }

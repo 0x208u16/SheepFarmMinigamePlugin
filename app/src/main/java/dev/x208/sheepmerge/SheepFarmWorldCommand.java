@@ -1985,6 +1985,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             initializeManagedWorldState(world, false);
             return world;
         }
+        boolean copiedCachedStructure = SheepMergeManager.prepareTransientWorldStructure(worldName);
         WorldCreator creator = new WorldCreator(worldName);
         creator.type(WorldType.FLAT);
         creator.generateStructures(false);
@@ -1997,7 +1998,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return null;
         }
 
-        initializeManagedWorldState(world, true);
+        initializeManagedWorldState(world, !copiedCachedStructure);
         return world;
     }
 
@@ -2069,7 +2070,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 completeManagedWorldInitialization(managedWorldName, worldId);
             };
 
-            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing || needsBootstrap) {
+            if (applyDefaultLayoutWhenMissing || needsBootstrap) {
                 SheepMergeManager.applyFarmLayoutAsync(world, postLayout);
             } else {
                 postLayout.run();
@@ -2079,7 +2080,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         if (SheepMergeManager.isFarmBuildWorld(world)) {
             boolean needsBootstrap = SheepMergeManager.needsFarmLayoutBootstrap(world);
-            if (!applyDefaultLayoutWhenMissing && !SheepMergeManager.hasSavedFarmLayout() && !needsBootstrap) {
+            if (!applyDefaultLayoutWhenMissing && !needsBootstrap) {
                 completeManagedWorldInitialization(managedWorldName, worldId);
                 return;
             }
@@ -2107,14 +2108,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 completeManagedWorldInitialization(managedWorldName, worldId);
             };
 
-            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing || needsBootstrap) {
+            if (applyDefaultLayoutWhenMissing || needsBootstrap) {
                 SheepMergeManager.applyFarmLayout(world);
             }
             postLayout.run();
         } else if (SheepMergeManager.isFarmBuildWorld(world)) {
-            if (SheepMergeManager.hasSavedFarmLayout()
-                    || applyDefaultLayoutWhenMissing
-                    || SheepMergeManager.needsFarmLayoutBootstrap(world)) {
+            if (applyDefaultLayoutWhenMissing || SheepMergeManager.needsFarmLayoutBootstrap(world)) {
                 SheepMergeManager.applyFarmLayout(world);
             }
             completeManagedWorldInitialization(managedWorldName, worldId);
