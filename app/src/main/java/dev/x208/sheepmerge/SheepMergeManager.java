@@ -873,10 +873,10 @@ public final class SheepMergeManager {
             minChunkZ = Math.floorDiv(FARM_MIN_XZ, 16);
             maxChunkZ = Math.floorDiv(FARM_MAX_XZ, 16);
         }
-        int minAllowedChunkX = Math.floorDiv((int) Math.floor(FARM_CENTER_X - FARM_WORLD_RADIUS_BLOCKS), 16);
-        int maxAllowedChunkX = Math.floorDiv((int) Math.floor(FARM_CENTER_X + FARM_WORLD_RADIUS_BLOCKS), 16);
-        int minAllowedChunkZ = Math.floorDiv((int) Math.floor(FARM_CENTER_Z - FARM_WORLD_RADIUS_BLOCKS), 16);
-        int maxAllowedChunkZ = Math.floorDiv((int) Math.floor(FARM_CENTER_Z + FARM_WORLD_RADIUS_BLOCKS), 16);
+        int minAllowedChunkX = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxAllowedChunkX = Math.floorDiv(FARM_MAX_XZ, 16);
+        int minAllowedChunkZ = Math.floorDiv(FARM_MIN_XZ, 16);
+        int maxAllowedChunkZ = Math.floorDiv(FARM_MAX_XZ, 16);
         minChunkX = Math.max(minChunkX, minAllowedChunkX);
         maxChunkX = Math.min(maxChunkX, maxAllowedChunkX);
         minChunkZ = Math.max(minChunkZ, minAllowedChunkZ);
