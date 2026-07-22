@@ -885,9 +885,15 @@ public final class SheepMergeManager {
 
     private static List<Integer> getAchievementGridSlots() {
         List<Integer> slots = new ArrayList<>();
-        for (int rowStart = 10; rowStart <= 37; rowStart += 9) {
-            for (int offset = 0; offset < 8; offset++) {
-                slots.add(rowStart + offset);
+        int[][] rows = {
+                { 13, 12, 14, 11, 15, 10, 16 },
+                { 22, 21, 23, 20, 24, 19, 25 },
+                { 31, 30, 32, 29, 33, 28, 34 },
+                { 40, 39, 41, 38, 42, 37, 43 }
+        };
+        for (int[] row : rows) {
+            for (int slot : row) {
+                slots.add(slot);
             }
         }
         return slots;
