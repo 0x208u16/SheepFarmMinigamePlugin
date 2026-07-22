@@ -883,7 +883,7 @@ public final class SheepMergeManager {
                 new AchievementMilestoneDefinition("points_23", getAchievementMilestoneTarget(total, 23),
                         Material.NETHERITE_INGOT, "Netherite Ingot", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_24", getAchievementMilestoneTarget(total, 24),
-                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.WOOL_REGEN, 10),
+                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_25", getAchievementMilestoneTarget(total, 25),
                         Material.BEACON, "Beacon", AchievementMilestoneRewardType.POINTS, 10),
                 new AchievementMilestoneDefinition("points_26", getAchievementMilestoneTarget(total, 26),
