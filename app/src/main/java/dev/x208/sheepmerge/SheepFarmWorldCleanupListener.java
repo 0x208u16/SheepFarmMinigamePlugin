@@ -163,6 +163,7 @@ public class SheepFarmWorldCleanupListener implements Listener {
     }
 
     private static void unloadWorld(String worldName) {
+        SheepFarmWorldCommand.invalidateManagedWorldInitialization(worldName);
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             Bukkit.unloadWorld(world, false);

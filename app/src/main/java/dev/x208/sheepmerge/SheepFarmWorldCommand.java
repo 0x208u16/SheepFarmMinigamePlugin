@@ -52,11 +52,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
-    private static final Set<String> initializedManagedWorldNames = new HashSet<>();
+    private static final Map<String, UUID> initializedManagedWorldIdsByName = new HashMap<>();
+    private static final Set<String> managedWorldStateInitializing = new HashSet<>();
+    private static final Map<String, List<Consumer<World>>> pendingManagedWorldStateCallbacks = new HashMap<>();
     private static final Set<String> farmWorldsInitializing = new HashSet<>();
     private static final Map<String, List<Consumer<World>>> pendingFarmWorldCallbacks = new HashMap<>();
 
@@ -1730,16 +1733,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
         World existing = Bukkit.getWorld(worldName);
         if (existing != null) {
-            initializeManagedWorldState(existing, false);
-            if (callback != null) {
-                if (SheepMergePlugin.instance == null) {
-                    callback.accept(existing);
-                } else {
-                    Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
-                            () -> callback.accept(existing),
-                            1L);
+            initializeManagedWorldState(existing, false, readyWorld -> {
+                if (callback != null) {
+                    callback.accept(readyWorld);
                 }
-            }
+            });
             return;
         }
 
@@ -1760,9 +1758,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         Bukkit.getScheduler().runTask(SheepMergePlugin.instance, () -> {
             World world = ensureFarmWorld(worldName);
-            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,
-                    () -> completeFarmWorldAsync(worldName, world),
-                    1L);
+            initializeManagedWorldState(world, true,
+                    readyWorld -> completeFarmWorldAsync(worldName, readyWorld));
         });
     }
 
@@ -1816,6 +1813,41 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return world;
         }
         return createFlatWorld(SheepMergeManager.getFarmBuildWorldName());
+    }
+
+    public static void invalidateManagedWorldInitialization(String worldName) {
+        if (worldName == null || worldName.isBlank()) {
+            return;
+        }
+
+        List<Consumer<World>> managedCallbacks = null;
+        synchronized (pendingManagedWorldStateCallbacks) {
+            initializedManagedWorldIdsByName.remove(worldName);
+            managedWorldStateInitializing.remove(worldName);
+            managedCallbacks = pendingManagedWorldStateCallbacks.remove(worldName);
+        }
+        if (managedCallbacks != null) {
+            for (Consumer<World> callback : managedCallbacks) {
+                if (callback == null) {
+                    continue;
+                }
+                callback.accept(null);
+            }
+        }
+
+        List<Consumer<World>> loadCallbacks = null;
+        synchronized (pendingFarmWorldCallbacks) {
+            farmWorldsInitializing.remove(worldName);
+            loadCallbacks = pendingFarmWorldCallbacks.remove(worldName);
+        }
+        if (loadCallbacks != null) {
+            for (Consumer<World> callback : loadCallbacks) {
+                if (callback == null) {
+                    continue;
+                }
+                callback.accept(null);
+            }
+        }
     }
 
     public static void applyFarmRulesToLoadedWorlds() {
@@ -1880,7 +1912,15 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     }
 
     private static void initializeManagedWorldState(World world, boolean applyDefaultLayoutWhenMissing) {
+        initializeManagedWorldState(world, applyDefaultLayoutWhenMissing, null);
+    }
+
+    private static void initializeManagedWorldState(World world, boolean applyDefaultLayoutWhenMissing,
+            Consumer<World> onReady) {
         if (world == null) {
+            if (onReady != null) {
+                onReady.accept(null);
+            }
             return;
         }
 
@@ -1889,43 +1929,129 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
         String managedWorldName = world.getName();
         if (managedWorldName == null || managedWorldName.isBlank()) {
+            if (onReady != null) {
+                onReady.accept(world);
+            }
             return;
         }
-        if (initializedManagedWorldNames.contains(managedWorldName) && !applyDefaultLayoutWhenMissing) {
-            return;
+
+        UUID worldId = world.getUID();
+        boolean alreadyInitialized;
+        synchronized (pendingManagedWorldStateCallbacks) {
+            UUID initializedWorldId = initializedManagedWorldIdsByName.get(managedWorldName);
+            if (initializedWorldId != null && !initializedWorldId.equals(worldId)) {
+                initializedManagedWorldIdsByName.remove(managedWorldName);
+                initializedWorldId = null;
+            }
+            alreadyInitialized = worldId.equals(initializedWorldId);
+
+            if (alreadyInitialized && !applyDefaultLayoutWhenMissing) {
+                if (onReady != null) {
+                    onReady.accept(world);
+                }
+                return;
+            }
+
+            if (onReady != null) {
+                pendingManagedWorldStateCallbacks.computeIfAbsent(managedWorldName, key -> new ArrayList<>())
+                        .add(onReady);
+            }
+
+            if (managedWorldStateInitializing.contains(managedWorldName)) {
+                return;
+            }
+            managedWorldStateInitializing.add(managedWorldName);
         }
 
         if (SheepMergePlugin.instance == null) {
-            initializeManagedWorldStateImmediate(world, applyDefaultLayoutWhenMissing, managedWorldName);
-            return;
-        }
-
-        if (initializedManagedWorldNames.contains(managedWorldName)) {
-            return;
-        }
-
-        initializedManagedWorldNames.add(managedWorldName);
-        Bukkit.getScheduler().runTask(SheepMergePlugin.instance,
-                () -> initializeManagedWorldStateImmediate(world, applyDefaultLayoutWhenMissing, managedWorldName));
-    }
-
-    private static void initializeManagedWorldStateImmediate(World world, boolean applyDefaultLayoutWhenMissing,
-            String managedWorldName) {
-        if (world == null || managedWorldName == null || managedWorldName.isBlank()) {
+            initializeManagedWorldStateImmediate(world, applyDefaultLayoutWhenMissing, managedWorldName, worldId);
             return;
         }
 
         if (SheepMergeManager.isSheepFarmWorld(world)) {
+            Runnable postLayout = () -> {
+                if (world.getEntitiesByClass(Sheep.class).isEmpty()) {
+                    SheepMergeManager.restoreSavedSheepForWorldAsync(world,
+                            () -> completeManagedWorldInitialization(managedWorldName, worldId));
+                    return;
+                }
+                completeManagedWorldInitialization(managedWorldName, worldId);
+            };
+
+            if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
+                SheepMergeManager.applyFarmLayoutAsync(world, postLayout);
+            } else {
+                postLayout.run();
+            }
+            return;
+        }
+
+        if (SheepMergeManager.isFarmBuildWorld(world)
+                && (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing)) {
+            SheepMergeManager.applyFarmLayoutAsync(world,
+                    () -> completeManagedWorldInitialization(managedWorldName, worldId));
+            return;
+        }
+
+        completeManagedWorldInitialization(managedWorldName, worldId);
+    }
+
+    private static void initializeManagedWorldStateImmediate(World world, boolean applyDefaultLayoutWhenMissing,
+            String managedWorldName, UUID worldId) {
+        if (world == null || managedWorldName == null || managedWorldName.isBlank() || worldId == null) {
+            completeManagedWorldInitialization(managedWorldName, worldId);
+            return;
+        }
+
+        if (SheepMergeManager.isSheepFarmWorld(world)) {
+            Runnable postLayout = () -> {
+                if (world.getEntitiesByClass(Sheep.class).isEmpty()) {
+                    SheepMergeManager.restoreSavedSheepForWorld(world);
+                }
+                completeManagedWorldInitialization(managedWorldName, worldId);
+            };
+
             if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
                 SheepMergeManager.applyFarmLayout(world);
             }
-            if (world.getEntitiesByClass(org.bukkit.entity.Sheep.class).isEmpty()) {
-                SheepMergeManager.restoreSavedSheepForWorldAsync(world);
-            }
+            postLayout.run();
         } else if (SheepMergeManager.isFarmBuildWorld(world)) {
             if (SheepMergeManager.hasSavedFarmLayout() || applyDefaultLayoutWhenMissing) {
                 SheepMergeManager.applyFarmLayout(world);
             }
+            completeManagedWorldInitialization(managedWorldName, worldId);
+        } else {
+            completeManagedWorldInitialization(managedWorldName, worldId);
+        }
+    }
+
+    private static void completeManagedWorldInitialization(String managedWorldName, UUID worldId) {
+        if (managedWorldName == null || managedWorldName.isBlank()) {
+            return;
+        }
+
+        World loadedWorld = Bukkit.getWorld(managedWorldName);
+        if (loadedWorld == null || (worldId != null && !worldId.equals(loadedWorld.getUID()))) {
+            loadedWorld = null;
+        }
+
+        List<Consumer<World>> callbacks;
+        synchronized (pendingManagedWorldStateCallbacks) {
+            managedWorldStateInitializing.remove(managedWorldName);
+            if (loadedWorld != null) {
+                initializedManagedWorldIdsByName.put(managedWorldName, loadedWorld.getUID());
+            }
+            callbacks = pendingManagedWorldStateCallbacks.remove(managedWorldName);
+        }
+
+        if (callbacks == null) {
+            return;
+        }
+        for (Consumer<World> callback : callbacks) {
+            if (callback == null) {
+                continue;
+            }
+            callback.accept(loadedWorld);
         }
     }
 

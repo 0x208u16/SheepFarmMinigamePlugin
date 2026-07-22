@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Iterator;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -277,6 +278,7 @@ public final class SheepMergeManager {
     private static final int FARM_BASE_Y = 100;
     private static final int FARM_MIN_Y = FARM_BASE_Y - 1;
     private static final int FARM_MAX_Y = FARM_BASE_Y + 4;
+    private static final int FARM_LAYOUT_BLOCKS_PER_TICK = 2400;
     private static final long SHEEP_RESCUE_TIMEOUT_MS = 10_000L;
     private static final long SHEEP_RESCUE_PATH_DURATION_MS = 1_350L;
     private static final long SHEEP_RESCUE_CORRECTION_INTERVAL_MS = 80L;
@@ -539,6 +541,68 @@ public final class SheepMergeManager {
             this.sheared = sheared;
             this.nextEatAt = nextEatAt;
             this.mergedCount = Math.max(1, mergedCount);
+        }
+    }
+
+    private static final class ChunkApplyCursor {
+        private final int chunkX;
+        private final int chunkZ;
+        private final int minY;
+        private final int maxY;
+        private final List<BlockData> paletteData;
+        private final String[] tokens;
+        private final boolean legacyFormat;
+        private int blockIndex;
+        private int tokenIndex;
+        private int runRemaining;
+        private int activePaletteIndex = -1;
+
+        private ChunkApplyCursor(int chunkX, int chunkZ, int minY, int maxY,
+                List<BlockData> paletteData, String[] tokens, boolean legacyFormat) {
+            this.chunkX = chunkX;
+            this.chunkZ = chunkZ;
+            this.minY = minY;
+            this.maxY = maxY;
+            this.paletteData = paletteData;
+            this.tokens = tokens;
+            this.legacyFormat = legacyFormat;
+        }
+
+        private int totalBlocks() {
+            return Math.max(0, (maxY - minY) * 16 * 16);
+        }
+
+        private boolean isComplete() {
+            return blockIndex >= totalBlocks();
+        }
+
+        private BlockData nextBlockData() {
+            if (legacyFormat) {
+                return null;
+            }
+            while (runRemaining <= 0) {
+                if (tokens == null || tokenIndex >= tokens.length) {
+                    return Bukkit.createBlockData(Material.AIR);
+                }
+                String token = tokens[tokenIndex++];
+                if (token == null || token.isBlank()) {
+                    continue;
+                }
+                String[] runParts = token.split("\\*", 2);
+                int paletteIndex = parseChunkEncodedNumber(runParts[0], -1);
+                int runLengthRaw = runParts.length >= 2 ? parseChunkEncodedNumber(runParts[1], 1) : 1;
+                if (paletteIndex < 0 || paletteData == null || paletteIndex >= paletteData.size()
+                        || runLengthRaw <= 0) {
+                    continue;
+                }
+                activePaletteIndex = paletteIndex;
+                runRemaining = runLengthRaw;
+            }
+            runRemaining--;
+            if (activePaletteIndex < 0 || paletteData == null || activePaletteIndex >= paletteData.size()) {
+                return Bukkit.createBlockData(Material.AIR);
+            }
+            return paletteData.get(activePaletteIndex);
         }
     }
 
@@ -848,6 +912,269 @@ public final class SheepMergeManager {
         enforceFarmPerimeter(world);
     }
 
+    public static void applyFarmLayoutAsync(World world, Runnable onComplete) {
+        if (world == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        if (plugin == null) {
+            applyFarmLayout(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        clearFarmPlatformBoundingBox(world);
+
+        if (hasSavedFarmLayout() && farmLayoutConfig != null && farmLayoutConfig.isConfigurationSection("chunks")) {
+            applySavedChunkLayoutAsync(world, () -> {
+                enforceFarmPerimeter(world);
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            });
+            return;
+        }
+
+        if (hasSavedFarmLayout()) {
+            applySavedBlockLayoutAsync(world, () -> {
+                enforceFarmPerimeter(world);
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            });
+            return;
+        }
+
+        applyDefaultFarmLayoutAsync(world, () -> {
+            enforceFarmPerimeter(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
+        });
+    }
+
+    private static void applyDefaultFarmLayoutAsync(World world, Runnable onComplete) {
+        if (plugin == null || world == null) {
+            applyDefaultFarmLayout(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        final int[] state = { FARM_MIN_XZ, FARM_MIN_Y, FARM_MIN_XZ };
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            if (Bukkit.getWorld(world.getUID()) == null) {
+                task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+                return;
+            }
+
+            int processed = 0;
+            while (state[1] <= FARM_MAX_Y && processed < FARM_LAYOUT_BLOCKS_PER_TICK) {
+                int x = state[0];
+                int y = state[1];
+                int z = state[2];
+
+                Material material = getDefaultFarmMaterialAt(x, y, z);
+                world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), true);
+                processed++;
+
+                state[2]++;
+                if (state[2] > FARM_MAX_XZ) {
+                    state[2] = FARM_MIN_XZ;
+                    state[0]++;
+                    if (state[0] > FARM_MAX_XZ) {
+                        state[0] = FARM_MIN_XZ;
+                        state[1]++;
+                    }
+                }
+            }
+
+            if (state[1] > FARM_MAX_Y) {
+                task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            }
+        }, 1L, 1L);
+    }
+
+    private static void applySavedBlockLayoutAsync(World world, Runnable onComplete) {
+        if (plugin == null || world == null || farmLayoutConfig == null) {
+            applySavedFarmLayout(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        final int[] state = { FARM_MIN_XZ, FARM_MIN_Y, FARM_MIN_XZ };
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            if (Bukkit.getWorld(world.getUID()) == null) {
+                task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+                return;
+            }
+
+            int processed = 0;
+            while (state[1] <= FARM_MAX_Y && processed < FARM_LAYOUT_BLOCKS_PER_TICK) {
+                int x = state[0];
+                int y = state[1];
+                int z = state[2];
+
+                String serialized = farmLayoutConfig.getString("blocks." + keyFor(x, y, z));
+                BlockData data = (serialized == null || serialized.isBlank())
+                        ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
+                        : parseBlockData(serialized);
+                world.getBlockAt(x, y, z).setBlockData(data, true);
+                processed++;
+
+                state[2]++;
+                if (state[2] > FARM_MAX_XZ) {
+                    state[2] = FARM_MIN_XZ;
+                    state[0]++;
+                    if (state[0] > FARM_MAX_XZ) {
+                        state[0] = FARM_MIN_XZ;
+                        state[1]++;
+                    }
+                }
+            }
+
+            if (state[1] > FARM_MAX_Y) {
+                task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            }
+        }, 1L, 1L);
+    }
+
+    private static void applySavedChunkLayoutAsync(World world, Runnable onComplete) {
+        if (plugin == null || world == null || farmLayoutConfig == null
+                || !farmLayoutConfig.isConfigurationSection("chunks")) {
+            applySavedChunkLayout(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        org.bukkit.configuration.ConfigurationSection chunksSection = farmLayoutConfig
+                .getConfigurationSection("chunks");
+        if (chunksSection == null || chunksSection.getKeys(false).isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
+        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
+        if (minY >= maxY) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        List<ChunkApplyCursor> cursors = new ArrayList<>();
+        for (String chunkKey : chunksSection.getKeys(false)) {
+            String chunkPath = "chunks." + chunkKey;
+            int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
+            int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
+            if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE) {
+                continue;
+            }
+
+            List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
+            List<BlockData> paletteData = new ArrayList<>();
+            if (palette != null) {
+                for (String serialized : palette) {
+                    BlockData data = (serialized == null || serialized.isBlank())
+                            ? Bukkit.createBlockData(Material.AIR)
+                            : parseBlockData(serialized);
+                    paletteData.add(data);
+                }
+            }
+
+            String encodedRuns = farmLayoutConfig.getString(chunkPath + ".data", "");
+            boolean hasRleData = encodedRuns != null && !encodedRuns.isBlank() && !paletteData.isEmpty();
+            String[] tokens = hasRleData ? encodedRuns.split(";") : null;
+            cursors.add(new ChunkApplyCursor(chunkX, chunkZ, minY, maxY, paletteData, tokens, !hasRleData));
+        }
+
+        if (cursors.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        final Iterator<ChunkApplyCursor> iterator = cursors.iterator();
+        final ChunkApplyCursor[] activeCursor = { iterator.hasNext() ? iterator.next() : null };
+
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            if (Bukkit.getWorld(world.getUID()) == null) {
+                task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+                return;
+            }
+
+            int processed = 0;
+            while (processed < FARM_LAYOUT_BLOCKS_PER_TICK && activeCursor[0] != null) {
+                ChunkApplyCursor cursor = activeCursor[0];
+                if (cursor.isComplete()) {
+                    activeCursor[0] = iterator.hasNext() ? iterator.next() : null;
+                    continue;
+                }
+
+                int blockIndex = cursor.blockIndex++;
+                int yOffset = blockIndex / (16 * 16);
+                int withinLayer = blockIndex % (16 * 16);
+                int localX = withinLayer / 16;
+                int localZ = withinLayer % 16;
+                int worldX = (cursor.chunkX << 4) + localX;
+                int worldZ = (cursor.chunkZ << 4) + localZ;
+                int y = cursor.minY + yOffset;
+
+                BlockData data;
+                if (cursor.legacyFormat) {
+                    String serialized = farmLayoutConfig.getString(
+                            "blocks." + keyFor(worldX, y, worldZ));
+                    data = (serialized == null || serialized.isBlank())
+                            ? Bukkit.createBlockData(Material.AIR)
+                            : parseBlockData(serialized);
+                } else {
+                    data = cursor.nextBlockData();
+                    if (data == null) {
+                        data = Bukkit.createBlockData(Material.AIR);
+                    }
+                }
+
+                world.getBlockAt(worldX, y, worldZ).setBlockData(data, true);
+                processed++;
+            }
+
+            if (activeCursor[0] == null) {
+                task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            }
+        }, 1L, 1L);
+    }
+
     private static void enforceFarmPerimeter(World world) {
         if (world == null) {
             return;
@@ -1039,18 +1366,31 @@ public final class SheepMergeManager {
     }
 
     public static void restoreSavedSheepForWorldAsync(World world) {
+        restoreSavedSheepForWorldAsync(world, null);
+    }
+
+    public static void restoreSavedSheepForWorldAsync(World world, Runnable onComplete) {
         if (plugin == null || world == null || !isSheepFarmWorld(world)) {
             restoreSavedSheepForWorld(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
         }
         UUID ownerId = getOwnerId(world);
         if (ownerId == null) {
             refreshLiveSheepCount(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
         }
         List<SheepSnapshot> snapshots = getSavedSheepSnapshots(world).get(ownerId);
         if (snapshots == null || snapshots.isEmpty()) {
             refreshLiveSheepCount(world);
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
         }
 
@@ -1062,6 +1402,9 @@ public final class SheepMergeManager {
         Bukkit.getScheduler().runTaskTimer(plugin, task -> {
             if (Bukkit.getWorld(worldId) == null || !isSheepFarmWorld(world)) {
                 task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
                 return;
             }
             int processed = 0;
@@ -1088,6 +1431,9 @@ public final class SheepMergeManager {
             if (index[0] >= snapshots.size()) {
                 refreshLiveSheepCount(world);
                 task.cancel();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
             }
         }, 1L, 1L);
     }
