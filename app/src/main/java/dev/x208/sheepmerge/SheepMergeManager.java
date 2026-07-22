@@ -545,6 +545,7 @@ public final class SheepMergeManager {
     }
 
     private static final class ChunkApplyCursor {
+        private final String chunkPath;
         private final int chunkX;
         private final int chunkZ;
         private final int minY;
@@ -557,8 +558,9 @@ public final class SheepMergeManager {
         private int runRemaining;
         private int activePaletteIndex = -1;
 
-        private ChunkApplyCursor(int chunkX, int chunkZ, int minY, int maxY,
+        private ChunkApplyCursor(String chunkPath, int chunkX, int chunkZ, int minY, int maxY,
                 List<BlockData> paletteData, String[] tokens, boolean legacyFormat) {
+            this.chunkPath = chunkPath;
             this.chunkX = chunkX;
             this.chunkZ = chunkZ;
             this.minY = minY;
@@ -918,6 +920,7 @@ public final class SheepMergeManager {
             applyDefaultFarmLayout(world);
         }
         enforceFarmPerimeter(world);
+        ensureMandatoryFarmBaseLayer(world);
     }
 
     public static void applyFarmLayoutAsync(World world, Runnable onComplete) {
@@ -940,6 +943,7 @@ public final class SheepMergeManager {
         if (hasSavedFarmLayout() && farmLayoutConfig != null && farmLayoutConfig.isConfigurationSection("chunks")) {
             applySavedChunkLayoutAsync(world, () -> {
                 enforceFarmPerimeter(world);
+                ensureMandatoryFarmBaseLayer(world);
                 if (onComplete != null) {
                     onComplete.run();
                 }
@@ -950,6 +954,7 @@ public final class SheepMergeManager {
         if (hasSavedFarmLayout()) {
             applySavedBlockLayoutAsync(world, () -> {
                 enforceFarmPerimeter(world);
+                ensureMandatoryFarmBaseLayer(world);
                 if (onComplete != null) {
                     onComplete.run();
                 }
@@ -959,6 +964,7 @@ public final class SheepMergeManager {
 
         applyDefaultFarmLayoutAsync(world, () -> {
             enforceFarmPerimeter(world);
+            ensureMandatoryFarmBaseLayer(world);
             if (onComplete != null) {
                 onComplete.run();
             }
@@ -1124,7 +1130,7 @@ public final class SheepMergeManager {
             String encodedRuns = farmLayoutConfig.getString(chunkPath + ".data", "");
             boolean hasRleData = encodedRuns != null && !encodedRuns.isBlank() && !paletteData.isEmpty();
             String[] tokens = hasRleData ? encodedRuns.split(";") : null;
-            cursors.add(new ChunkApplyCursor(chunkX, chunkZ, minY, maxY, paletteData, tokens, !hasRleData));
+            cursors.add(new ChunkApplyCursor(chunkPath, chunkX, chunkZ, minY, maxY, paletteData, tokens, !hasRleData));
         }
 
         if (cursors.isEmpty()) {
@@ -1166,7 +1172,7 @@ public final class SheepMergeManager {
                 BlockData data;
                 if (cursor.legacyFormat) {
                     String serialized = farmLayoutConfig.getString(
-                            "blocks." + keyFor(worldX, y, worldZ));
+                            cursor.chunkPath + ".blocks." + blockIndex);
                     data = (serialized == null || serialized.isBlank())
                             ? Bukkit.createBlockData(Material.AIR)
                             : parseBlockData(serialized);
@@ -1335,6 +1341,25 @@ public final class SheepMergeManager {
                 for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
                     Material material = getDefaultFarmMaterialAt(x, y, z);
                     world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), false);
+                }
+            }
+        }
+    }
+
+    private static void ensureMandatoryFarmBaseLayer(World world) {
+        if (world == null || !isSheepFarmWorld(world)) {
+            return;
+        }
+
+        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
+            for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
+                if (world.getBlockAt(x, FARM_MIN_Y, z).getType().isAir()) {
+                    world.getBlockAt(x, FARM_MIN_Y, z)
+                            .setBlockData(Bukkit.createBlockData(Material.DIRT), false);
+                }
+                if (world.getBlockAt(x, FARM_BASE_Y, z).getType().isAir()) {
+                    world.getBlockAt(x, FARM_BASE_Y, z)
+                            .setBlockData(Bukkit.createBlockData(Material.GRASS_BLOCK), false);
                 }
             }
         }
