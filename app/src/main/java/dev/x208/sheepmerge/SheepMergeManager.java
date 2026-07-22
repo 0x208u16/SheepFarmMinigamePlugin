@@ -510,12 +510,12 @@ public final class SheepMergeManager {
     public static final int REBIRTH_TREE_RESPEC_SLOT = 45;
     public static final int REBIRTH_TREE_BACK_SLOT = 53;
     public static final int SCOREBOARD_LAYOUT_SLOT = 10;
-    public static final int SCOREBOARD_QUEST_POINTS_SLOT = 12;
-    public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 14;
-    public static final int SCOREBOARD_SACRIFICE_POINTS_SLOT = 16;
-    public static final int SCOREBOARD_PRESTIGE_STATS_SLOT = 18;
-    public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 20;
-    public static final int SCOREBOARD_ABILITIES_SLOT = 22;
+    public static final int SCOREBOARD_QUEST_POINTS_SLOT = 10;
+    public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 12;
+    public static final int SCOREBOARD_SACRIFICE_POINTS_SLOT = 14;
+    public static final int SCOREBOARD_PRESTIGE_STATS_SLOT = 16;
+    public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 18;
+    public static final int SCOREBOARD_ABILITIES_SLOT = 20;
     public static final int SCOREBOARD_BACK_SLOT = 26;
     public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 11;
     public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 15;
@@ -10122,14 +10122,6 @@ public final class SheepMergeManager {
             return;
         }
         Inventory inventory = Bukkit.createInventory(null, 27, SCOREBOARD_MENU_TITLE);
-        int layoutMode = getScoreboardLayoutMode(player);
-        inventory.setItem(SCOREBOARD_LAYOUT_SLOT, MenuItemFactory.create(
-                Material.BOOK,
-                "Universal Layout",
-                List.of(
-                        "Scoreboard: " + (layoutMode == 0 ? "Detailed" : "Compact"),
-                        "Open scoreboard and inventory layout tools",
-                        "Click: Open")));
 
         inventory.setItem(SCOREBOARD_QUEST_POINTS_SLOT, MenuItemFactory.create(
                 Material.BOOK,
@@ -10176,7 +10168,7 @@ public final class SheepMergeManager {
         inventory.setItem(SCOREBOARD_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back",
-                List.of("Click: Open upgrades")));
+                List.of("Click: Open layouts")));
 
         player.openInventory(inventory);
     }
@@ -10187,10 +10179,6 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         switch (slot) {
-            case SCOREBOARD_LAYOUT_SLOT -> {
-                openUniversalLayoutMenu(player);
-                return;
-            }
             case SCOREBOARD_QUEST_POINTS_SLOT -> scoreboardShowQuestPointsByPlayer.put(playerId,
                     !shouldShowScoreboardQuestPoints(player));
             case SCOREBOARD_AUTOMATION_POINTS_SLOT -> scoreboardShowAutomationPointsByPlayer.put(playerId,
@@ -10204,7 +10192,7 @@ public final class SheepMergeManager {
             case SCOREBOARD_ABILITIES_SLOT -> scoreboardShowAbilityStatusByPlayer.put(playerId,
                     !shouldShowScoreboardAbilityStatus(player));
             case SCOREBOARD_BACK_SLOT -> {
-                openUpgradeMenu(player);
+                openUniversalLayoutMenu(player);
                 return;
             }
             default -> {
