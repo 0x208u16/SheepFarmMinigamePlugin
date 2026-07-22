@@ -836,72 +836,22 @@ public final class SheepMergeManager {
         if (farmLayoutConfig == null) {
             farmLayoutConfig = new YamlConfiguration();
         }
-        farmLayoutConfig.set("version", 2);
-        farmLayoutConfig.set("world.minY", sourceWorld.getMinHeight());
-        farmLayoutConfig.set("world.maxY", sourceWorld.getMaxHeight());
+        farmLayoutConfig.set("version", 3);
+        farmLayoutConfig.set("world.minY", FARM_MIN_Y);
+        farmLayoutConfig.set("world.maxY", FARM_MAX_Y + 1);
         farmLayoutConfig.set("world.name", sourceWorld.getName());
         farmLayoutConfig.set("world.savedAt", System.currentTimeMillis());
         farmLayoutConfig.set("chunks", null);
         farmLayoutConfig.set("blocks", null);
 
-        int minY = Math.max(sourceWorld.getMinHeight(), FARM_MIN_Y);
-        int maxY = Math.min(sourceWorld.getMaxHeight(), FARM_MAX_Y + 1);
-        if (minY >= maxY) {
-            return false;
-        }
-        int minChunkX = FARM_MIN_XZ >> 4;
-        int maxChunkX = FARM_MAX_XZ >> 4;
-        int minChunkZ = FARM_MIN_XZ >> 4;
-        int maxChunkZ = FARM_MAX_XZ >> 4;
-        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                org.bukkit.Chunk chunk = sourceWorld.getChunkAt(chunkX, chunkZ);
-                if (chunk == null) {
-                    continue;
+        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
+            for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
+                for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
+                    String serializedBlockData = sourceWorld.getBlockAt(x, y, z)
+                            .getBlockData()
+                            .getAsString();
+                    farmLayoutConfig.set("blocks." + keyFor(x, y, z), serializedBlockData);
                 }
-
-                String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
-                farmLayoutConfig.set(chunkPath + ".x", chunkX);
-                farmLayoutConfig.set(chunkPath + ".z", chunkZ);
-
-                List<String> palette = new ArrayList<>();
-                Map<String, Integer> paletteIndices = new HashMap<>();
-                StringBuilder encodedRuns = new StringBuilder();
-                int previousPaletteIndex = -1;
-                int runLength = 0;
-
-                for (int y = minY; y < maxY; y++) {
-                    for (int localX = 0; localX < 16; localX++) {
-                        for (int localZ = 0; localZ < 16; localZ++) {
-                            int worldX = (chunkX << 4) + localX;
-                            int worldZ = (chunkZ << 4) + localZ;
-                            String serializedBlockData = sourceWorld.getBlockAt(worldX, y, worldZ)
-                                    .getBlockData()
-                                    .getAsString();
-
-                            Integer paletteIndex = paletteIndices.get(serializedBlockData);
-                            if (paletteIndex == null) {
-                                paletteIndex = palette.size();
-                                palette.add(serializedBlockData);
-                                paletteIndices.put(serializedBlockData, paletteIndex);
-                            }
-
-                            if (paletteIndex == previousPaletteIndex) {
-                                runLength++;
-                            } else {
-                                appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
-                                previousPaletteIndex = paletteIndex;
-                                runLength = 1;
-                            }
-                        }
-                    }
-                }
-
-                appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
-                farmLayoutConfig.set(chunkPath + ".format", "rle-v1");
-                farmLayoutConfig.set(chunkPath + ".palette", palette);
-                farmLayoutConfig.set(chunkPath + ".data", encodedRuns.toString());
-                farmLayoutConfig.set(chunkPath + ".height", maxY - minY);
             }
         }
         return saveFarmLayout();
