@@ -12946,7 +12946,6 @@ public final class SheepMergeManager {
                 player.teleport(fallbackSpawn);
             }
         }
-        savedInventories.clear();
         savedScoreboards.clear();
         EGG_MODULE.clearSavedExperienceCache();
     }
