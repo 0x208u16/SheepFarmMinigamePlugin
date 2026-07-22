@@ -2100,6 +2100,7 @@ public final class SheepMergeManager {
 
     public static boolean isSheepFarmWorld(World world) {
         return world != null
+                && !isFarmBuildWorld(world)
                 && (world.getName().startsWith("sheepfarm_") || world.getName().startsWith("sheeptutorial_"));
     }
 

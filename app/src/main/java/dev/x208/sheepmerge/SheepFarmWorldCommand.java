@@ -1899,7 +1899,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     public static World ensureFarmBuildWorld() {
         World world = Bukkit.getWorld(SheepMergeManager.getFarmBuildWorldName());
         if (world != null) {
-            initializeManagedWorldState(world, false);
+            initializeManagedWorldState(world, !SheepMergeManager.hasSavedFarmLayout());
             return world;
         }
         return createFlatWorld(SheepMergeManager.getFarmBuildWorldName());
