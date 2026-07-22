@@ -208,6 +208,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> scoreboardShowPrestigeStatsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestProgressByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAbilityStatusByPlayer = new HashMap<>();
+    private static final Map<UUID, List<String>> inventoryQuickAccessByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastOutOfEggWarningTimestampByPlayer = new HashMap<>();
     private static final String TOP_POINTS_DISPLAY_WORLD_KEY = "topPointsDisplay.world";
@@ -429,6 +430,9 @@ public final class SheepMergeManager {
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
     public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
+    public static final String UNIVERSAL_LAYOUT_MENU_TITLE = "Universal Layout";
+    public static final String SCOREBOARD_LAYOUT_MENU_TITLE = "Scoreboard Layout";
+    public static final String INVENTORY_LAYOUT_MENU_TITLE = "Inventory Layout";
     public static final String SOCIALS_MENU_TITLE = "Socials";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
@@ -442,7 +446,7 @@ public final class SheepMergeManager {
     public static final int ACHIEVEMENTS_MENU_OPEN_SLOT = 8;
     public static final int SACRIFICE_MENU_OPEN_SLOT = 2;
     public static final int REBIRTH_MENU_OPEN_SLOT = 6;
-    public static final int SOCIALS_MENU_OPEN_SLOT = 25;
+    public static final int SOCIALS_MENU_OPEN_SLOT = 0;
     public static final int PRESTIGE_UPGRADE_SLOT = 10;
     public static final int PRESTIGE_DOUBLE_POINTS_SLOT = 12;
     public static final int PRESTIGE_HIGHER_MAX_LEVEL_SLOT = 14;
@@ -509,6 +513,14 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_QUEST_PROGRESS_SLOT = 20;
     public static final int SCOREBOARD_ABILITIES_SLOT = 22;
     public static final int SCOREBOARD_BACK_SLOT = 26;
+    public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 11;
+    public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 15;
+    public static final int UNIVERSAL_LAYOUT_BACK_SLOT = 26;
+    public static final int SCOREBOARD_LAYOUT_DETAILED_SLOT = 11;
+    public static final int SCOREBOARD_LAYOUT_COMPACT_SLOT = 15;
+    public static final int SCOREBOARD_LAYOUT_BACK_SLOT = 26;
+    public static final int INVENTORY_LAYOUT_SELECTED_SLOT = 4;
+    public static final int INVENTORY_LAYOUT_BACK_SLOT = 49;
     public static final int SOCIALS_TOP_POINTS_SLOT = 4;
     public static final int SOCIALS_AUTHOR_SLOT = 45;
     public static final int SOCIALS_RETURN_HOME_SLOT = 49;
@@ -538,6 +550,10 @@ public final class SheepMergeManager {
     private static final int REBIRTH_SKILL_WOOL_REGEN_X10 = 8;
     private static final int REBIRTH_SKILL_QUEST_MASTER = 9;
     private static final int FARM_EGG_ITEM_SLOT = 7;
+    private static final int INVENTORY_QUICK_ACCESS_MAX_ITEMS = 6;
+    private static final int INVENTORY_QUICK_ACCESS_FIRST_SLOT = 0;
+    private static final int INVENTORY_QUICK_ACCESS_LAST_SLOT = INVENTORY_QUICK_ACCESS_FIRST_SLOT
+            + INVENTORY_QUICK_ACCESS_MAX_ITEMS - 1;
     private static final UUID SOCIALS_AUTHOR_UUID = UUID.fromString("27268675-a9b7-4abd-9628-e6c4515a5cf6");
 
     private static SheepMergePlugin plugin;
@@ -679,6 +695,20 @@ public final class SheepMergeManager {
         }
     }
 
+    private static final class QuickAccessDefinition {
+        private final String id;
+        private final Material material;
+        private final String name;
+        private final String description;
+
+        private QuickAccessDefinition(String id, Material material, String name, String description) {
+            this.id = id;
+            this.material = material;
+            this.name = name;
+            this.description = description;
+        }
+    }
+
     private static final List<AchievementDefinition> ACHIEVEMENT_DEFINITIONS = List.of(
             new AchievementDefinition("first_shear", Material.SHEARS, "First Cut",
                     "Shear 1 sheep", "Reward: 100 points"),
@@ -692,6 +722,46 @@ public final class SheepMergeManager {
                     "Reach Prestige 10", "Reward: 3 prestige points"),
             new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
                     "Rebirth 1 time", "Reward: 1 rebirth point"));
+
+    private static final List<QuickAccessDefinition> QUICK_ACCESS_DEFINITIONS = List.of(
+            new QuickAccessDefinition("menu_upgrade", Material.BOOK, "Open Sheep Merge Menu",
+                    "Open the main menu"),
+            new QuickAccessDefinition("menu_quest", Material.WRITABLE_BOOK, "Open Quest Abilities",
+                    "Open quest abilities menu"),
+            new QuickAccessDefinition("menu_automation", Material.COMPARATOR, "Open Automation",
+                    "Open automation menu"),
+            new QuickAccessDefinition("menu_socials", Material.PLAYER_HEAD, "Open Socials",
+                    "Open socials menu"),
+            new QuickAccessDefinition("menu_scoreboard", Material.MAP, "Open Scoreboard Settings",
+                    "Open scoreboard settings"),
+            new QuickAccessDefinition("upgrade_limit", Material.OAK_FENCE, "Buy Sheep Limit",
+                    "Buy sheep limit upgrade"),
+            new QuickAccessDefinition("upgrade_egg_speed", Material.CLOCK, "Buy Egg Speed",
+                    "Buy faster egg spawn"),
+            new QuickAccessDefinition("upgrade_wool", Material.WHITE_WOOL, "Buy Wool Regen",
+                    "Buy faster wool regen"),
+            new QuickAccessDefinition("upgrade_tier_chance", Material.GOLDEN_APPLE, "Buy Tier Chance",
+                    "Buy higher tier spawn chance"),
+            new QuickAccessDefinition("quest_lucky_burst", Material.ENDER_EYE, "Cast Lucky Burst",
+                    "Buy/toggle Lucky Burst"),
+            new QuickAccessDefinition("quest_merge_assist", Material.ANVIL, "Cast Merge Assist",
+                    "Buy/toggle Merge Assist"),
+            new QuickAccessDefinition("quest_shear_all", Material.FLINT, "Cast Shear All Sheep",
+                    "Buy/toggle Shear All Sheep"),
+            new QuickAccessDefinition("automation_toggle_auto_buy", Material.HOPPER, "Toggle Auto Buy",
+                    "Toggle automation: Auto Buy"),
+            new QuickAccessDefinition("automation_toggle_auto_ability", Material.REDSTONE_TORCH,
+                    "Toggle Auto Ability", "Toggle automation: Auto Ability"),
+            new QuickAccessDefinition("automation_toggle_auto_merge", Material.PISTON,
+                    "Toggle Slow Auto Merge", "Toggle automation: Slow Auto Merge"),
+            new QuickAccessDefinition("automation_toggle_auto_spawn", Material.FIREWORK_STAR,
+                    "Toggle Auto Spawn", "Toggle automation: Auto Spawn"),
+            new QuickAccessDefinition("automation_toggle_auto_prestige", Material.BEACON,
+                    "Toggle Auto Prestige", "Toggle automation: Auto Prestige"),
+            new QuickAccessDefinition("automation_enable_all", Material.LIME_DYE, "Enable All Automation",
+                    "Turn all automation toggles on"),
+            new QuickAccessDefinition("automation_disable_all", Material.RED_DYE, "Disable All Automation",
+                    "Turn all automation toggles off"));
 
     private static final List<RebirthSkillNode> REBIRTH_SKILL_NODES = List.of(
             new RebirthSkillNode(
@@ -2364,6 +2434,20 @@ public final class SheepMergeManager {
         return new NamespacedKey(plugin, "social-visit-owner");
     }
 
+    private static NamespacedKey getQuickAccessActionKey() {
+        if (plugin == null) {
+            return null;
+        }
+        return new NamespacedKey(plugin, "inventory-quick-access-action");
+    }
+
+    private static NamespacedKey getInventoryLayoutOptionKey() {
+        if (plugin == null) {
+            return null;
+        }
+        return new NamespacedKey(plugin, "inventory-layout-option");
+    }
+
     private static NamespacedKey getLegacyRainbowMergedCountKey() {
         return new NamespacedKey(plugin, "rainbow-merged-count");
     }
@@ -2372,6 +2456,198 @@ public final class SheepMergeManager {
         return world != null
                 && !isFarmBuildWorld(world)
                 && (world.getName().startsWith("sheepfarm_") || world.getName().startsWith("sheeptutorial_"));
+    }
+
+    private static QuickAccessDefinition getQuickAccessDefinition(String id) {
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        for (QuickAccessDefinition definition : QUICK_ACCESS_DEFINITIONS) {
+            if (definition.id.equals(id)) {
+                return definition;
+            }
+        }
+        return null;
+    }
+
+    private static List<String> getInventoryQuickAccessActions(UUID playerId) {
+        if (playerId == null) {
+            return List.of();
+        }
+        List<String> loaded = inventoryQuickAccessByPlayer.get(playerId);
+        if (loaded == null || loaded.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> normalized = new ArrayList<>();
+        for (String id : loaded) {
+            if (id == null || id.isBlank() || getQuickAccessDefinition(id) == null || normalized.contains(id)) {
+                continue;
+            }
+            normalized.add(id);
+            if (normalized.size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS) {
+                break;
+            }
+        }
+        return normalized;
+    }
+
+    private static void setInventoryQuickAccessActions(UUID playerId, List<String> actions) {
+        if (playerId == null) {
+            return;
+        }
+        List<String> normalized = actions == null ? List.of() : actions;
+        if (normalized.isEmpty()) {
+            inventoryQuickAccessByPlayer.remove(playerId);
+            return;
+        }
+        inventoryQuickAccessByPlayer.put(playerId, new ArrayList<>(normalized));
+    }
+
+    private static boolean toggleInventoryQuickAccessAction(Player player, String actionId) {
+        if (player == null || actionId == null || actionId.isBlank() || getQuickAccessDefinition(actionId) == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        List<String> selected = new ArrayList<>(getInventoryQuickAccessActions(playerId));
+        if (selected.contains(actionId)) {
+            selected.remove(actionId);
+            setInventoryQuickAccessActions(playerId, selected);
+            saveData();
+            return true;
+        }
+        if (selected.size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS) {
+            return false;
+        }
+        selected.add(actionId);
+        setInventoryQuickAccessActions(playerId, selected);
+        saveData();
+        return true;
+    }
+
+    private static List<ItemStack> buildQuickAccessHotbarItems(Player player) {
+        if (player == null) {
+            return List.of();
+        }
+        List<String> selectedActions = getInventoryQuickAccessActions(player.getUniqueId());
+        if (selectedActions.isEmpty()) {
+            return List.of();
+        }
+
+        List<ItemStack> items = new ArrayList<>();
+        for (String actionId : selectedActions) {
+            QuickAccessDefinition definition = getQuickAccessDefinition(actionId);
+            if (definition == null) {
+                continue;
+            }
+            ItemStack item = MenuItemFactory.create(
+                    definition.material,
+                    "Quick: " + definition.name,
+                    List.of(
+                            definition.description,
+                            "Right-click: cast"));
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                NamespacedKey key = getQuickAccessActionKey();
+                if (key != null) {
+                    meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, definition.id);
+                }
+                item.setItemMeta(meta);
+            }
+            items.add(item);
+            if (items.size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS) {
+                break;
+            }
+        }
+        return items;
+    }
+
+    private static String getQuickAccessActionId(ItemStack itemStack) {
+        if (itemStack == null) {
+            return null;
+        }
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) {
+            return null;
+        }
+        NamespacedKey key = getQuickAccessActionKey();
+        if (key == null) {
+            return null;
+        }
+        String actionId = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+        if (actionId == null || actionId.isBlank() || getQuickAccessDefinition(actionId) == null) {
+            return null;
+        }
+        return actionId;
+    }
+
+    private static String getInventoryLayoutOptionId(ItemStack itemStack) {
+        if (itemStack == null) {
+            return null;
+        }
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) {
+            return null;
+        }
+        NamespacedKey key = getInventoryLayoutOptionKey();
+        if (key == null) {
+            return null;
+        }
+        String actionId = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+        if (actionId == null || actionId.isBlank() || getQuickAccessDefinition(actionId) == null) {
+            return null;
+        }
+        return actionId;
+    }
+
+    public static boolean isQuickAccessCommandItem(ItemStack itemStack) {
+        return getQuickAccessActionId(itemStack) != null;
+    }
+
+    private static boolean executeQuickAccessAction(Player player, String actionId) {
+        if (player == null || actionId == null || actionId.isBlank()) {
+            return false;
+        }
+        switch (actionId) {
+            case "menu_upgrade" -> openUpgradeMenu(player);
+            case "menu_quest" -> openQuestMenu(player);
+            case "menu_automation" -> openAutomationMenu(player);
+            case "menu_socials" -> openSocialsMenu(player);
+            case "menu_scoreboard" -> openScoreboardMenu(player);
+            case "upgrade_limit" -> handleUpgradeMenuClick(player, LIMIT_UPGRADE_SLOT);
+            case "upgrade_egg_speed" -> handleUpgradeMenuClick(player, EGG_SPEED_UPGRADE_SLOT);
+            case "upgrade_wool" -> handleUpgradeMenuClick(player, WOOL_REGEN_UPGRADE_SLOT);
+            case "upgrade_tier_chance" -> handleUpgradeMenuClick(player, HIGHER_TIER_CHANCE_UPGRADE_SLOT);
+            case "quest_lucky_burst" -> handleQuestMenuClick(player, QUEST_ABILITY_LUCKY_BURST_SLOT);
+            case "quest_merge_assist" -> handleQuestMenuClick(player, QUEST_ABILITY_AUTO_MERGE_SLOT);
+            case "quest_shear_all" -> handleQuestMenuClick(player, QUEST_ABILITY_AUTO_SHEAR_SLOT);
+            case "automation_toggle_auto_buy" -> handleAutomationMenuClick(player, AUTOMATION_AUTO_BUY_TOGGLE_SLOT);
+            case "automation_toggle_auto_ability" ->
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT);
+            case "automation_toggle_auto_merge" ->
+                handleAutomationMenuClick(player, AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT);
+            case "automation_toggle_auto_spawn" ->
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT);
+            case "automation_toggle_auto_prestige" ->
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT);
+            case "automation_enable_all" -> handleAutomationMenuClick(player, AUTOMATION_ENABLE_ALL_SLOT);
+            case "automation_disable_all" -> handleAutomationMenuClick(player, AUTOMATION_DISABLE_ALL_SLOT);
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean tryUseQuickAccessItem(Player player, ItemStack itemStack) {
+        if (player == null || itemStack == null || !isSheepFarmWorld(player.getWorld())) {
+            return false;
+        }
+        String actionId = getQuickAccessActionId(itemStack);
+        if (actionId == null) {
+            return false;
+        }
+        return executeQuickAccessAction(player, actionId);
     }
 
     public static boolean needsFarmLayoutBootstrap(World world) {
@@ -5527,6 +5803,7 @@ public final class SheepMergeManager {
         scoreboardShowPrestigeStatsByPlayer.remove(id);
         scoreboardShowQuestProgressByPlayer.remove(id);
         scoreboardShowAbilityStatusByPlayer.remove(id);
+        inventoryQuickAccessByPlayer.remove(id);
         sacrificePointsByPlayer.remove(id);
         sacrificeUnlockState.remove(id);
         rebirthLevelByPlayer.remove(id);
@@ -7118,6 +7395,7 @@ public final class SheepMergeManager {
         scoreboardShowPrestigeStatsByPlayer.clear();
         scoreboardShowQuestProgressByPlayer.clear();
         scoreboardShowAbilityStatusByPlayer.clear();
+        inventoryQuickAccessByPlayer.clear();
         sacrificePointsByPlayer.clear();
         sacrificeUnlockState.clear();
         rebirthLevelByPlayer.clear();
@@ -7807,6 +8085,7 @@ public final class SheepMergeManager {
             return;
         }
         boolean shouldClearNonLoadoutItems = !player.isOp() && !isFarmBuildWorld(player.getWorld());
+        List<ItemStack> quickAccessItems = buildQuickAccessHotbarItems(player);
 
         var inventory = player.getInventory();
         ItemStack[] storageContents = inventory.getStorageContents();
@@ -7814,6 +8093,25 @@ public final class SheepMergeManager {
 
         for (int slot = 0; slot < storageContents.length; slot++) {
             ItemStack itemStack = storageContents[slot];
+
+            if (slot >= INVENTORY_QUICK_ACCESS_FIRST_SLOT && slot <= INVENTORY_QUICK_ACCESS_LAST_SLOT) {
+                int quickIndex = slot - INVENTORY_QUICK_ACCESS_FIRST_SLOT;
+                ItemStack desired = quickIndex < quickAccessItems.size() ? quickAccessItems.get(quickIndex) : null;
+                if (desired == null) {
+                    if (itemStack != null && shouldClearNonLoadoutItems) {
+                        storageContents[slot] = null;
+                        storageChanged = true;
+                    }
+                    continue;
+                }
+                if (itemStack == null || !itemStack.isSimilar(desired)
+                        || itemStack.getAmount() != desired.getAmount()) {
+                    storageContents[slot] = desired;
+                    storageChanged = true;
+                }
+                continue;
+            }
+
             if (slot == FARM_UPGRADE_COMMAND_SLOT) {
                 if (itemStack == null
                         || !isSheepMergeUpgradeCommandItem(itemStack)
@@ -7929,7 +8227,8 @@ public final class SheepMergeManager {
         return itemStack != null
                 && (itemStack.getType() == Material.SHEARS
                         || isSheepMergeUpgradeCommandItem(itemStack)
-                        || isSheepMergeEggItem(itemStack));
+                        || isSheepMergeEggItem(itemStack)
+                        || isQuickAccessCommandItem(itemStack));
     }
 
     public static void playMergeSound(Player player) {
@@ -9805,12 +10104,11 @@ public final class SheepMergeManager {
         int layoutMode = getScoreboardLayoutMode(player);
         inventory.setItem(SCOREBOARD_LAYOUT_SLOT, MenuItemFactory.create(
                 Material.BOOK,
-                "Layout",
+                "Universal Layout",
                 List.of(
-                        "Current: " + (layoutMode == 0 ? "Detailed" : "Compact"),
-                        "Detailed: full sections",
-                        "Compact: summary only",
-                        "Click: Switch layout")));
+                        "Scoreboard: " + (layoutMode == 0 ? "Detailed" : "Compact"),
+                        "Open scoreboard and inventory layout tools",
+                        "Click: Open")));
 
         inventory.setItem(SCOREBOARD_QUEST_POINTS_SLOT, MenuItemFactory.create(
                 Material.BOOK,
@@ -9868,8 +10166,10 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         switch (slot) {
-            case SCOREBOARD_LAYOUT_SLOT ->
-                scoreboardLayoutModeByPlayer.put(playerId, getScoreboardLayoutMode(player) == 0 ? 1 : 0);
+            case SCOREBOARD_LAYOUT_SLOT -> {
+                openUniversalLayoutMenu(player);
+                return;
+            }
             case SCOREBOARD_QUEST_POINTS_SLOT -> scoreboardShowQuestPointsByPlayer.put(playerId,
                     !shouldShowScoreboardQuestPoints(player));
             case SCOREBOARD_AUTOMATION_POINTS_SLOT -> scoreboardShowAutomationPointsByPlayer.put(playerId,
@@ -9893,6 +10193,186 @@ public final class SheepMergeManager {
         saveData();
         updatePointsScoreboard(player);
         openScoreboardMenu(player);
+    }
+
+    public static boolean isUniversalLayoutMenuTitle(String title) {
+        return UNIVERSAL_LAYOUT_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isScoreboardLayoutMenuTitle(String title) {
+        return SCOREBOARD_LAYOUT_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isInventoryLayoutMenuTitle(String title) {
+        return INVENTORY_LAYOUT_MENU_TITLE.equals(title);
+    }
+
+    public static void openUniversalLayoutMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, UNIVERSAL_LAYOUT_MENU_TITLE);
+        inventory.setItem(UNIVERSAL_LAYOUT_SCOREBOARD_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Scoreboard Layout",
+                List.of(
+                        "Current: " + (getScoreboardLayoutMode(player) == 0 ? "Detailed" : "Compact"),
+                        "Click: Open")));
+        inventory.setItem(UNIVERSAL_LAYOUT_INVENTORY_SLOT, MenuItemFactory.create(
+                Material.CHEST,
+                "Inventory Layout",
+                List.of(
+                        "Quick access selected: " + getInventoryQuickAccessActions(player.getUniqueId()).size()
+                                + " / " + INVENTORY_QUICK_ACCESS_MAX_ITEMS,
+                        "Click: Open")));
+        inventory.setItem(UNIVERSAL_LAYOUT_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Scoreboard settings")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleUniversalLayoutMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        switch (slot) {
+            case UNIVERSAL_LAYOUT_SCOREBOARD_SLOT -> openScoreboardLayoutMenu(player);
+            case UNIVERSAL_LAYOUT_INVENTORY_SLOT -> openInventoryLayoutMenu(player);
+            case UNIVERSAL_LAYOUT_BACK_SLOT -> openScoreboardMenu(player);
+            default -> {
+                return;
+            }
+        }
+    }
+
+    public static void openScoreboardLayoutMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        int layoutMode = getScoreboardLayoutMode(player);
+        Inventory inventory = Bukkit.createInventory(null, 27, SCOREBOARD_LAYOUT_MENU_TITLE);
+        inventory.setItem(SCOREBOARD_LAYOUT_DETAILED_SLOT, MenuItemFactory.create(
+                Material.BOOK,
+                "Detailed Layout",
+                List.of(
+                        "Status: " + (layoutMode == 0 ? "Selected" : "Not selected"),
+                        "Shows all sections",
+                        "Click: Select")));
+        inventory.setItem(SCOREBOARD_LAYOUT_COMPACT_SLOT, MenuItemFactory.create(
+                Material.MAP,
+                "Compact Layout",
+                List.of(
+                        "Status: " + (layoutMode == 1 ? "Selected" : "Not selected"),
+                        "Shows summary sections",
+                        "Click: Select")));
+        inventory.setItem(SCOREBOARD_LAYOUT_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Universal Layout")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleScoreboardLayoutMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        switch (slot) {
+            case SCOREBOARD_LAYOUT_DETAILED_SLOT -> scoreboardLayoutModeByPlayer.put(playerId, 0);
+            case SCOREBOARD_LAYOUT_COMPACT_SLOT -> scoreboardLayoutModeByPlayer.put(playerId, 1);
+            case SCOREBOARD_LAYOUT_BACK_SLOT -> {
+                openUniversalLayoutMenu(player);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+        saveData();
+        updatePointsScoreboard(player);
+        openScoreboardLayoutMenu(player);
+    }
+
+    public static void openInventoryLayoutMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 54, INVENTORY_LAYOUT_MENU_TITLE);
+        List<String> selected = getInventoryQuickAccessActions(player.getUniqueId());
+        inventory.setItem(INVENTORY_LAYOUT_SELECTED_SLOT, MenuItemFactory.create(
+                Material.CHEST,
+                "Quick Access Slots",
+                List.of(
+                        "Selected: " + selected.size() + " / " + INVENTORY_QUICK_ACCESS_MAX_ITEMS,
+                        "Hotbar slots used: 1-6",
+                        "Right-click quick item to cast")));
+
+        int slot = 10;
+        for (QuickAccessDefinition definition : QUICK_ACCESS_DEFINITIONS) {
+            if (slot >= 44) {
+                break;
+            }
+
+            boolean enabled = selected.contains(definition.id);
+            ItemStack item = MenuItemFactory.create(
+                    definition.material,
+                    definition.name,
+                    List.of(
+                            definition.description,
+                            "Status: " + (enabled ? "Selected" : "Not selected"),
+                            enabled ? "Click: Remove" : "Click: Add"));
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                NamespacedKey key = getInventoryLayoutOptionKey();
+                if (key != null) {
+                    meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, definition.id);
+                }
+                item.setItemMeta(meta);
+            }
+
+            inventory.setItem(slot, item);
+            slot++;
+            if (slot % 9 == 8) {
+                slot += 2;
+            }
+        }
+
+        inventory.setItem(INVENTORY_LAYOUT_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Universal Layout")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleInventoryLayoutMenuClick(Player player, int slot, ItemStack clickedItem) {
+        if (player == null) {
+            return;
+        }
+        if (slot == INVENTORY_LAYOUT_BACK_SLOT) {
+            openUniversalLayoutMenu(player);
+            return;
+        }
+
+        String actionId = getInventoryLayoutOptionId(clickedItem);
+        if (actionId == null) {
+            return;
+        }
+
+        List<String> current = getInventoryQuickAccessActions(player.getUniqueId());
+        boolean removing = current.contains(actionId);
+        boolean changed = toggleInventoryQuickAccessAction(player, actionId);
+        if (!changed) {
+            player.sendMessage(warning("Quick access limit reached (" + INVENTORY_QUICK_ACCESS_MAX_ITEMS + ")."));
+            return;
+        }
+
+        QuickAccessDefinition definition = getQuickAccessDefinition(actionId);
+        if (definition != null) {
+            player.sendMessage(action((removing ? "Removed: " : "Added: ") + definition.name));
+        }
+        enforceFarmLoadout(player);
+        openInventoryLayoutMenu(player);
     }
 
     public static void openAchievementsMenu(Player player) {
@@ -12454,6 +12934,7 @@ public final class SheepMergeManager {
             dataConfig.set("scoreboardShowPrestigeStats", null);
             dataConfig.set("scoreboardShowQuestProgress", null);
             dataConfig.set("scoreboardShowAbilityStatus", null);
+            dataConfig.set("inventoryQuickAccess", null);
             dataConfig.set("sacrificePoints", null);
             dataConfig.set("sacrificeUnlocksBought", null);
             dataConfig.set("sacrificeUnlockMask", null);
@@ -12702,6 +13183,13 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : scoreboardShowAbilityStatusByPlayer.entrySet()) {
                 dataConfig.set("scoreboardShowAbilityStatus." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, List<String>> entry : inventoryQuickAccessByPlayer.entrySet()) {
+                if (entry.getValue() == null || entry.getValue().isEmpty()) {
+                    continue;
+                }
+                dataConfig.set("inventoryQuickAccess." + entry.getKey().toString(),
+                        new ArrayList<>(entry.getValue()));
             }
             for (Map.Entry<UUID, BigInteger> entry : sacrificePointsByPlayer.entrySet()) {
                 dataConfig.set("sacrificePoints." + entry.getKey().toString(), entry.getValue().toString());
@@ -13614,6 +14102,34 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     scoreboardShowAbilityStatusByPlayer.put(uuid,
                             dataConfig.getBoolean("scoreboardShowAbilityStatus." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("inventoryQuickAccess")) {
+            dataConfig.getConfigurationSection("inventoryQuickAccess").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    List<String> loaded = dataConfig.getStringList("inventoryQuickAccess." + key);
+                    if (loaded == null || loaded.isEmpty()) {
+                        return;
+                    }
+                    List<String> normalized = new ArrayList<>();
+                    for (String actionId : loaded) {
+                        if (actionId == null || actionId.isBlank()
+                                || getQuickAccessDefinition(actionId) == null
+                                || normalized.contains(actionId)) {
+                            continue;
+                        }
+                        normalized.add(actionId);
+                        if (normalized.size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS) {
+                            break;
+                        }
+                    }
+                    if (!normalized.isEmpty()) {
+                        inventoryQuickAccessByPlayer.put(uuid, normalized);
+                    }
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }

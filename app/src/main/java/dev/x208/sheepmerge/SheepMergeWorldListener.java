@@ -190,6 +190,9 @@ public class SheepMergeWorldListener implements Listener {
                 && !SheepMergeManager.isRebirthMenuTitle(title)
                 && !SheepMergeManager.isRebirthTreeMenuTitle(title)
                 && !SheepMergeManager.isSocialsMenuTitle(title)
+                && !SheepMergeManager.isUniversalLayoutMenuTitle(title)
+                && !SheepMergeManager.isScoreboardLayoutMenuTitle(title)
+                && !SheepMergeManager.isInventoryLayoutMenuTitle(title)
                 && !SheepMergeManager.isScoreboardMenuTitle(title)) {
             return;
         }
@@ -245,6 +248,18 @@ public class SheepMergeWorldListener implements Listener {
         }
         if (SheepMergeManager.isSocialsMenuTitle(title)) {
             SheepMergeManager.handleSocialsMenuClick(player, event.getRawSlot(), event.getCurrentItem());
+            return;
+        }
+        if (SheepMergeManager.isUniversalLayoutMenuTitle(title)) {
+            SheepMergeManager.handleUniversalLayoutMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isScoreboardLayoutMenuTitle(title)) {
+            SheepMergeManager.handleScoreboardLayoutMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isInventoryLayoutMenuTitle(title)) {
+            SheepMergeManager.handleInventoryLayoutMenuClick(player, event.getRawSlot(), event.getCurrentItem());
             return;
         }
         if (SheepMergeManager.isScoreboardMenuTitle(title)) {
@@ -309,6 +324,10 @@ public class SheepMergeWorldListener implements Listener {
         SheepMergeManager.applyFarmSaturation(player);
 
         ItemStack item = player.getInventory().getItemInMainHand();
+        if (SheepMergeManager.tryUseQuickAccessItem(player, item)) {
+            event.setCancelled(true);
+            return;
+        }
         if (SheepMergeManager.isSheepMergeUpgradeCommandItem(item)) {
             event.setCancelled(true);
             player.performCommand("sheepmerge upgrade");
