@@ -40,14 +40,12 @@ import java.util.zip.ZipOutputStream;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
-import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.World;
-import org.bukkit.block.banner.PatternType;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.Fence;
 import org.bukkit.boss.BarColor;
@@ -10698,42 +10696,13 @@ public final class SheepMergeManager {
     }
 
     private static ItemStack createAchievementsMenuOpenItem() {
-        ItemStack banner = new ItemStack(Material.GREEN_BANNER, 1);
-        ItemMeta rawMeta = banner.getItemMeta();
-        if (!(rawMeta instanceof BannerMeta bannerMeta)) {
-            return MenuItemFactory.create(
-                    Material.GREEN_BANNER,
-                    "Achievements",
-                    List.of(
-                            "Framework: active",
-                            "Track milestones and claim upgrade paths",
-                            "Click to open"));
-        }
-
-        bannerMeta.setDisplayName("Achievements");
-        bannerMeta.setLore(List.of(
-                "Framework: active",
-                "Track milestones and claim upgrade paths",
-                "Click to open"));
-        bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
-                DyeColor.RED,
-                resolvePatternType("SKULL", PatternType.CROSS)));
-        bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
-                DyeColor.RED,
-                resolvePatternType("BORDER", PatternType.STRIPE_TOP)));
-        bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
-                DyeColor.RED,
-                resolvePatternType("CURLY_BORDER", PatternType.STRIPE_BOTTOM)));
-        banner.setItemMeta(bannerMeta);
-        return banner;
-    }
-
-    private static PatternType resolvePatternType(String patternName, PatternType fallback) {
-        try {
-            return PatternType.valueOf(patternName);
-        } catch (IllegalArgumentException ignored) {
-            return fallback;
-        }
+        return MenuItemFactory.create(
+                Material.RED_BANNER,
+                "Achievements",
+                List.of(
+                        "Framework: active",
+                        "Track milestones and claim upgrade paths",
+                        "Click to open"));
     }
 
     private static ItemStack createSocialsMenuOpenItem() {

@@ -160,6 +160,7 @@ public class SheepMergeWorldListener implements Listener {
         }
         if (SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             if (event.getClick() == org.bukkit.event.inventory.ClickType.SWAP_OFFHAND
+                    || event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY
                     || event.getRawSlot() == 45
                     || event.getSlot() == 40) {
                 event.setCancelled(true);
