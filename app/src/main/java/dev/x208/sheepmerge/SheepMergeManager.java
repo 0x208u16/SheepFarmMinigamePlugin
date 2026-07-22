@@ -543,7 +543,7 @@ public final class SheepMergeManager {
     public static final int ACHIEVEMENTS_UPGRADES_SLOT = 15;
     public static final int ACHIEVEMENTS_BACK_SLOT = 26;
     public static final int ACHIEVEMENTS_VIEW_BACK_SLOT = 49;
-    public static final int ACHIEVEMENTS_UPGRADES_BACK_SLOT = 26;
+    public static final int ACHIEVEMENTS_UPGRADES_BACK_SLOT = 49;
 
     private static final int SACRIFICE_UNLOCK_NO_REGULAR_RESETS = 1;
     private static final int SACRIFICE_UNLOCK_NO_COMBO_RESETS = 2;
@@ -3550,17 +3550,6 @@ public final class SheepMergeManager {
             }
         }
         return 0;
-    }
-
-    private static int getHighestUnlockedAchievementMilestonePoints(UUID playerId) {
-        int highest = 0;
-        Set<String> unlockedMilestones = getUnlockedAchievementMilestoneIds(playerId);
-        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
-            if (unlockedMilestones.contains(milestone.id)) {
-                highest = Math.max(highest, milestone.requiredPoints);
-            }
-        }
-        return highest;
     }
 
     private static int getAchievementPointMultiplier(Player player) {
@@ -11055,14 +11044,6 @@ public final class SheepMergeManager {
                             "Status: " + (unlockedMilestone ? "UNLOCKED" : "LOCKED")),
                     unlockedMilestone));
         }
-
-        inventory.setItem(45, MenuItemFactory.create(
-                Material.PAPER,
-                "Milestone Line Progress",
-                List.of(
-                        "Unlocked milestones: " + unlockedMilestones.size() + "/"
-                                + ACHIEVEMENT_MILESTONE_DEFINITIONS.size(),
-                        "Highest reached: " + getHighestUnlockedAchievementMilestonePoints(playerId) + " AP")));
 
         inventory.setItem(ACHIEVEMENTS_UPGRADES_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
