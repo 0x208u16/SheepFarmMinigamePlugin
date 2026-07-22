@@ -811,7 +811,7 @@ public final class SheepMergeManager {
                     "Reach base spawn tier level 5", "Reward: +6 achievement points", 6),
             new AchievementDefinition("prestige_planner", Material.NETHER_STAR, "Prestige Planner",
                     "Reach quest reward level 5", "Reward: +7 achievement points", 7),
-            new AchievementDefinition("automation_specialist", Material.COMPARATOR, "Automation Specialist",
+            new AchievementDefinition("automation_specialist", Material.REPEATER, "Automation Specialist",
                     "Unlock 3 automation tracks", "Reward: +7 achievement points", 7),
             new AchievementDefinition("rebirth_architect", Material.DRAGON_EGG, "Rebirth Architect",
                     "Reach rebirth level 3", "Reward: +10 achievement points", 10),
