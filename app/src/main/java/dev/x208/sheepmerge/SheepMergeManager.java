@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -214,6 +215,14 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> inventoryQuickAccessCastingEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastOutOfEggWarningTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> lifetimeShearsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> lifetimeSpawnsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> lifetimeMergesByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> completedQuestCyclesByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> totalPrestigeLevelsEarnedByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> totalSacrificeUnlocksPurchasedByPlayer = new HashMap<>();
+    private static final Map<UUID, Set<String>> unlockedAchievementIdsByPlayer = new HashMap<>();
+    private static final Map<UUID, Set<String>> unlockedAchievementMilestoneIdsByPlayer = new HashMap<>();
     private static final String TOP_POINTS_DISPLAY_WORLD_KEY = "topPointsDisplay.world";
     private static final String TOP_POINTS_DISPLAY_X_KEY = "topPointsDisplay.x";
     private static final String TOP_POINTS_DISPLAY_Y_KEY = "topPointsDisplay.y";
@@ -692,12 +701,32 @@ public final class SheepMergeManager {
         private final String name;
         private final String objective;
         private final String reward;
+        private final int achievementPoints;
 
-        private AchievementDefinition(String id, Material material, String name, String objective, String reward) {
+        private AchievementDefinition(String id, Material material, String name, String objective, String reward,
+                int achievementPoints) {
             this.id = id;
             this.material = material;
             this.name = name;
             this.objective = objective;
+            this.reward = reward;
+            this.achievementPoints = Math.max(0, achievementPoints);
+        }
+    }
+
+    private static final class AchievementMilestoneDefinition {
+        private final String id;
+        private final int requiredPoints;
+        private final Material material;
+        private final String name;
+        private final String reward;
+
+        private AchievementMilestoneDefinition(String id, int requiredPoints, Material material, String name,
+                String reward) {
+            this.id = id;
+            this.requiredPoints = Math.max(0, requiredPoints);
+            this.material = material;
+            this.name = name;
             this.reward = reward;
         }
     }
@@ -718,17 +747,55 @@ public final class SheepMergeManager {
 
     private static final List<AchievementDefinition> ACHIEVEMENT_DEFINITIONS = List.of(
             new AchievementDefinition("first_shear", Material.SHEARS, "First Cut",
-                    "Shear 1 sheep", "Reward: 100 points"),
-            new AchievementDefinition("breeder", Material.SHEEP_SPAWN_EGG, "Breeder",
-                    "Spawn 100 sheep", "Reward: 500 points"),
-            new AchievementDefinition("merger", Material.ANVIL, "Merger",
-                    "Merge 250 pairs", "Reward: 500 points"),
-            new AchievementDefinition("storm_chaser", Material.LIGHTNING_ROD, "Storm Chaser",
-                    "Catch 50 sky drops", "Reward: 5 quest points"),
-            new AchievementDefinition("prestige_path", Material.NETHER_STAR, "Prestige Path",
-                    "Reach Prestige 10", "Reward: 3 prestige points"),
+                    "Shear 1 sheep", "Reward: +2 achievement points", 2),
+            new AchievementDefinition("wool_tycoon", Material.WHITE_WOOL, "Wool Tycoon",
+                    "Shear 100 sheep", "Reward: +4 achievement points", 4),
+            new AchievementDefinition("first_hatch", Material.SHEEP_SPAWN_EGG, "First Hatch",
+                    "Spawn 1 sheep", "Reward: +2 achievement points", 2),
+            new AchievementDefinition("breeder", Material.CHICKEN_SPAWN_EGG, "Breeder",
+                    "Spawn 250 sheep", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("pair_maker", Material.ANVIL, "Pair Maker",
+                    "Merge 50 sheep pairs", "Reward: +3 achievement points", 3),
+            new AchievementDefinition("fusion_engine", Material.BLAST_FURNACE, "Fusion Engine",
+                    "Merge 500 sheep pairs", "Reward: +7 achievement points", 7),
+            new AchievementDefinition("quest_cadet", Material.BOOK, "Quest Cadet",
+                    "Complete 1 full quest cycle", "Reward: +3 achievement points", 3),
+            new AchievementDefinition("quest_veteran", Material.ENCHANTED_BOOK, "Quest Veteran",
+                    "Complete 5 full quest cycles", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("upgrade_mechanic", Material.CRAFTING_TABLE, "Upgrade Mechanic",
+                    "Reach 8 total regular upgrade levels", "Reward: +3 achievement points", 3),
+            new AchievementDefinition("shear_specialist", Material.SHEARS, "Shear Specialist",
+                    "Reach Shear Shop level 5", "Reward: +4 achievement points", 4),
+            new AchievementDefinition("prestige_initiate", Material.NETHER_STAR, "Prestige Initiate",
+                    "Gain 1 total prestige level", "Reward: +4 achievement points", 4),
+            new AchievementDefinition("prestige_veteran", Material.BEACON, "Prestige Veteran",
+                    "Gain 25 total prestige levels", "Reward: +7 achievement points", 7),
+            new AchievementDefinition("automation_online", Material.REDSTONE, "Automation Online",
+                    "Unlock 1 automation track", "Reward: +4 achievement points", 4),
+            new AchievementDefinition("automation_matrix", Material.COMPARATOR, "Automation Matrix",
+                    "Unlock all automation tracks", "Reward: +8 achievement points", 8),
+            new AchievementDefinition("sacrifice_initiate", Material.TOTEM_OF_UNDYING, "Sacrifice Initiate",
+                    "Buy 1 sacrifice unlock", "Reward: +4 achievement points", 4),
+            new AchievementDefinition("sacrifice_mastery", Material.NETHERITE_INGOT, "Sacrifice Mastery",
+                    "Buy 5 sacrifice unlocks", "Reward: +6 achievement points", 6),
             new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
-                    "Rebirth 1 time", "Reward: 1 rebirth point"));
+                    "Rebirth 1 time", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("rainbow_ascension", Material.PRISMARINE_CRYSTALS, "Rainbow Ascension",
+                    "Reach Rainbow tier T2", "Reward: +6 achievement points", 6));
+
+    private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = List.of(
+            new AchievementMilestoneDefinition("points_10", 10, Material.COPPER_INGOT,
+                    "Bronze Shepherd", "Milestone reached at 10 achievement points"),
+            new AchievementMilestoneDefinition("points_20", 20, Material.IRON_INGOT,
+                    "Silver Shepherd", "Milestone reached at 20 achievement points"),
+            new AchievementMilestoneDefinition("points_35", 35, Material.GOLD_INGOT,
+                    "Gold Shepherd", "Milestone reached at 35 achievement points"),
+            new AchievementMilestoneDefinition("points_50", 50, Material.DIAMOND,
+                    "Diamond Shepherd", "Milestone reached at 50 achievement points"),
+            new AchievementMilestoneDefinition("points_65", 65, Material.NETHERITE_SCRAP,
+                    "Mythic Shepherd", "Milestone reached at 65 achievement points"),
+            new AchievementMilestoneDefinition("points_80", 80, Material.NETHER_STAR,
+                    "SheepMerge Legend", "Milestone reached at 80 achievement points"));
 
     private static final List<QuickAccessDefinition> QUICK_ACCESS_DEFINITIONS = List.of(
             new QuickAccessDefinition("menu_quest", Material.WRITABLE_BOOK, "Open Quest Abilities",
@@ -3239,6 +3306,8 @@ public final class SheepMergeManager {
         player.getWorld().spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
                 player.getLocation().add(0, 1.0, 0), 14, 0.35, 0.4, 0.35, 0.02);
         if (areAllQuestsCompleted(playerId)) {
+            completedQuestCyclesByPlayer.put(playerId,
+                    addSaturated(completedQuestCyclesByPlayer.getOrDefault(playerId, 0), 1));
             player.sendTitle(color("&aAll Quests Complete"), color("&7Nice cycle. New quests on reset."), 10, 45, 10);
             playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.2f);
             player.sendMessage(action("All current quests are completed."));
@@ -3252,6 +3321,198 @@ public final class SheepMergeManager {
         return questShearsCompleteByPlayer.getOrDefault(playerId, false)
                 && questSpawnsCompleteByPlayer.getOrDefault(playerId, false)
                 && questMergesCompleteByPlayer.getOrDefault(playerId, false);
+    }
+
+    private static AchievementDefinition getAchievementDefinition(String achievementId) {
+        if (achievementId == null || achievementId.isBlank()) {
+            return null;
+        }
+        for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
+            if (definition.id.equals(achievementId)) {
+                return definition;
+            }
+        }
+        return null;
+    }
+
+    private static AchievementMilestoneDefinition getAchievementMilestoneDefinition(String milestoneId) {
+        if (milestoneId == null || milestoneId.isBlank()) {
+            return null;
+        }
+        for (AchievementMilestoneDefinition definition : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
+            if (definition.id.equals(milestoneId)) {
+                return definition;
+            }
+        }
+        return null;
+    }
+
+    private static Set<String> getUnlockedAchievementIds(UUID playerId) {
+        if (playerId == null) {
+            return Collections.emptySet();
+        }
+        Set<String> unlocked = unlockedAchievementIdsByPlayer.get(playerId);
+        return unlocked == null ? Collections.emptySet() : unlocked;
+    }
+
+    private static Set<String> getOrCreateUnlockedAchievementIds(UUID playerId) {
+        return unlockedAchievementIdsByPlayer.computeIfAbsent(playerId, ignored -> new LinkedHashSet<>());
+    }
+
+    private static Set<String> getUnlockedAchievementMilestoneIds(UUID playerId) {
+        if (playerId == null) {
+            return Collections.emptySet();
+        }
+        Set<String> unlocked = unlockedAchievementMilestoneIdsByPlayer.get(playerId);
+        return unlocked == null ? Collections.emptySet() : unlocked;
+    }
+
+    private static Set<String> getOrCreateUnlockedAchievementMilestoneIds(UUID playerId) {
+        return unlockedAchievementMilestoneIdsByPlayer.computeIfAbsent(playerId, ignored -> new LinkedHashSet<>());
+    }
+
+    private static int getUnlockedAchievementCount(UUID playerId) {
+        return getUnlockedAchievementIds(playerId).size();
+    }
+
+    private static int getAchievementPoints(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
+        Set<String> unlocked = getUnlockedAchievementIds(playerId);
+        int total = 0;
+        for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
+            if (unlocked.contains(definition.id)) {
+                total = addSaturated(total, definition.achievementPoints);
+            }
+        }
+        return total;
+    }
+
+    public static int getAchievementPoints(Player player) {
+        return player == null ? 0 : getAchievementPoints(player.getUniqueId());
+    }
+
+    private static int getNextAchievementMilestoneTarget(int achievementPoints) {
+        int points = Math.max(0, achievementPoints);
+        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
+            if (points < milestone.requiredPoints) {
+                return milestone.requiredPoints;
+            }
+        }
+        return 0;
+    }
+
+    private static int getHighestUnlockedAchievementMilestonePoints(UUID playerId) {
+        int highest = 0;
+        Set<String> unlockedMilestones = getUnlockedAchievementMilestoneIds(playerId);
+        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
+            if (unlockedMilestones.contains(milestone.id)) {
+                highest = Math.max(highest, milestone.requiredPoints);
+            }
+        }
+        return highest;
+    }
+
+    private static boolean hasMetAchievementCondition(Player player, UUID playerId, String achievementId) {
+        if (player == null || playerId == null || achievementId == null) {
+            return false;
+        }
+        return switch (achievementId) {
+            case "first_shear" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "wool_tycoon" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 100;
+            case "first_hatch" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "breeder" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 250;
+            case "pair_maker" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 50;
+            case "fusion_engine" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 500;
+            case "quest_cadet" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "quest_veteran" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 5;
+            case "upgrade_mechanic" -> (extraLimitByPlayer.getOrDefault(playerId, 0)
+                    + eggSpeedLevelByPlayer.getOrDefault(playerId, 0)
+                    + woolRegenLevelByPlayer.getOrDefault(playerId, 0)
+                    + higherTierChanceLevelByPlayer.getOrDefault(playerId, 0)) >= 8;
+            case "shear_specialist" -> getShearShopLevel(player) >= 5;
+            case "prestige_initiate" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "prestige_veteran" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 25;
+            case "automation_online" -> getUnlockedAutomationCount(player) >= 1;
+            case "automation_matrix" -> getUnlockedAutomationCount(player) >= 6;
+            case "sacrifice_initiate" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "sacrifice_mastery" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 5;
+            case "reborn" -> getRebirthLevel(player) >= 1;
+            case "rainbow_ascension" -> highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0) >= 2;
+            default -> false;
+        };
+    }
+
+    private static void notifyAchievementUnlocked(Player player, AchievementDefinition definition, int totalPoints) {
+        if (player == null || definition == null) {
+            return;
+        }
+        player.sendTitle(
+                color("&6Achievement Unlocked"),
+                color("&f" + definition.name),
+                5,
+                50,
+                10);
+        player.sendMessage(action("Achievement unlocked: " + definition.name
+                + " &7("
+                + definition.achievementPoints + " AP, total " + totalPoints + " AP)"));
+        playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.2f);
+    }
+
+    private static void notifyAchievementMilestoneUnlocked(Player player,
+            AchievementMilestoneDefinition milestone,
+            int totalPoints) {
+        if (player == null || milestone == null) {
+            return;
+        }
+        player.sendTitle(
+                color("&bAchievement Milestone"),
+                color("&f" + milestone.name),
+                5,
+                55,
+                10);
+        player.sendMessage(action("Milestone unlocked: " + milestone.name
+                + " &7(" + milestone.requiredPoints + " AP reached, total " + totalPoints + " AP)"));
+        playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 0.9f, 1.25f);
+    }
+
+    private static void evaluateAchievementProgress(Player player, boolean notify) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        Set<String> unlockedAchievements = getOrCreateUnlockedAchievementIds(playerId);
+        Set<String> unlockedMilestones = getOrCreateUnlockedAchievementMilestoneIds(playerId);
+        boolean changed = false;
+
+        for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
+            if (unlockedAchievements.contains(definition.id)
+                    || !hasMetAchievementCondition(player, playerId, definition.id)) {
+                continue;
+            }
+            unlockedAchievements.add(definition.id);
+            changed = true;
+            if (notify) {
+                notifyAchievementUnlocked(player, definition, getAchievementPoints(playerId));
+            }
+        }
+
+        int achievementPoints = getAchievementPoints(playerId);
+        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
+            if (achievementPoints < milestone.requiredPoints || unlockedMilestones.contains(milestone.id)) {
+                continue;
+            }
+            unlockedMilestones.add(milestone.id);
+            changed = true;
+            if (notify) {
+                notifyAchievementMilestoneUnlocked(player, milestone, achievementPoints);
+            }
+        }
+
+        if (changed) {
+            saveData();
+        }
     }
 
     public static void tickActiveAbilities(Player player) {
@@ -4578,7 +4839,10 @@ public final class SheepMergeManager {
         }
         sacrificePointsByPlayer.put(playerId, points.subtract(cost));
         sacrificeUnlockState.recordPurchase(playerId, unlockId);
+        totalSacrificeUnlocksPurchasedByPlayer.put(playerId,
+                addSaturated(totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0), 1));
         saveData();
+        evaluateAchievementProgress(player, true);
         return true;
     }
 
@@ -5000,6 +5264,8 @@ public final class SheepMergeManager {
         int nextPrestige = current + affordableLevels;
         int gainedPrestigePoints = getPrestigePointsRewardForNextLevels(current, affordableLevels);
         UUID playerId = player.getUniqueId();
+        totalPrestigeLevelsEarnedByPlayer.put(playerId,
+                addSaturated(totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0), affordableLevels));
         prestigeLevelByPlayer.put(playerId, nextPrestige);
         prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
@@ -5007,6 +5273,7 @@ public final class SheepMergeManager {
 
         runPrestigeResetEffects(player, false);
         saveData();
+        evaluateAchievementProgress(player, true);
         markTutorialPrestigedOnce(player);
         return affordableLevels;
     }
@@ -5037,6 +5304,7 @@ public final class SheepMergeManager {
             sacrificeUnlockState.remove(playerId);
         }
         saveData();
+        evaluateAchievementProgress(player, true);
         return affordable;
     }
 
@@ -5855,6 +6123,14 @@ public final class SheepMergeManager {
         nextAutomationAutoPrestigeAtByPlayer.remove(id);
         lastPointsOverlayByPlayer.remove(id);
         pointsOverlayExpiresAtByPlayer.remove(id);
+        lifetimeShearsByPlayer.remove(id);
+        lifetimeSpawnsByPlayer.remove(id);
+        lifetimeMergesByPlayer.remove(id);
+        completedQuestCyclesByPlayer.remove(id);
+        totalPrestigeLevelsEarnedByPlayer.remove(id);
+        totalSacrificeUnlocksPurchasedByPlayer.remove(id);
+        unlockedAchievementIdsByPlayer.remove(id);
+        unlockedAchievementMilestoneIdsByPlayer.remove(id);
         removeComboBossBar(id);
         carriedSheepByPlayer.remove(id);
         resetFarmWorldForPlayer(id);
@@ -6494,6 +6770,8 @@ public final class SheepMergeManager {
 
         sheep.setSheared(true);
         sheep.setAI(true);
+        UUID playerId = player.getUniqueId();
+        lifetimeShearsByPlayer.put(playerId, addSaturated(lifetimeShearsByPlayer.getOrDefault(playerId, 0), 1));
         SheepTier tier = getSheepTier(sheep);
         setNextEatTimestamp(sheep,
                 System.currentTimeMillis() + getEatCooldownSeconds(sheep, tier) * 1000L);
@@ -7454,6 +7732,14 @@ public final class SheepMergeManager {
         carriedSheepByPlayer.clear();
         liveSheepCountByWorld.clear();
         lastOutOfEggWarningTimestampByPlayer.clear();
+        lifetimeShearsByPlayer.clear();
+        lifetimeSpawnsByPlayer.clear();
+        lifetimeMergesByPlayer.clear();
+        completedQuestCyclesByPlayer.clear();
+        totalPrestigeLevelsEarnedByPlayer.clear();
+        totalSacrificeUnlocksPurchasedByPlayer.clear();
+        unlockedAchievementIdsByPlayer.clear();
+        unlockedAchievementMilestoneIdsByPlayer.clear();
     }
 
     private static boolean writeBackupArchive(File destination) {
@@ -7831,6 +8117,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
+        lifetimeMergesByPlayer.put(playerId, addSaturated(lifetimeMergesByPlayer.getOrDefault(playerId, 0), 1));
         long now = System.currentTimeMillis();
         lastMergeTimestampByPlayer.put(playerId, now);
         lastMergeReminderTimestampByPlayer.remove(playerId);
@@ -8562,6 +8849,7 @@ public final class SheepMergeManager {
         Sheep sheep = player.getWorld().spawn(spawnLocation, Sheep.class);
         setSheepTier(sheep, rollSpawnTier(player.getWorld()));
         UUID playerId = player.getUniqueId();
+        lifetimeSpawnsByPlayer.put(playerId, addSaturated(lifetimeSpawnsByPlayer.getOrDefault(playerId, 0), 1));
         if (isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId)) {
             consumeCountAbilityUse(activeLuckyBurstUsesByPlayer, playerId);
             saveData();
@@ -10408,13 +10696,23 @@ public final class SheepMergeManager {
             return;
         }
 
+        evaluateAchievementProgress(player, true);
+        UUID playerId = player.getUniqueId();
+        int unlockedCount = getUnlockedAchievementCount(playerId);
+        int totalAchievements = ACHIEVEMENT_DEFINITIONS.size();
+        int achievementPoints = getAchievementPoints(playerId);
+        int nextMilestoneTarget = getNextAchievementMilestoneTarget(achievementPoints);
+
         Inventory inventory = Bukkit.createInventory(null, 27, ACHIEVEMENTS_MENU_TITLE);
         inventory.setItem(4, MenuItemFactory.create(
                 Material.BOOK,
                 "Achievements Hub",
                 List.of(
-                        "Track progression milestones",
-                        "Unlock passive boosts over time")));
+                        "Unlocked: " + unlockedCount + "/" + totalAchievements,
+                        "Achievement points: " + achievementPoints,
+                        nextMilestoneTarget > 0
+                                ? "Next milestone: " + nextMilestoneTarget + " AP"
+                                : "Milestone line complete")));
 
         inventory.setItem(ACHIEVEMENTS_VIEW_SLOT, MenuItemFactory.create(
                 Material.MAP,
@@ -10444,18 +10742,22 @@ public final class SheepMergeManager {
         }
 
         Inventory inventory = Bukkit.createInventory(null, 54, ACHIEVEMENTS_VIEW_MENU_TITLE);
+        UUID playerId = player.getUniqueId();
+        Set<String> unlocked = getUnlockedAchievementIds(playerId);
         int slot = 10;
         for (AchievementDefinition achievement : ACHIEVEMENT_DEFINITIONS) {
             if (slot >= 44) {
                 break;
             }
+            boolean unlockedAchievement = unlocked.contains(achievement.id);
             inventory.setItem(slot, MenuItemFactory.create(
                     achievement.material,
                     achievement.name,
                     List.of(
                             "Objective: " + achievement.objective,
                             achievement.reward,
-                            "Status: coming soon",
+                            "Achievement points: +" + achievement.achievementPoints,
+                            "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
                             "Key: " + achievement.id)));
             slot++;
             if (slot % 9 == 8) {
@@ -10476,12 +10778,44 @@ public final class SheepMergeManager {
         }
 
         Inventory inventory = Bukkit.createInventory(null, 27, ACHIEVEMENTS_UPGRADES_MENU_TITLE);
-        inventory.setItem(13, MenuItemFactory.create(
-                Material.BARRIER,
-                "Coming Soon",
+        UUID playerId = player.getUniqueId();
+        Set<String> unlockedMilestones = getUnlockedAchievementMilestoneIds(playerId);
+        int achievementPoints = getAchievementPoints(playerId);
+        int nextTarget = getNextAchievementMilestoneTarget(achievementPoints);
+
+        inventory.setItem(4, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Achievement Milestones",
                 List.of(
-                        "Upgrade paths will unlock here",
-                        "This is the initial framework scaffold")));
+                        "Current points: " + achievementPoints,
+                        nextTarget > 0
+                                ? "Next unlock: " + nextTarget + " AP"
+                                : "All milestones unlocked")));
+
+        int slot = 10;
+        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
+            if (slot > 16) {
+                break;
+            }
+            boolean unlockedMilestone = unlockedMilestones.contains(milestone.id);
+            inventory.setItem(slot, MenuItemFactory.create(
+                    milestone.material,
+                    milestone.name,
+                    List.of(
+                            "Target: " + milestone.requiredPoints + " achievement points",
+                            milestone.reward,
+                            "Status: " + (unlockedMilestone ? "UNLOCKED" : "LOCKED"))));
+            slot++;
+        }
+
+        inventory.setItem(22, MenuItemFactory.create(
+                Material.PAPER,
+                "Milestone Line Progress",
+                List.of(
+                        "Unlocked milestones: " + unlockedMilestones.size() + "/"
+                                + ACHIEVEMENT_MILESTONE_DEFINITIONS.size(),
+                        "Highest reached: " + getHighestUnlockedAchievementMilestonePoints(playerId) + " AP")));
+
         inventory.setItem(ACHIEVEMENTS_UPGRADES_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back",
@@ -12797,6 +13131,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
+        evaluateAchievementProgress(player, true);
         Scoreboard scoreboard = player.getScoreboard();
         Objective objective = scoreboard == null ? null : scoreboard.getObjective("sheepmerge_points");
         if (objective == null) {
@@ -12826,6 +13161,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         List<String> lines = new ArrayList<>();
         lines.add("Points: " + formatPoints(getPlayerPointsBig(player)));
+        lines.add("Achv Pts: " + getAchievementPoints(player));
         if (shouldShowScoreboardPrestigeStats(player)) {
             lines.add("Prestige Lv: " + getPrestigeLevel(player));
             lines.add("Prestige Pts: " + formatPoints(getPrestigePoints(player)));
@@ -12890,7 +13226,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        if (!isOwnedSheepFarmWorld(player.getWorld())) {
+        if (!isSheepFarmWorld(player.getWorld())) {
             player.setPlayerListName(null);
             return;
         }
@@ -13047,6 +13383,14 @@ public final class SheepMergeManager {
             dataConfig.set("rebirthSkillUnlockMask", null);
             dataConfig.set("rebirthSkillPendingMask", null);
             dataConfig.set("rebirthRespecCooldown", null);
+            dataConfig.set("lifetimeShears", null);
+            dataConfig.set("lifetimeSpawns", null);
+            dataConfig.set("lifetimeMerges", null);
+            dataConfig.set("completedQuestCycles", null);
+            dataConfig.set("totalPrestigeLevelsEarned", null);
+            dataConfig.set("totalSacrificeUnlocksPurchased", null);
+            dataConfig.set("achievementUnlocked", null);
+            dataConfig.set("achievementMilestonesUnlocked", null);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
@@ -13322,6 +13666,37 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Long> entry : nextRebirthRespecTimestampByPlayer.entrySet()) {
                 dataConfig.set("rebirthRespecCooldown." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : lifetimeShearsByPlayer.entrySet()) {
+                dataConfig.set("lifetimeShears." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : lifetimeSpawnsByPlayer.entrySet()) {
+                dataConfig.set("lifetimeSpawns." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : lifetimeMergesByPlayer.entrySet()) {
+                dataConfig.set("lifetimeMerges." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : completedQuestCyclesByPlayer.entrySet()) {
+                dataConfig.set("completedQuestCycles." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : totalPrestigeLevelsEarnedByPlayer.entrySet()) {
+                dataConfig.set("totalPrestigeLevelsEarned." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : totalSacrificeUnlocksPurchasedByPlayer.entrySet()) {
+                dataConfig.set("totalSacrificeUnlocksPurchased." + entry.getKey().toString(),
+                        Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Set<String>> entry : unlockedAchievementIdsByPlayer.entrySet()) {
+                if (entry.getValue() == null || entry.getValue().isEmpty()) {
+                    continue;
+                }
+                dataConfig.set("achievementUnlocked." + entry.getKey(), new ArrayList<>(entry.getValue()));
+            }
+            for (Map.Entry<UUID, Set<String>> entry : unlockedAchievementMilestoneIdsByPlayer.entrySet()) {
+                if (entry.getValue() == null || entry.getValue().isEmpty()) {
+                    continue;
+                }
+                dataConfig.set("achievementMilestonesUnlocked." + entry.getKey(), new ArrayList<>(entry.getValue()));
             }
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
@@ -14327,6 +14702,113 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     nextRebirthRespecTimestampByPlayer.put(uuid,
                             Math.max(0L, dataConfig.getLong("rebirthRespecCooldown." + key, 0L)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("lifetimeShears")) {
+            dataConfig.getConfigurationSection("lifetimeShears").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    lifetimeShearsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeShears." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("lifetimeSpawns")) {
+            dataConfig.getConfigurationSection("lifetimeSpawns").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    lifetimeSpawnsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeSpawns." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("lifetimeMerges")) {
+            dataConfig.getConfigurationSection("lifetimeMerges").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    lifetimeMergesByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeMerges." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("completedQuestCycles")) {
+            dataConfig.getConfigurationSection("completedQuestCycles").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    completedQuestCyclesByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("completedQuestCycles." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("totalPrestigeLevelsEarned")) {
+            dataConfig.getConfigurationSection("totalPrestigeLevelsEarned").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    totalPrestigeLevelsEarnedByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("totalPrestigeLevelsEarned." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("totalSacrificeUnlocksPurchased")) {
+            dataConfig.getConfigurationSection("totalSacrificeUnlocksPurchased").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    totalSacrificeUnlocksPurchasedByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("totalSacrificeUnlocksPurchased." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("achievementUnlocked")) {
+            dataConfig.getConfigurationSection("achievementUnlocked").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    List<String> loaded = dataConfig.getStringList("achievementUnlocked." + key);
+                    if (loaded == null || loaded.isEmpty()) {
+                        return;
+                    }
+                    Set<String> normalized = new LinkedHashSet<>();
+                    for (String id : loaded) {
+                        if (getAchievementDefinition(id) != null) {
+                            normalized.add(id);
+                        }
+                    }
+                    if (!normalized.isEmpty()) {
+                        unlockedAchievementIdsByPlayer.put(uuid, normalized);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("achievementMilestonesUnlocked")) {
+            dataConfig.getConfigurationSection("achievementMilestonesUnlocked").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    List<String> loaded = dataConfig.getStringList("achievementMilestonesUnlocked." + key);
+                    if (loaded == null || loaded.isEmpty()) {
+                        return;
+                    }
+                    Set<String> normalized = new LinkedHashSet<>();
+                    for (String id : loaded) {
+                        if (getAchievementMilestoneDefinition(id) != null) {
+                            normalized.add(id);
+                        }
+                    }
+                    if (!normalized.isEmpty()) {
+                        unlockedAchievementMilestoneIdsByPlayer.put(uuid, normalized);
+                    }
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
