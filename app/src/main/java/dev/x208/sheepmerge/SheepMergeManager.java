@@ -4541,6 +4541,9 @@ public final class SheepMergeManager {
         if (current >= SACRIFICE_UNLOCK_MAX) {
             return false;
         }
+        if (unlockId != current + 1) {
+            return false;
+        }
         BigInteger cost = getSacrificeUnlockCost(playerId);
         BigInteger points = getSacrificePoints(playerId);
         if (points.compareTo(cost) < 0) {
@@ -10662,7 +10665,7 @@ public final class SheepMergeManager {
         if (!(rawMeta instanceof SkullMeta skullMeta)) {
             return MenuItemFactory.create(
                     Material.PLAYER_HEAD,
-                    "Socials",
+                    ChatColor.RESET + "" + ChatColor.GREEN + "Socials",
                     List.of(
                             ChatColor.RED + "" + ChatColor.BOLD + "Author:",
                             ChatColor.YELLOW + "" + ChatColor.ITALIC + "0x208u16 (unknown)"));
@@ -10670,7 +10673,7 @@ public final class SheepMergeManager {
 
         OfflinePlayer author = Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID);
         skullMeta.setOwningPlayer(author);
-        skullMeta.setDisplayName("Socials");
+        skullMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.GREEN + "Socials");
         skullMeta.setLore(List.of(
                 ChatColor.RED + "" + ChatColor.BOLD + "Author:",
                 ChatColor.YELLOW + "" + ChatColor.ITALIC + getAuthorCredentialsText(author)));
@@ -11715,6 +11718,12 @@ public final class SheepMergeManager {
                 };
                 if (hasSacrificeUnlock(player, unlockId)) {
                     player.sendMessage(warning("That sacrifice unlock is already purchased."));
+                    break;
+                }
+                int nextRequiredUnlockId = unlocksBought + 1;
+                if (unlockId != nextRequiredUnlockId) {
+                    player.sendMessage(warning("Buy sacrifice unlocks in order. Next unlock: "
+                            + nextRequiredUnlockId + " / " + SACRIFICE_UNLOCK_MAX + "."));
                     break;
                 }
                 if (tryBuySacrificeUnlock(player, unlockId)) {
