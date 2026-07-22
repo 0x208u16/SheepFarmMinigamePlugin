@@ -840,7 +840,7 @@ public final class SheepMergeManager {
                         resolveMaterial("RAW_COPPER_BLOCK", Material.COPPER_BLOCK), "Raw Copper Block",
                         AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_5", getAchievementMilestoneTarget(total, 5),
-                        resolveMaterial("COPPER_NUGGET", Material.COPPER_INGOT), "Copper Nugget",
+                        resolveMaterial("COPPER_NUGGET", Material.GOLD_NUGGET), "Copper Nugget",
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_6", getAchievementMilestoneTarget(total, 6),
                         Material.COPPER_INGOT, "Copper Ingot",
@@ -4809,7 +4809,7 @@ public final class SheepMergeManager {
 
     public static int getShearPointMultiplier(Player player) {
         int level = getShearShopLevel(player);
-        long multiplier = (long) (level + 1) * getAchievementPointMultiplier(player);
+        long multiplier = (long) level + 1L;
         return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, multiplier));
     }
 
@@ -6904,7 +6904,9 @@ public final class SheepMergeManager {
             int level = tier == null ? 0 : Math.max(0, tier.getLevel());
             base = BigInteger.valueOf(4L).pow(level);
         }
-        BigInteger points = base.multiply(BigInteger.valueOf(Math.max(1, getShearPointMultiplier(player))));
+        long combinedMultiplier = (long) Math.max(1, getShearPointMultiplier(player))
+                * Math.max(1, getAchievementPointMultiplier(player));
+        BigInteger points = base.multiply(BigInteger.valueOf(Math.max(1L, combinedMultiplier)));
         if (isAbilityActive(activeJackpotShearsUntilByPlayer, player == null ? null : player.getUniqueId())) {
             points = points.multiply(BigInteger.valueOf(2L + getQuestUpgradePowerLevel(player)));
         }
