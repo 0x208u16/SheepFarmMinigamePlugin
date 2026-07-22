@@ -837,15 +837,21 @@ public final class SheepMergeManager {
             farmLayoutConfig = new YamlConfiguration();
         }
         farmLayoutConfig.set("version", 3);
-        farmLayoutConfig.set("world.minY", FARM_MIN_Y);
-        farmLayoutConfig.set("world.maxY", FARM_MAX_Y + 1);
+        farmLayoutConfig.set("world.minY", sourceWorld.getMinHeight());
+        farmLayoutConfig.set("world.maxY", sourceWorld.getMaxHeight());
+        farmLayoutConfig.set("world.minX", FARM_MIN_XZ);
+        farmLayoutConfig.set("world.maxX", FARM_MAX_XZ);
+        farmLayoutConfig.set("world.minZ", FARM_MIN_XZ);
+        farmLayoutConfig.set("world.maxZ", FARM_MAX_XZ);
         farmLayoutConfig.set("world.name", sourceWorld.getName());
         farmLayoutConfig.set("world.savedAt", System.currentTimeMillis());
         farmLayoutConfig.set("chunks", null);
         farmLayoutConfig.set("blocks", null);
 
+        int minY = sourceWorld.getMinHeight();
+        int maxY = sourceWorld.getMaxHeight();
         for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
-            for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
+            for (int y = minY; y < maxY; y++) {
                 for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
                     String serializedBlockData = sourceWorld.getBlockAt(x, y, z)
                             .getBlockData()
@@ -1054,12 +1060,8 @@ public final class SheepMergeManager {
             return;
         }
 
-        int minY = Math.max(
-                Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight())),
-                FARM_MIN_Y);
-        int maxY = Math.min(
-                Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight())),
-                FARM_MAX_Y + 1);
+        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
+        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
         if (minY >= maxY) {
             if (onComplete != null) {
                 onComplete.run();
@@ -1216,9 +1218,18 @@ public final class SheepMergeManager {
             return;
         }
 
-        for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
-            for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
-                for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
+        int minX = farmLayoutConfig == null ? FARM_MIN_XZ : farmLayoutConfig.getInt("world.minX", FARM_MIN_XZ);
+        int maxX = farmLayoutConfig == null ? FARM_MAX_XZ : farmLayoutConfig.getInt("world.maxX", FARM_MAX_XZ);
+        int minZ = farmLayoutConfig == null ? FARM_MIN_XZ : farmLayoutConfig.getInt("world.minZ", FARM_MIN_XZ);
+        int maxZ = farmLayoutConfig == null ? FARM_MAX_XZ : farmLayoutConfig.getInt("world.maxZ", FARM_MAX_XZ);
+        int minY = farmLayoutConfig == null ? world.getMinHeight()
+                : Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
+        int maxY = farmLayoutConfig == null ? world.getMaxHeight()
+                : Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y < maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
                     String serialized = farmLayoutConfig.getString("blocks." + keyFor(x, y, z));
                     BlockData data = (serialized == null || serialized.isBlank())
                             ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
@@ -1240,12 +1251,8 @@ public final class SheepMergeManager {
             return;
         }
 
-        int minY = Math.max(
-                Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight())),
-                FARM_MIN_Y);
-        int maxY = Math.min(
-                Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight())),
-                FARM_MAX_Y + 1);
+        int minY = Math.max(world.getMinHeight(), farmLayoutConfig.getInt("world.minY", world.getMinHeight()));
+        int maxY = Math.min(world.getMaxHeight(), farmLayoutConfig.getInt("world.maxY", world.getMaxHeight()));
         if (minY >= maxY) {
             return;
         }
@@ -1893,8 +1900,8 @@ public final class SheepMergeManager {
         if (sourceMinY >= sourceMaxY) {
             return;
         }
-        int targetMinY = FARM_MIN_Y;
-        int targetMaxY = FARM_MAX_Y + 1;
+        int targetMinY = sourceMinY;
+        int targetMaxY = sourceMaxY;
 
         Map<String, String> directBlocks = new HashMap<>();
         for (String chunkKey : chunksSection.getKeys(false)) {
@@ -1972,8 +1979,12 @@ public final class SheepMergeManager {
         }
 
         farmLayoutConfig.set("version", 3);
-        farmLayoutConfig.set("world.minY", FARM_MIN_Y);
-        farmLayoutConfig.set("world.maxY", FARM_MAX_Y + 1);
+        farmLayoutConfig.set("world.minY", targetMinY);
+        farmLayoutConfig.set("world.maxY", targetMaxY);
+        farmLayoutConfig.set("world.minX", FARM_MIN_XZ);
+        farmLayoutConfig.set("world.maxX", FARM_MAX_XZ);
+        farmLayoutConfig.set("world.minZ", FARM_MIN_XZ);
+        farmLayoutConfig.set("world.maxZ", FARM_MAX_XZ);
         farmLayoutConfig.set("chunks", null);
         farmLayoutConfig.set("blocks", null);
         for (Map.Entry<String, String> entry : directBlocks.entrySet()) {
