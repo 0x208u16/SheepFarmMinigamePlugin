@@ -760,63 +760,63 @@ public final class SheepMergeManager {
 
     private static final List<AchievementDefinition> ACHIEVEMENT_DEFINITIONS = List.of(
             new AchievementDefinition("first_shear", Material.SHEARS, "First Cut",
-                    "Shear 1 sheep", "Reward: +2 achievement points", 2),
+                    "Shear 10 sheep", "Reward: +2 achievement points", 2),
             new AchievementDefinition("wool_tycoon", Material.WHITE_WOOL, "Wool Tycoon",
-                    "Shear 100 sheep", "Reward: +4 achievement points", 4),
+                    "Shear 1,000 sheep", "Reward: +4 achievement points", 4),
             new AchievementDefinition("first_hatch", Material.SHEEP_SPAWN_EGG, "First Hatch",
-                    "Spawn 1 sheep", "Reward: +2 achievement points", 2),
+                    "Spawn 10 sheep", "Reward: +2 achievement points", 2),
             new AchievementDefinition("breeder", Material.CHICKEN_SPAWN_EGG, "Breeder",
-                    "Spawn 250 sheep", "Reward: +6 achievement points", 6),
+                    "Spawn 2,000 sheep", "Reward: +6 achievement points", 6),
             new AchievementDefinition("pair_maker", Material.ANVIL, "Pair Maker",
-                    "Merge 50 sheep pairs", "Reward: +3 achievement points", 3),
+                    "Merge 250 sheep pairs", "Reward: +3 achievement points", 3),
             new AchievementDefinition("fusion_engine", Material.BLAST_FURNACE, "Fusion Engine",
-                    "Merge 500 sheep pairs", "Reward: +7 achievement points", 7),
+                    "Merge 2,500 sheep pairs", "Reward: +7 achievement points", 7),
             new AchievementDefinition("quest_cadet", Material.BOOK, "Quest Cadet",
-                    "Complete 1 full quest cycle", "Reward: +3 achievement points", 3),
+                    "Complete 3 full quest cycles", "Reward: +3 achievement points", 3),
             new AchievementDefinition("quest_veteran", Material.WRITABLE_BOOK, "Quest Veteran",
-                    "Complete 5 full quest cycles", "Reward: +6 achievement points", 6),
+                    "Complete 15 full quest cycles", "Reward: +6 achievement points", 6),
             new AchievementDefinition("upgrade_mechanic", Material.CRAFTING_TABLE, "Upgrade Mechanic",
-                    "Reach 8 total regular upgrade levels", "Reward: +3 achievement points", 3),
+                    "Reach 20 total regular upgrade levels", "Reward: +3 achievement points", 3),
             new AchievementDefinition("shear_specialist", Material.SHEARS, "Shear Specialist",
-                    "Reach Shear Shop level 5", "Reward: +4 achievement points", 4),
+                    "Reach Shear Shop level 15", "Reward: +4 achievement points", 4),
             new AchievementDefinition("prestige_initiate", Material.NETHER_STAR, "Prestige Initiate",
-                    "Gain 1 total prestige level", "Reward: +4 achievement points", 4),
+                    "Gain 3 total prestige levels", "Reward: +4 achievement points", 4),
             new AchievementDefinition("prestige_veteran", Material.BEACON, "Prestige Veteran",
-                    "Gain 25 total prestige levels", "Reward: +7 achievement points", 7),
+                    "Gain 100 total prestige levels", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_online", Material.REDSTONE, "Automation Online",
-                    "Unlock 1 automation track", "Reward: +4 achievement points", 4),
+                    "Unlock 2 automation tracks", "Reward: +4 achievement points", 4),
             new AchievementDefinition("automation_matrix", Material.COMPARATOR, "Automation Matrix",
                     "Unlock all automation tracks", "Reward: +8 achievement points", 8),
             new AchievementDefinition("sacrifice_initiate", Material.TOTEM_OF_UNDYING, "Sacrifice Initiate",
-                    "Buy 1 sacrifice unlock", "Reward: +4 achievement points", 4),
+                    "Buy 2 sacrifice unlocks", "Reward: +4 achievement points", 4),
             new AchievementDefinition("sacrifice_mastery", Material.NETHERITE_INGOT, "Sacrifice Mastery",
                     "Buy 5 sacrifice unlocks", "Reward: +6 achievement points", 6),
             new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
-                    "Rebirth 1 time", "Reward: +6 achievement points", 6),
+                    "Rebirth 3 times", "Reward: +6 achievement points", 6),
             new AchievementDefinition("rainbow_ascension", Material.PRISMARINE_CRYSTALS, "Rainbow Ascension",
-                    "Reach Rainbow tier T2", "Reward: +6 achievement points", 6),
+                    "Reach Rainbow tier T4", "Reward: +6 achievement points", 6),
             new AchievementDefinition("tutorial_mastery", Material.TARGET, "Tutorial Mastery",
                     "Complete the tutorial", "Reward: +4 achievement points", 4),
             new AchievementDefinition("layout_designer", Material.ENDER_CHEST, "Layout Designer",
-                    "Set both scoreboard and inventory layouts", "Reward: +5 achievement points", 5),
+                    "Set compact scoreboard, fill quick access, and open socials", "Reward: +5 achievement points", 5),
             new AchievementDefinition("socials_explorer", Material.PLAYER_HEAD, "Socials Explorer",
-                    "Open the socials menu", "Reward: +5 achievement points", 5),
+                    "Open socials and complete the tutorial", "Reward: +5 achievement points", 5),
             new AchievementDefinition("quick_access_curator", Material.COMPASS, "Quick Access Curator",
-                    "Fill all quick access slots", "Reward: +6 achievement points", 6),
+                    "Fill quick access and enable casting", "Reward: +6 achievement points", 6),
             new AchievementDefinition("quest_engineer", Material.CLOCK, "Quest Engineer",
-                    "Reach level 5 in both quest upgrades", "Reward: +5 achievement points", 5),
+                    "Reach level 10 in both quest upgrades", "Reward: +5 achievement points", 5),
             new AchievementDefinition("combo_champion", Material.BLAZE_POWDER, "Combo Champion",
-                    "Reach combo max upgrade level 5", "Reward: +5 achievement points", 5),
+                    "Reach combo max upgrade level 15", "Reward: +5 achievement points", 5),
             new AchievementDefinition("egg_cap_collector", Material.EGG, "Egg Cap Collector",
-                    "Reach prestige egg cap level 5", "Reward: +6 achievement points", 6),
+                    "Reach prestige egg cap level 10", "Reward: +6 achievement points", 6),
             new AchievementDefinition("spawn_architect", Material.SPAWNER, "Spawn Architect",
-                    "Reach base spawn tier level 5", "Reward: +6 achievement points", 6),
+                    "Reach base spawn tier level 8", "Reward: +6 achievement points", 6),
             new AchievementDefinition("prestige_planner", Material.NETHER_STAR, "Prestige Planner",
-                    "Reach quest reward level 5", "Reward: +7 achievement points", 7),
+                    "Reach quest reward level 18", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_specialist", Material.REPEATER, "Automation Specialist",
-                    "Unlock 3 automation tracks", "Reward: +7 achievement points", 7),
+                    "Unlock 5 automation tracks", "Reward: +7 achievement points", 7),
             new AchievementDefinition("rebirth_architect", Material.DRAGON_HEAD, "Rebirth Architect",
-                    "Reach rebirth level 3", "Reward: +10 achievement points", 10),
+                    "Reach rebirth level 10", "Reward: +10 achievement points", 10),
             new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
                     "Reach the maximum sheep limit", "Reward: +8 achievement points", 8),
             new AchievementDefinition("wool_guardian", Material.SHIELD, "Wool Guardian",
@@ -3625,41 +3625,44 @@ public final class SheepMergeManager {
             return false;
         }
         return switch (achievementId) {
-            case "first_shear" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 1;
-            case "wool_tycoon" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 100;
-            case "first_hatch" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 1;
-            case "breeder" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 250;
-            case "pair_maker" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 50;
-            case "fusion_engine" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 500;
-            case "quest_cadet" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 1;
-            case "quest_veteran" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 5;
+            case "first_shear" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 10;
+            case "wool_tycoon" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 1000;
+            case "first_hatch" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 10;
+            case "breeder" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 2000;
+            case "pair_maker" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 250;
+            case "fusion_engine" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 2500;
+            case "quest_cadet" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 3;
+            case "quest_veteran" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 15;
             case "upgrade_mechanic" -> (extraLimitByPlayer.getOrDefault(playerId, 0)
                     + eggSpeedLevelByPlayer.getOrDefault(playerId, 0)
                     + woolRegenLevelByPlayer.getOrDefault(playerId, 0)
-                    + higherTierChanceLevelByPlayer.getOrDefault(playerId, 0)) >= 8;
-            case "shear_specialist" -> getShearShopLevel(player) >= 5;
-            case "prestige_initiate" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 1;
-            case "prestige_veteran" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 25;
-            case "automation_online" -> getUnlockedAutomationCount(player) >= 1;
+                    + higherTierChanceLevelByPlayer.getOrDefault(playerId, 0)) >= 20;
+            case "shear_specialist" -> getShearShopLevel(player) >= 15;
+            case "prestige_initiate" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 3;
+            case "prestige_veteran" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 100;
+            case "automation_online" -> getUnlockedAutomationCount(player) >= 2;
             case "automation_matrix" -> getUnlockedAutomationCount(player) >= 6;
-            case "sacrifice_initiate" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "sacrifice_initiate" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 2;
             case "sacrifice_mastery" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 5;
-            case "reborn" -> getRebirthLevel(player) >= 1;
-            case "rainbow_ascension" -> highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0) >= 2;
+            case "reborn" -> getRebirthLevel(player) >= 3;
+            case "rainbow_ascension" -> highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0) >= 4;
             case "tutorial_mastery" -> tutorialCompletedByPlayer.getOrDefault(playerId, false);
             case "layout_designer" -> getScoreboardLayoutMode(player) == 1
-                    && getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS;
-            case "socials_explorer" -> socialsPageByPlayer.containsKey(playerId);
+                    && getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
+                    && socialsPageByPlayer.containsKey(playerId);
+            case "socials_explorer" -> socialsPageByPlayer.containsKey(playerId)
+                    && tutorialCompletedByPlayer.getOrDefault(playerId, false);
             case "quick_access_curator" ->
-                getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS;
+                getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
+                        && inventoryQuickAccessCastingEnabledByPlayer.getOrDefault(playerId, false);
             case "quest_engineer" ->
-                getQuestUpgradeDurationLevel(player) >= 5 && getQuestUpgradePowerLevel(player) >= 5;
-            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 5;
-            case "egg_cap_collector" -> getPrestigeEggCapLevel(player) >= 5;
-            case "spawn_architect" -> getBaseSpawnTierLevel(player) >= 5;
-            case "prestige_planner" -> getPrestigeQuestRewardLevel(player) >= 5;
-            case "automation_specialist" -> getUnlockedAutomationCount(player) >= 3;
-            case "rebirth_architect" -> getRebirthLevel(player) >= 3;
+                getQuestUpgradeDurationLevel(player) >= 10 && getQuestUpgradePowerLevel(player) >= 10;
+            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 15;
+            case "egg_cap_collector" -> getPrestigeEggCapLevel(player) >= 10;
+            case "spawn_architect" -> getBaseSpawnTierLevel(player) >= 8;
+            case "prestige_planner" -> getPrestigeQuestRewardLevel(player) >= 18;
+            case "automation_specialist" -> getUnlockedAutomationCount(player) >= 5;
+            case "rebirth_architect" -> getRebirthLevel(player) >= 10;
             case "sheep_limit_master" -> getPlayerLimit(player) >= getMaxSheepLimit(playerId);
             case "wool_guardian" -> getWoolRegenLevel(player) >= getWoolRegenMaxLevel(player);
             default -> false;
