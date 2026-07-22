@@ -813,7 +813,7 @@ public final class SheepMergeManager {
                     "Reach quest reward level 5", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_specialist", Material.REPEATER, "Automation Specialist",
                     "Unlock 3 automation tracks", "Reward: +7 achievement points", 7),
-            new AchievementDefinition("rebirth_architect", Material.DRAGON_EGG, "Rebirth Architect",
+            new AchievementDefinition("rebirth_architect", Material.DRAGON_HEAD, "Rebirth Architect",
                     "Reach rebirth level 3", "Reward: +10 achievement points", 10),
             new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
                     "Reach the maximum sheep limit", "Reward: +8 achievement points", 8),
