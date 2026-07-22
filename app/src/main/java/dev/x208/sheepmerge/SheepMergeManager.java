@@ -10698,11 +10698,11 @@ public final class SheepMergeManager {
     }
 
     private static ItemStack createAchievementsMenuOpenItem() {
-        ItemStack banner = new ItemStack(Material.RED_BANNER, 1);
+        ItemStack banner = new ItemStack(Material.GREEN_BANNER, 1);
         ItemMeta rawMeta = banner.getItemMeta();
         if (!(rawMeta instanceof BannerMeta bannerMeta)) {
             return MenuItemFactory.create(
-                    Material.RED_BANNER,
+                    Material.GREEN_BANNER,
                     "Achievements",
                     List.of(
                             "Framework: active",
@@ -10717,16 +10717,22 @@ public final class SheepMergeManager {
                 "Click to open"));
         bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
                 DyeColor.WHITE,
-                resolveWhiteStarPatternType()));
+                resolvePatternType("SKULL", PatternType.CROSS)));
+        bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
+                DyeColor.WHITE,
+                resolvePatternType("BORDER", PatternType.STRIPE_TOP)));
+        bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
+                DyeColor.WHITE,
+                resolvePatternType("CURLY_BORDER", PatternType.STRIPE_BOTTOM)));
         banner.setItemMeta(bannerMeta);
         return banner;
     }
 
-    private static PatternType resolveWhiteStarPatternType() {
+    private static PatternType resolvePatternType(String patternName, PatternType fallback) {
         try {
-            return PatternType.valueOf("STAR");
+            return PatternType.valueOf(patternName);
         } catch (IllegalArgumentException ignored) {
-            return PatternType.CROSS;
+            return fallback;
         }
     }
 
