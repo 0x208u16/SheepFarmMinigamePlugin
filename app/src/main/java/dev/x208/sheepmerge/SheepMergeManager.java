@@ -538,6 +538,8 @@ public final class SheepMergeManager {
     private static FileConfiguration farmLayoutConfig;
     private static File farmLayoutFile;
     private static File farmStructureCacheDirectory;
+    private static final Object FARM_STRUCTURE_CACHE_REFRESH_LOCK = new Object();
+    private static long lastFarmStructureCacheRefreshAtMs = 0L;
     private static long nextRandomEventRollAtMs = 0L;
     private static long sheepRainEventEndsAtMs = 0L;
     private static long nextSheepRainSpawnAtMs = 0L;
@@ -924,6 +926,20 @@ public final class SheepMergeManager {
         return saved;
     }
 
+    public static void warmFarmWorldStructureCacheOnStartup() {
+        if (plugin == null) {
+            return;
+        }
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            World buildWorld = SheepFarmWorldCommand.ensureFarmBuildWorld();
+            if (!isFarmBuildWorld(buildWorld)) {
+                return;
+            }
+            refreshFarmWorldStructureCache();
+        });
+    }
+
     public static boolean prepareTransientWorldStructure(String worldName) {
         if (plugin == null || worldName == null || worldName.isBlank() || farmStructureCacheDirectory == null
                 || !farmStructureCacheDirectory.exists() || isFarmBuildWorldName(worldName)) {
@@ -954,6 +970,25 @@ public final class SheepMergeManager {
     }
 
     public static boolean refreshFarmWorldStructureCache() {
+        return refreshFarmWorldStructureCache(true);
+    }
+
+    public static boolean refreshFarmWorldStructureCacheAfterBuildWorldSave() {
+        return refreshFarmWorldStructureCache(false);
+    }
+
+    public static void refreshFarmWorldStructureCacheAfterBuildWorldSaveIfStale(long minIntervalMs) {
+        long threshold = Math.max(0L, minIntervalMs);
+        synchronized (FARM_STRUCTURE_CACHE_REFRESH_LOCK) {
+            long now = System.currentTimeMillis();
+            if (now - lastFarmStructureCacheRefreshAtMs < threshold) {
+                return;
+            }
+        }
+        refreshFarmWorldStructureCacheAfterBuildWorldSave();
+    }
+
+    private static boolean refreshFarmWorldStructureCache(boolean saveBuildWorldFirst) {
         if (plugin == null || farmStructureCacheDirectory == null) {
             return false;
         }
@@ -964,7 +999,9 @@ public final class SheepMergeManager {
             return false;
         }
 
-        buildWorld.save();
+        if (saveBuildWorldFirst) {
+            buildWorld.save();
+        }
 
         File tempDirectory = new File(plugin.getDataFolder(), "farm-structure-cache.tmp");
         try {
@@ -979,6 +1016,9 @@ public final class SheepMergeManager {
             if (!tempDirectory.renameTo(farmStructureCacheDirectory)) {
                 copyWorldDirectory(tempDirectory.toPath(), farmStructureCacheDirectory.toPath());
                 deleteDirectory(tempDirectory.toPath());
+            }
+            synchronized (FARM_STRUCTURE_CACHE_REFRESH_LOCK) {
+                lastFarmStructureCacheRefreshAtMs = System.currentTimeMillis();
             }
             return true;
         } catch (IOException exception) {
@@ -5379,11 +5419,21 @@ public final class SheepMergeManager {
             tutorialCompletedByPlayer.put(playerId, true);
             clearTutorialRuntimeState(playerId);
             migrateTutorialSheepToFarmWorld(playerId);
-            boolean teleported = SheepFarmWorldCommand.teleportToFarmWorld(player);
-            if (teleported) {
+            String worldName = SheepFarmWorldCommand.getWorldName(playerId);
+            SheepFarmWorldCommand.ensureFarmWorldAsync(worldName, world -> {
+                if (player == null || !player.isOnline()) {
+                    return;
+                }
+                if (world == null) {
+                    sendTutorialTitle(player, "&aTutorial Complete", "&fRun /sheepmerge to go to your farm");
+                    player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
+                    return;
+                }
+                player.teleportAsync(world.getSpawnLocation().clone().add(0.5D, 0.0D, 0.5D));
                 sendTutorialTitle(player, "&aTutorial Complete", "&fWelcome to your sheep farm");
                 player.sendMessage(action("Tutorial complete! You were sent to your sheep farm."));
-            } else {
+            });
+            if (!player.isOnline()) {
                 sendTutorialTitle(player, "&aTutorial Complete", "&fRun /sheepmerge to go to your farm");
                 player.sendMessage(action("Tutorial complete! Run /sheepmerge to go to your farm."));
             }

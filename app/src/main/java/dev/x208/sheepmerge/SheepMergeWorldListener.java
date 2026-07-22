@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -52,6 +53,15 @@ public class SheepMergeWorldListener implements Listener {
             return;
         }
         SheepMergeManager.restoreTopPointsDisplayAfterRestart(world);
+    }
+
+    @EventHandler
+    public void onWorldSave(WorldSaveEvent event) {
+        World world = event.getWorld();
+        if (!SheepMergeManager.isFarmBuildWorld(world)) {
+            return;
+        }
+        SheepMergeManager.refreshFarmWorldStructureCacheAfterBuildWorldSaveIfStale(1000L);
     }
 
     @EventHandler
