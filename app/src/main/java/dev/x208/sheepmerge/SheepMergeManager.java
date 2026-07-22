@@ -820,7 +820,7 @@ public final class SheepMergeManager {
             new AchievementDefinition("wool_guardian", Material.SHIELD, "Wool Guardian",
                     "Max out wool regen", "Reward: +11 achievement points", 11));
 
-    private static final int ACHIEVEMENT_MILESTONE_COUNT = 17;
+    private static final int ACHIEVEMENT_MILESTONE_COUNT = 26;
     private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = createAchievementMilestones(
             getAchievementPointPool());
 
@@ -832,35 +832,66 @@ public final class SheepMergeManager {
                 new AchievementMilestoneDefinition("points_2", getAchievementMilestoneTarget(total, 2),
                         Material.COAL_BLOCK, "Coal Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_3", getAchievementMilestoneTarget(total, 3),
-                        Material.RAW_COPPER, "Copper Nugget", AchievementMilestoneRewardType.POINTS, 2),
+                        resolveMaterial("COPPER_NUGGET", Material.RAW_COPPER), "Copper Nugget",
+                        AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_4", getAchievementMilestoneTarget(total, 4),
                         Material.COPPER_INGOT, "Copper Ingot", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_5", getAchievementMilestoneTarget(total, 5),
                         Material.COPPER_BLOCK, "Copper Block", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_6", getAchievementMilestoneTarget(total, 6),
-                        Material.IRON_NUGGET, "Iron Nugget", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        resolveMaterial("RAW_COPPER", Material.RAW_COPPER), "Raw Copper",
+                        AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_7", getAchievementMilestoneTarget(total, 7),
-                        Material.IRON_INGOT, "Iron Ingot", AchievementMilestoneRewardType.POINTS, 2),
+                        resolveMaterial("RAW_COPPER_BLOCK", Material.COPPER_BLOCK), "Raw Copper Block",
+                        AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_8", getAchievementMilestoneTarget(total, 8),
-                        Material.IRON_BLOCK, "Iron Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        resolveMaterial("RAW_IRON", Material.IRON_INGOT), "Raw Iron",
+                        AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_9", getAchievementMilestoneTarget(total, 9),
-                        Material.EMERALD, "Emerald", AchievementMilestoneRewardType.POINTS, 2),
+                        resolveMaterial("RAW_IRON_BLOCK", Material.IRON_BLOCK), "Raw Iron Block",
+                        AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_10", getAchievementMilestoneTarget(total, 10),
-                        Material.EMERALD_BLOCK, "Emerald Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.IRON_NUGGET, "Iron Nugget", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_11", getAchievementMilestoneTarget(total, 11),
-                        Material.DIAMOND, "Diamond", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.IRON_INGOT, "Iron Ingot", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_12", getAchievementMilestoneTarget(total, 12),
-                        Material.DIAMOND_BLOCK, "Diamond Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.IRON_BLOCK, "Iron Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_13", getAchievementMilestoneTarget(total, 13),
-                        Material.NETHERITE_SCRAP, "Netherite Scrap", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.LAPIS_LAZULI, "Lapis Lazuli", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_14", getAchievementMilestoneTarget(total, 14),
-                        Material.ANCIENT_DEBRIS, "Ancient Debris", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.LAPIS_BLOCK, "Lapis Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_15", getAchievementMilestoneTarget(total, 15),
-                        Material.NETHERITE_INGOT, "Netherite Ingot", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.REDSTONE, "Redstone", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_16", getAchievementMilestoneTarget(total, 16),
-                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.WOOL_REGEN, 10),
+                        Material.REDSTONE_BLOCK, "Redstone Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_17", getAchievementMilestoneTarget(total, 17),
-                        Material.BEACON, "Beacon", AchievementMilestoneRewardType.POINTS, 10));
+                        Material.EMERALD, "Emerald", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_18", getAchievementMilestoneTarget(total, 18),
+                        Material.EMERALD_BLOCK, "Emerald Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_19", getAchievementMilestoneTarget(total, 19),
+                        Material.DIAMOND, "Diamond", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_20", getAchievementMilestoneTarget(total, 20),
+                        Material.DIAMOND_BLOCK, "Diamond Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_21", getAchievementMilestoneTarget(total, 21),
+                        Material.NETHERITE_SCRAP, "Netherite Scrap", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_22", getAchievementMilestoneTarget(total, 22),
+                        Material.ANCIENT_DEBRIS, "Ancient Debris", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_23", getAchievementMilestoneTarget(total, 23),
+                        Material.NETHERITE_INGOT, "Netherite Ingot", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_24", getAchievementMilestoneTarget(total, 24),
+                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.WOOL_REGEN, 10),
+                new AchievementMilestoneDefinition("points_25", getAchievementMilestoneTarget(total, 25),
+                        Material.BEACON, "Beacon", AchievementMilestoneRewardType.POINTS, 10),
+                new AchievementMilestoneDefinition("points_26", getAchievementMilestoneTarget(total, 26),
+                        Material.COMMAND_BLOCK, "Command Block", AchievementMilestoneRewardType.WOOL_REGEN, 10));
+    }
+
+    private static Material resolveMaterial(String materialName, Material fallback) {
+        if (materialName == null || materialName.isBlank()) {
+            return fallback;
+        }
+        Material resolved = Material.matchMaterial(materialName);
+        return resolved == null ? fallback : resolved;
     }
 
     private static int getAchievementPointPool() {
@@ -890,6 +921,22 @@ public final class SheepMergeManager {
                 { 22, 21, 23, 20, 24, 19, 25 },
                 { 31, 30, 32, 29, 33, 28, 34 },
                 { 40, 39, 41, 38, 42, 37, 43 }
+        };
+        for (int[] row : rows) {
+            for (int slot : row) {
+                slots.add(slot);
+            }
+        }
+        return slots;
+    }
+
+    private static List<Integer> getAchievementMilestoneGridSlots() {
+        List<Integer> slots = new ArrayList<>();
+        int[][] rows = {
+                { 10, 11, 12, 13, 14, 15, 16 },
+                { 19, 20, 21, 22, 23, 24, 25 },
+                { 28, 29, 30, 31, 32, 33, 34 },
+                { 38, 39, 40, 41, 42 }
         };
         for (int[] row : rows) {
             for (int slot : row) {
@@ -10992,7 +11039,7 @@ public final class SheepMergeManager {
                                 ? "Next unlock: " + nextTarget + " AP"
                                 : "All milestones unlocked")));
 
-        List<Integer> slots = getAchievementGridSlots();
+        List<Integer> slots = getAchievementMilestoneGridSlots();
         for (int index = 0; index < ACHIEVEMENT_MILESTONE_DEFINITIONS.size(); index++) {
             if (index >= slots.size()) {
                 break;

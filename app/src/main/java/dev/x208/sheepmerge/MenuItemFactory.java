@@ -7,12 +7,10 @@ import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.block.banner.Pattern;
-import org.bukkit.block.banner.PatternType;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.BannerMeta;
+import org.bukkit.inventory.meta.ShieldMeta;
 
 final class MenuItemFactory {
 
@@ -47,9 +45,9 @@ final class MenuItemFactory {
     static ItemStack createShieldWithWhiteBanner(String name, List<String> lore) {
         ItemStack item = create(Material.SHIELD, name, lore, true);
         ItemMeta meta = item.getItemMeta();
-        if (meta instanceof BannerMeta bannerMeta) {
-            bannerMeta.setPatterns(List.of(new Pattern(DyeColor.WHITE, PatternType.STRIPE_TOP)));
-            item.setItemMeta(bannerMeta);
+        if (meta instanceof ShieldMeta shieldMeta) {
+            shieldMeta.setBaseColor(DyeColor.WHITE);
+            item.setItemMeta(shieldMeta);
         }
         return item;
     }
