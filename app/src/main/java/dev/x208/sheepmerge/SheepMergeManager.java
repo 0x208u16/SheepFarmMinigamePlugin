@@ -40,6 +40,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Fence;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -1218,11 +1219,32 @@ public final class SheepMergeManager {
                 if (!border) {
                     continue;
                 }
-                world.getBlockAt(x, FARM_BASE_Y + 1, z).setBlockData(Bukkit.createBlockData(Material.OAK_FENCE), false);
+                world.getBlockAt(x, FARM_BASE_Y + 1, z).setBlockData(createPerimeterFenceData(x, z), false);
                 world.getBlockAt(x, FARM_BASE_Y + 2, z)
                         .setBlockData(Bukkit.createBlockData(Material.WHITE_CARPET), false);
             }
         }
+    }
+
+    private static BlockData createPerimeterFenceData(int x, int z) {
+        Fence fence = (Fence) Bukkit.createBlockData(Material.OAK_FENCE);
+        if (z == FARM_MIN_XZ || z == FARM_MAX_XZ) {
+            if (x > FARM_MIN_XZ) {
+                fence.setFace(org.bukkit.block.BlockFace.WEST, true);
+            }
+            if (x < FARM_MAX_XZ) {
+                fence.setFace(org.bukkit.block.BlockFace.EAST, true);
+            }
+        }
+        if (x == FARM_MIN_XZ || x == FARM_MAX_XZ) {
+            if (z > FARM_MIN_XZ) {
+                fence.setFace(org.bukkit.block.BlockFace.NORTH, true);
+            }
+            if (z < FARM_MAX_XZ) {
+                fence.setFace(org.bukkit.block.BlockFace.SOUTH, true);
+            }
+        }
+        return fence;
     }
 
     private static void clearFarmPlatformBoundingBox(World world) {
