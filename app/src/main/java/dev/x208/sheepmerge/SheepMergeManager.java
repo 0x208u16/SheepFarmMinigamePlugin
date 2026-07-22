@@ -1787,6 +1787,7 @@ public final class SheepMergeManager {
             return;
         }
         farmLayoutConfig = YamlConfiguration.loadConfiguration(farmLayoutFile);
+        normalizeFarmLayoutConfigToDirectBlocks();
     }
 
     private static boolean saveFarmLayout() {
@@ -1803,6 +1804,108 @@ public final class SheepMergeManager {
             plugin.getLogger().warning("Unable to save farm layout: " + exception.getMessage());
             return false;
         }
+    }
+
+    private static void normalizeFarmLayoutConfigToDirectBlocks() {
+        if (farmLayoutConfig == null || !farmLayoutConfig.isConfigurationSection("chunks")
+                || farmLayoutConfig.isConfigurationSection("blocks")) {
+            return;
+        }
+
+        org.bukkit.configuration.ConfigurationSection chunksSection = farmLayoutConfig
+                .getConfigurationSection("chunks");
+        if (chunksSection == null || chunksSection.getKeys(false).isEmpty()) {
+            return;
+        }
+
+        int minY = Math.max(farmLayoutConfig.getInt("world.minY", FARM_MIN_Y), FARM_MIN_Y);
+        int maxY = Math.min(farmLayoutConfig.getInt("world.maxY", FARM_MAX_Y + 1), FARM_MAX_Y + 1);
+        if (minY >= maxY) {
+            return;
+        }
+
+        Map<String, String> directBlocks = new HashMap<>();
+        for (String chunkKey : chunksSection.getKeys(false)) {
+            String chunkPath = "chunks." + chunkKey;
+            int chunkX = farmLayoutConfig.getInt(chunkPath + ".x", Integer.MIN_VALUE);
+            int chunkZ = farmLayoutConfig.getInt(chunkPath + ".z", Integer.MIN_VALUE);
+            if (chunkX == Integer.MIN_VALUE || chunkZ == Integer.MIN_VALUE
+                    || !chunkIntersectsFarmBounds(chunkX, chunkZ)) {
+                continue;
+            }
+
+            List<String> palette = farmLayoutConfig.getStringList(chunkPath + ".palette");
+            String encodedRuns = farmLayoutConfig.getString(chunkPath + ".data", "");
+            if (!palette.isEmpty() && encodedRuns != null && !encodedRuns.isBlank()) {
+                int totalBlocks = (maxY - minY) * 16 * 16;
+                int blockIndex = 0;
+                for (String token : encodedRuns.split(";")) {
+                    if (token == null || token.isBlank() || blockIndex >= totalBlocks) {
+                        continue;
+                    }
+
+                    int separator = token.indexOf('*');
+                    String paletteIndexRaw = separator >= 0 ? token.substring(0, separator) : token;
+                    String runLengthRaw = separator >= 0 ? token.substring(separator + 1) : "1";
+                    int paletteIndex = parseChunkEncodedNumber(paletteIndexRaw, -1);
+                    int runLength = parseChunkEncodedNumber(runLengthRaw, 1);
+                    if (paletteIndex < 0 || paletteIndex >= palette.size() || runLength <= 0) {
+                        continue;
+                    }
+
+                    String serialized = palette.get(paletteIndex);
+                    for (int i = 0; i < runLength && blockIndex < totalBlocks; i++) {
+                        int yOffset = blockIndex / (16 * 16);
+                        int withinLayer = blockIndex % (16 * 16);
+                        int localX = withinLayer / 16;
+                        int localZ = withinLayer % 16;
+                        int worldX = (chunkX << 4) + localX;
+                        int worldZ = (chunkZ << 4) + localZ;
+                        int y = minY + yOffset;
+                        if (worldX >= FARM_MIN_XZ && worldX <= FARM_MAX_XZ && worldZ >= FARM_MIN_XZ
+                                && worldZ <= FARM_MAX_XZ) {
+                            directBlocks.put(keyFor(worldX, y, worldZ), serialized);
+                        }
+                        blockIndex++;
+                    }
+                }
+                continue;
+            }
+
+            int blockIndex = 0;
+            for (int y = minY; y < maxY; y++) {
+                for (int localX = 0; localX < 16; localX++) {
+                    for (int localZ = 0; localZ < 16; localZ++) {
+                        int worldX = (chunkX << 4) + localX;
+                        int worldZ = (chunkZ << 4) + localZ;
+                        if (worldX < FARM_MIN_XZ || worldX > FARM_MAX_XZ || worldZ < FARM_MIN_XZ
+                                || worldZ > FARM_MAX_XZ) {
+                            blockIndex++;
+                            continue;
+                        }
+                        String serialized = farmLayoutConfig.getString(chunkPath + ".blocks." + blockIndex);
+                        if (serialized != null && !serialized.isBlank()) {
+                            directBlocks.put(keyFor(worldX, y, worldZ), serialized);
+                        }
+                        blockIndex++;
+                    }
+                }
+            }
+        }
+
+        if (directBlocks.isEmpty()) {
+            return;
+        }
+
+        farmLayoutConfig.set("version", 3);
+        farmLayoutConfig.set("world.minY", FARM_MIN_Y);
+        farmLayoutConfig.set("world.maxY", FARM_MAX_Y + 1);
+        farmLayoutConfig.set("chunks", null);
+        farmLayoutConfig.set("blocks", null);
+        for (Map.Entry<String, String> entry : directBlocks.entrySet()) {
+            farmLayoutConfig.set("blocks." + entry.getKey(), entry.getValue());
+        }
+        saveFarmLayout();
     }
 
     public static NamespacedKey getTierKey() {
