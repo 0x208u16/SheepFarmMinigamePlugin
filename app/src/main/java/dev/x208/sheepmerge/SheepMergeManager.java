@@ -273,6 +273,8 @@ public final class SheepMergeManager {
     private static final String FARM_BUILD_WORLD_NAME = "sheepfarm_build";
     private static final double FARM_CENTER_X = 0.5D;
     private static final double FARM_CENTER_Z = 0.5D;
+    private static final int FARM_WORLD_RADIUS_CHUNKS = 5;
+    private static final int FARM_WORLD_RADIUS_BLOCKS = FARM_WORLD_RADIUS_CHUNKS * 16;
     private static final int FARM_MIN_XZ = -5;
     private static final int FARM_MAX_XZ = 6;
     private static final int FARM_RADIUS = Math.max(Math.abs(FARM_MIN_XZ), Math.abs(FARM_MAX_XZ));
@@ -793,6 +795,22 @@ public final class SheepMergeManager {
         return FARM_RADIUS;
     }
 
+    public static int getFarmWorldRadiusChunks() {
+        return FARM_WORLD_RADIUS_CHUNKS;
+    }
+
+    public static double getFarmWorldCenterX() {
+        return FARM_CENTER_X;
+    }
+
+    public static double getFarmWorldCenterZ() {
+        return FARM_CENTER_Z;
+    }
+
+    public static double getFarmWorldBorderSizeBlocks() {
+        return FARM_WORLD_RADIUS_BLOCKS * 2.0D;
+    }
+
     public static int getFarmBaseY() {
         return FARM_BASE_Y;
     }
@@ -854,6 +872,20 @@ public final class SheepMergeManager {
             maxChunkX = Math.floorDiv(FARM_MAX_XZ, 16);
             minChunkZ = Math.floorDiv(FARM_MIN_XZ, 16);
             maxChunkZ = Math.floorDiv(FARM_MAX_XZ, 16);
+        }
+        int minAllowedChunkX = Math.floorDiv((int) Math.floor(FARM_CENTER_X - FARM_WORLD_RADIUS_BLOCKS), 16);
+        int maxAllowedChunkX = Math.floorDiv((int) Math.floor(FARM_CENTER_X + FARM_WORLD_RADIUS_BLOCKS), 16);
+        int minAllowedChunkZ = Math.floorDiv((int) Math.floor(FARM_CENTER_Z - FARM_WORLD_RADIUS_BLOCKS), 16);
+        int maxAllowedChunkZ = Math.floorDiv((int) Math.floor(FARM_CENTER_Z + FARM_WORLD_RADIUS_BLOCKS), 16);
+        minChunkX = Math.max(minChunkX, minAllowedChunkX);
+        maxChunkX = Math.min(maxChunkX, maxAllowedChunkX);
+        minChunkZ = Math.max(minChunkZ, minAllowedChunkZ);
+        maxChunkZ = Math.min(maxChunkZ, maxAllowedChunkZ);
+        if (minChunkX > maxChunkX || minChunkZ > maxChunkZ) {
+            minChunkX = minAllowedChunkX;
+            maxChunkX = maxAllowedChunkX;
+            minChunkZ = minAllowedChunkZ;
+            maxChunkZ = maxAllowedChunkZ;
         }
         int minX = minChunkX << 4;
         int maxX = (maxChunkX << 4) + 15;

@@ -2174,6 +2174,12 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         world.setThundering(false);
         world.setWeatherDuration(0);
         world.setClearWeatherDuration(Integer.MAX_VALUE);
+        world.getWorldBorder().setCenter(
+                SheepMergeManager.getFarmWorldCenterX(),
+                SheepMergeManager.getFarmWorldCenterZ());
+        world.getWorldBorder().setSize(SheepMergeManager.getFarmWorldBorderSizeBlocks());
+        world.getWorldBorder().setWarningDistance(0);
+        world.getWorldBorder().setWarningTime(0);
     }
 
     private static Location getConfiguredFarmTeleportLocation(World world) {
