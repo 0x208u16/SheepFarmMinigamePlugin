@@ -42,7 +42,7 @@ final class MenuItemFactory {
     }
 
     static ItemStack createShieldWithWhiteBanner(String name, List<String> lore) {
-        ItemStack item = create(Material.SHIELD, name, lore, true);
+        ItemStack item = create(Material.SHIELD, name, lore, false);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             try {
