@@ -1642,11 +1642,11 @@ public final class SheepMergeManager {
             worldsByName.put(world.getName(), world);
         }
 
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online == null || !online.isOnline() || !hasUnlockedFarm(online)) {
+        for (UUID ownerId : collectKnownFarmOwnerIds()) {
+            if (ownerId == null) {
                 continue;
             }
-            String worldName = SheepFarmWorldCommand.getWorldName(online.getUniqueId());
+            String worldName = SheepFarmWorldCommand.getWorldName(ownerId);
             World farmWorld = SheepFarmWorldCommand.ensureFarmWorld(worldName);
             if (farmWorld == null || isTutorialWorld(farmWorld)) {
                 continue;
@@ -1655,6 +1655,33 @@ public final class SheepMergeManager {
         }
 
         return new ArrayList<>(worldsByName.values());
+    }
+
+    private static Set<UUID> collectKnownFarmOwnerIds() {
+        Set<UUID> ownerIds = new HashSet<>();
+        addKnownFarmOwners(ownerIds, pointsByPlayer.keySet());
+        addKnownFarmOwners(ownerIds, tutorialCompletedByPlayer.keySet());
+        addKnownFarmOwners(ownerIds, tutorialBypassedByPlayer.keySet());
+        addKnownFarmOwners(ownerIds, savedFarmSheepByPlayer.keySet());
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null || !online.isOnline()) {
+                continue;
+            }
+            ownerIds.add(online.getUniqueId());
+        }
+        ownerIds.removeIf(id -> id == null || !hasUnlockedFarm(id));
+        return ownerIds;
+    }
+
+    private static void addKnownFarmOwners(Set<UUID> sink, Collection<UUID> source) {
+        if (sink == null || source == null || source.isEmpty()) {
+            return;
+        }
+        for (UUID id : source) {
+            if (id != null) {
+                sink.add(id);
+            }
+        }
     }
 
     public static void saveBuildWorldIfIdle() {
