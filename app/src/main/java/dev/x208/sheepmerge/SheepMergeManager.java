@@ -6118,9 +6118,7 @@ public final class SheepMergeManager {
 
         captureLiveSheepSnapshotsForLoadedWorlds();
         saveData();
-        if (hasSavedFarmLayout()) {
-            saveFarmLayout();
-        }
+        captureFarmLayoutSnapshotForBackup();
 
         File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
         if (!backupDir.exists() && !backupDir.mkdirs()) {
@@ -6180,9 +6178,7 @@ public final class SheepMergeManager {
 
         captureLiveSheepSnapshotsForLoadedWorlds();
         saveData();
-        if (hasSavedFarmLayout()) {
-            saveFarmLayout();
-        }
+        captureFarmLayoutSnapshotForBackup();
 
         File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
         if (!backupDir.exists() && !backupDir.mkdirs()) {
@@ -6211,6 +6207,24 @@ public final class SheepMergeManager {
                 continue;
             }
             saveSheepSnapshotForWorld(world);
+        }
+    }
+
+    private static void captureFarmLayoutSnapshotForBackup() {
+        if (plugin == null || plugin.getServer() == null) {
+            return;
+        }
+
+        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
+        if (isFarmBuildWorld(buildWorld)) {
+            if (!saveSharedFarmLayoutFromWorld(buildWorld) && hasSavedFarmLayout()) {
+                saveFarmLayout();
+            }
+            return;
+        }
+
+        if (hasSavedFarmLayout()) {
+            saveFarmLayout();
         }
     }
 
@@ -6361,6 +6375,11 @@ public final class SheepMergeManager {
         for (World world : plugin.getServer().getWorlds()) {
             if (isSheepFarmWorld(world)) {
                 rebuildFarmWorld(world);
+                continue;
+            }
+            if (isFarmBuildWorld(world)) {
+                applyFarmLayout(world);
+                world.save();
             }
         }
 
