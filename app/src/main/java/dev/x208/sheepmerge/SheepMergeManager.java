@@ -9358,13 +9358,11 @@ public final class SheepMergeManager {
         Inventory inventory = Bukkit.createInventory(null, 27, UPGRADE_MENU_TITLE);
         inventory.setItem(4, MenuItemFactory.create(
                 Material.BOOK,
-                "Upgrade Guide",
+                "Layouts",
                 List.of(
-                        "Quick order:",
-                        "1) Sheep Limit or Egg Speed",
-                        "2) Wool Regen",
-                        "3) Tier Chance",
-                        "Keep points for utility unlocks")));
+                        "Scoreboard and inventory layout",
+                        "Configure quick-access hotbar",
+                        "Click to open")));
         int limitLevel = getLimitUpgradeLevel(player);
         int currentLimit = getPlayerLimit(player);
         int maxLimit = getMaxSheepLimit(player.getUniqueId());
@@ -9625,6 +9623,14 @@ public final class SheepMergeManager {
         if (player == null || inventory == null) {
             return;
         }
+        setMenuItemIfChanged(inventory, 4, MenuItemFactory.create(
+                Material.BOOK,
+                "Layouts",
+                List.of(
+                        "Scoreboard and inventory layout",
+                        "Configure quick-access hotbar",
+                        "Click to open")));
+
         int limitLevel = getLimitUpgradeLevel(player);
         int currentLimit = getPlayerLimit(player);
         int maxLimit = getMaxSheepLimit(player.getUniqueId());
@@ -10709,6 +10715,10 @@ public final class SheepMergeManager {
             return;
         }
         switch (slot) {
+            case 4 -> {
+                openUniversalLayoutMenu(player);
+                return;
+            }
             case LIMIT_UPGRADE_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.BUY_REGULAR_UPGRADE,
                         "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade")) {

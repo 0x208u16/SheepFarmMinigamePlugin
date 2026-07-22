@@ -20,7 +20,6 @@ import dev.x208.sheepmerge.commands.SetPrestigeCommandModule;
 import dev.x208.sheepmerge.commands.SetQuestPointsCommandModule;
 import dev.x208.sheepmerge.commands.SheepMergeCommandModule;
 import dev.x208.sheepmerge.commands.ShopCommandModule;
-import dev.x208.sheepmerge.commands.ScoreboardCommandModule;
 import dev.x208.sheepmerge.commands.StatsCommandModule;
 import dev.x208.sheepmerge.commands.StatusCommandModule;
 import dev.x208.sheepmerge.commands.StormCommandModule;
@@ -73,7 +72,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "upgrade",
             "prestige",
             "shop",
-            "scoreboard",
             "top",
             "visit",
             "kick",
@@ -136,7 +134,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new UpgradeCommandModule(this::handleUpgradeCommand, this::tabCompleteNone),
             new PrestigeCommandModule(this::handlePrestigeCommand, this::tabCompleteNone),
             new ShopCommandModule(this::handleShopCommand, this::tabCompleteNone),
-            new ScoreboardCommandModule(this::handleScoreboardCommand, this::tabCompleteNone),
             new TopCommandModule(this::handleTopCommand, this::tabCompleteNone),
             new VisitCommandModule(this::handleVisitCommand, this::tabCompleteVisit),
             new KickCommandModule(this::handleKickCommand, this::tabCompleteKick),
@@ -181,7 +178,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge upgrade") + ": open upgrade menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge prestige") + ": open prestige menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge shop") + ": open shop menu");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge scoreboard") + ": scoreboard settings menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge top") + ": show top players by points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge status") + ": view your current stats");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit <player>") + ": visit another open farm");
@@ -258,13 +254,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                             + ": move the leaderboard to explicit coordinates");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge leaderboard remove")
                     + ": remove the leaderboard display and clear the saved location");
-            return;
-        }
-
-        if (topic.equalsIgnoreCase("scoreboard")) {
-            player.sendMessage(ChatColor.DARK_AQUA + "Scoreboard hints:");
-            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge scoreboard")
-                    + ": open scoreboard layout/toggle menu");
             return;
         }
 
@@ -478,14 +467,6 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private boolean handleShopCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("shop")) {
             SheepMergeManager.openShopMenu(player);
-            return true;
-        }
-        return false;
-    }
-
-    private boolean handleScoreboardCommand(Player player, String[] args) {
-        if (args.length == 1 && args[0].equalsIgnoreCase("scoreboard")) {
-            SheepMergeManager.openScoreboardMenu(player);
             return true;
         }
         return false;
