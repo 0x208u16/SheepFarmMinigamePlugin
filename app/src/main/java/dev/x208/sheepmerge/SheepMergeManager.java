@@ -802,15 +802,19 @@ public final class SheepMergeManager {
     }
 
     public static double getFarmWorldCenterX() {
-        return FARM_CENTER_X;
+        int minBlockX = (-FARM_LAYOUT_SAVE_CHUNK_HALF_SPAN) << 4;
+        int maxBlockX = (((-FARM_LAYOUT_SAVE_CHUNK_HALF_SPAN) + FARM_LAYOUT_SAVE_CHUNK_SPAN - 1) << 4) + 15;
+        return (minBlockX + maxBlockX) / 2.0D;
     }
 
     public static double getFarmWorldCenterZ() {
-        return FARM_CENTER_Z;
+        int minBlockZ = (-FARM_LAYOUT_SAVE_CHUNK_HALF_SPAN) << 4;
+        int maxBlockZ = (((-FARM_LAYOUT_SAVE_CHUNK_HALF_SPAN) + FARM_LAYOUT_SAVE_CHUNK_SPAN - 1) << 4) + 15;
+        return (minBlockZ + maxBlockZ) / 2.0D;
     }
 
     public static double getFarmWorldBorderSizeBlocks() {
-        return FARM_WORLD_RADIUS_BLOCKS * 2.0D;
+        return FARM_LAYOUT_SAVE_CHUNK_SPAN * 16.0D;
     }
 
     public static int getFarmBaseY() {
