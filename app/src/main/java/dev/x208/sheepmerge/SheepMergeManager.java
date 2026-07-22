@@ -437,7 +437,7 @@ public final class SheepMergeManager {
     public static final String AUTOMATION_MENU_TITLE = "Automation Upgrades";
     public static final String ACHIEVEMENTS_MENU_TITLE = "Achievements";
     public static final String ACHIEVEMENTS_VIEW_MENU_TITLE = "Achievement List";
-    public static final String ACHIEVEMENTS_UPGRADES_MENU_TITLE = "Achievement Upgrades";
+    public static final String ACHIEVEMENTS_UPGRADES_MENU_TITLE = "Achievement Milestones";
     public static final String SACRIFICE_MENU_TITLE = "Sacrifice Unlocks";
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
@@ -695,6 +695,11 @@ public final class SheepMergeManager {
         }
     }
 
+    private enum AchievementMilestoneRewardType {
+        POINTS,
+        WOOL_REGEN
+    }
+
     private static final class AchievementDefinition {
         private final String id;
         private final Material material;
@@ -719,15 +724,22 @@ public final class SheepMergeManager {
         private final int requiredPoints;
         private final Material material;
         private final String name;
+        private final AchievementMilestoneRewardType rewardType;
+        private final int rewardMultiplier;
         private final String reward;
 
         private AchievementMilestoneDefinition(String id, int requiredPoints, Material material, String name,
-                String reward) {
+                AchievementMilestoneRewardType rewardType, int rewardMultiplier) {
             this.id = id;
             this.requiredPoints = Math.max(0, requiredPoints);
             this.material = material;
             this.name = name;
-            this.reward = reward;
+            this.rewardType = rewardType;
+            this.rewardMultiplier = Math.max(1, rewardMultiplier);
+            this.reward = switch (this.rewardType) {
+                case POINTS -> "Bonus: x" + this.rewardMultiplier + " points";
+                case WOOL_REGEN -> "Bonus: x" + this.rewardMultiplier + " wool regen speed";
+            };
         }
     }
 
@@ -781,21 +793,105 @@ public final class SheepMergeManager {
             new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
                     "Rebirth 1 time", "Reward: +6 achievement points", 6),
             new AchievementDefinition("rainbow_ascension", Material.PRISMARINE_CRYSTALS, "Rainbow Ascension",
-                    "Reach Rainbow tier T2", "Reward: +6 achievement points", 6));
+                    "Reach Rainbow tier T2", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("tutorial_mastery", Material.TARGET, "Tutorial Mastery",
+                    "Complete the tutorial", "Reward: +4 achievement points", 4),
+            new AchievementDefinition("layout_designer", Material.ENDER_CHEST, "Layout Designer",
+                    "Set both scoreboard and inventory layouts", "Reward: +5 achievement points", 5),
+            new AchievementDefinition("socials_explorer", Material.PLAYER_HEAD, "Socials Explorer",
+                    "Open the socials menu", "Reward: +5 achievement points", 5),
+            new AchievementDefinition("quick_access_curator", Material.COMPASS, "Quick Access Curator",
+                    "Fill all quick access slots", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("quest_engineer", Material.CLOCK, "Quest Engineer",
+                    "Reach level 5 in both quest upgrades", "Reward: +5 achievement points", 5),
+            new AchievementDefinition("combo_champion", Material.BLAZE_POWDER, "Combo Champion",
+                    "Reach combo max upgrade level 5", "Reward: +5 achievement points", 5),
+            new AchievementDefinition("egg_cap_collector", Material.EGG, "Egg Cap Collector",
+                    "Reach prestige egg cap level 5", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("spawn_architect", Material.SPAWNER, "Spawn Architect",
+                    "Reach base spawn tier level 5", "Reward: +6 achievement points", 6),
+            new AchievementDefinition("prestige_planner", Material.NETHER_STAR, "Prestige Planner",
+                    "Reach quest reward level 5", "Reward: +7 achievement points", 7),
+            new AchievementDefinition("automation_specialist", Material.COMPARATOR, "Automation Specialist",
+                    "Unlock 3 automation tracks", "Reward: +7 achievement points", 7),
+            new AchievementDefinition("rebirth_architect", Material.DRAGON_EGG, "Rebirth Architect",
+                    "Reach rebirth level 3", "Reward: +10 achievement points", 10),
+            new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
+                    "Reach the maximum sheep limit", "Reward: +8 achievement points", 8),
+            new AchievementDefinition("wool_guardian", Material.WHITE_WOOL, "Wool Guardian",
+                    "Max out wool regen", "Reward: +11 achievement points", 11));
 
-    private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = List.of(
-            new AchievementMilestoneDefinition("points_10", 10, Material.COPPER_INGOT,
-                    "Bronze Shepherd", "Milestone reached at 10 achievement points"),
-            new AchievementMilestoneDefinition("points_20", 20, Material.IRON_INGOT,
-                    "Silver Shepherd", "Milestone reached at 20 achievement points"),
-            new AchievementMilestoneDefinition("points_35", 35, Material.GOLD_INGOT,
-                    "Gold Shepherd", "Milestone reached at 35 achievement points"),
-            new AchievementMilestoneDefinition("points_50", 50, Material.DIAMOND,
-                    "Diamond Shepherd", "Milestone reached at 50 achievement points"),
-            new AchievementMilestoneDefinition("points_65", 65, Material.NETHERITE_SCRAP,
-                    "Mythic Shepherd", "Milestone reached at 65 achievement points"),
-            new AchievementMilestoneDefinition("points_80", 80, Material.NETHER_STAR,
-                    "SheepMerge Legend", "Milestone reached at 80 achievement points"));
+    private static final int ACHIEVEMENT_MILESTONE_COUNT = 17;
+    private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = createAchievementMilestones(
+            getAchievementPointPool());
+
+    private static List<AchievementMilestoneDefinition> createAchievementMilestones(int totalAchievementPoints) {
+        int total = Math.max(0, totalAchievementPoints);
+        return List.of(
+                new AchievementMilestoneDefinition("points_1", getAchievementMilestoneTarget(total, 1),
+                        Material.COAL, "Coal", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_2", getAchievementMilestoneTarget(total, 2),
+                        Material.COAL_BLOCK, "Coal Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_3", getAchievementMilestoneTarget(total, 3),
+                        Material.RAW_COPPER, "Copper Nugget", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_4", getAchievementMilestoneTarget(total, 4),
+                        Material.COPPER_INGOT, "Copper Ingot", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_5", getAchievementMilestoneTarget(total, 5),
+                        Material.COPPER_BLOCK, "Copper Block", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_6", getAchievementMilestoneTarget(total, 6),
+                        Material.IRON_NUGGET, "Iron Nugget", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_7", getAchievementMilestoneTarget(total, 7),
+                        Material.IRON_INGOT, "Iron Ingot", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_8", getAchievementMilestoneTarget(total, 8),
+                        Material.IRON_BLOCK, "Iron Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_9", getAchievementMilestoneTarget(total, 9),
+                        Material.EMERALD, "Emerald", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_10", getAchievementMilestoneTarget(total, 10),
+                        Material.EMERALD_BLOCK, "Emerald Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_11", getAchievementMilestoneTarget(total, 11),
+                        Material.DIAMOND, "Diamond", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_12", getAchievementMilestoneTarget(total, 12),
+                        Material.DIAMOND_BLOCK, "Diamond Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_13", getAchievementMilestoneTarget(total, 13),
+                        Material.NETHERITE_SCRAP, "Netherite Scrap", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_14", getAchievementMilestoneTarget(total, 14),
+                        Material.ANCIENT_DEBRIS, "Ancient Debris", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                new AchievementMilestoneDefinition("points_15", getAchievementMilestoneTarget(total, 15),
+                        Material.NETHERITE_INGOT, "Netherite Ingot", AchievementMilestoneRewardType.POINTS, 2),
+                new AchievementMilestoneDefinition("points_16", getAchievementMilestoneTarget(total, 16),
+                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.WOOL_REGEN, 10),
+                new AchievementMilestoneDefinition("points_17", getAchievementMilestoneTarget(total, 17),
+                        Material.BEACON, "Beacon", AchievementMilestoneRewardType.POINTS, 10));
+    }
+
+    private static int getAchievementPointPool() {
+        int total = 0;
+        for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
+            total = addSaturated(total, definition.achievementPoints);
+        }
+        return total;
+    }
+
+    private static int getAchievementMilestoneTarget(int totalAchievementPoints, int milestoneIndex) {
+        int total = Math.max(0, totalAchievementPoints);
+        int count = Math.max(1, ACHIEVEMENT_MILESTONE_COUNT);
+        int index = Math.max(1, Math.min(count, milestoneIndex));
+        if (total <= 0) {
+            return index;
+        }
+        int target = (int) Math.ceil(total * (index / (double) count));
+        return Math.max(index, Math.min(total, target));
+    }
+
+    private static List<Integer> getAchievementGridSlots() {
+        List<Integer> slots = new ArrayList<>();
+        for (int rowStart = 10; rowStart <= 37; rowStart += 9) {
+            for (int offset = 0; offset < 8; offset++) {
+                slots.add(rowStart + offset);
+            }
+        }
+        return slots;
+    }
 
     private static final List<QuickAccessDefinition> QUICK_ACCESS_DEFINITIONS = List.of(
             new QuickAccessDefinition("menu_quest", Material.WRITABLE_BOOK, "Open Quest Abilities",
@@ -3414,6 +3510,70 @@ public final class SheepMergeManager {
         return highest;
     }
 
+    private static int getAchievementPointMultiplier(Player player) {
+        if (player == null) {
+            return 1;
+        }
+        return Math.max(1,
+                getAchievementMilestoneMultiplier(player.getUniqueId(), AchievementMilestoneRewardType.POINTS));
+    }
+
+    private static double getAchievementWoolRegenSpeedMultiplier(Player player) {
+        return player == null ? 1.0D : getAchievementWoolRegenSpeedMultiplier(player.getUniqueId());
+    }
+
+    private static double getAchievementWoolRegenSpeedMultiplier(UUID playerId) {
+        return Math.max(1.0D, getAchievementMilestoneMultiplier(playerId, AchievementMilestoneRewardType.WOOL_REGEN));
+    }
+
+    private static int getAchievementMilestoneMultiplier(UUID playerId, AchievementMilestoneRewardType rewardType) {
+        if (playerId == null || rewardType == null) {
+            return 1;
+        }
+        long multiplier = 1L;
+        Set<String> unlockedMilestones = getUnlockedAchievementMilestoneIds(playerId);
+        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
+            if (!unlockedMilestones.contains(milestone.id) || milestone.rewardType != rewardType) {
+                continue;
+            }
+            multiplier *= Math.max(1, milestone.rewardMultiplier);
+            if (multiplier >= Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
+            }
+        }
+        return (int) multiplier;
+    }
+
+    private static void applyAchievementWoolRegenBonusToActiveCooldowns(Player player, double oldMultiplier,
+            double newMultiplier) {
+        if (player == null || plugin == null || oldMultiplier <= 0.0D || newMultiplier <= oldMultiplier) {
+            return;
+        }
+
+        double ratio = oldMultiplier / newMultiplier;
+        long now = System.currentTimeMillis();
+        UUID ownerId = player.getUniqueId();
+
+        for (World world : plugin.getServer().getWorlds()) {
+            if (!isSheepFarmWorld(world) || !ownerId.equals(getOwnerId(world))) {
+                continue;
+            }
+            for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
+                if (sheep == null || !sheep.isValid() || sheep.isDead() || !sheep.isSheared()) {
+                    continue;
+                }
+                long nextEatAt = getNextEatTimestamp(sheep);
+                if (nextEatAt <= now) {
+                    continue;
+                }
+                long remaining = nextEatAt - now;
+                long reducedRemaining = Math.max(1L, (long) Math.ceil(remaining * ratio));
+                setNextEatTimestamp(sheep, now + reducedRemaining);
+                updateSheepName(sheep);
+            }
+        }
+    }
+
     private static boolean hasMetAchievementCondition(Player player, UUID playerId, String achievementId) {
         if (player == null || playerId == null || achievementId == null) {
             return false;
@@ -3440,6 +3600,22 @@ public final class SheepMergeManager {
             case "sacrifice_mastery" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 5;
             case "reborn" -> getRebirthLevel(player) >= 1;
             case "rainbow_ascension" -> highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0) >= 2;
+            case "tutorial_mastery" -> tutorialCompletedByPlayer.getOrDefault(playerId, false);
+            case "layout_designer" -> getScoreboardLayoutMode(player) == 1
+                    && getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS;
+            case "socials_explorer" -> socialsPageByPlayer.containsKey(playerId);
+            case "quick_access_curator" ->
+                getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS;
+            case "quest_engineer" ->
+                getQuestUpgradeDurationLevel(player) >= 5 && getQuestUpgradePowerLevel(player) >= 5;
+            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 5;
+            case "egg_cap_collector" -> getPrestigeEggCapLevel(player) >= 5;
+            case "spawn_architect" -> getBaseSpawnTierLevel(player) >= 5;
+            case "prestige_planner" -> getPrestigeQuestRewardLevel(player) >= 5;
+            case "automation_specialist" -> getUnlockedAutomationCount(player) >= 3;
+            case "rebirth_architect" -> getRebirthLevel(player) >= 3;
+            case "sheep_limit_master" -> getPlayerLimit(player) >= getMaxSheepLimit(playerId);
+            case "wool_guardian" -> getWoolRegenLevel(player) >= getWoolRegenMaxLevel(player);
             default -> false;
         };
     }
@@ -3455,8 +3631,7 @@ public final class SheepMergeManager {
                 50,
                 10);
         player.sendMessage(action("Achievement unlocked: " + definition.name
-                + " &7("
-                + definition.achievementPoints + " AP, total " + totalPoints + " AP)"));
+                + " &7(" + definition.reward + ", total " + totalPoints + " AP)"));
         playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.2f);
     }
 
@@ -3473,7 +3648,8 @@ public final class SheepMergeManager {
                 55,
                 10);
         player.sendMessage(action("Milestone unlocked: " + milestone.name
-                + " &7(" + milestone.requiredPoints + " AP reached, total " + totalPoints + " AP)"));
+                + " &7(" + milestone.reward + ", " + milestone.requiredPoints + " AP reached, total " + totalPoints
+                + " AP)"));
         playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 0.9f, 1.25f);
     }
 
@@ -3484,6 +3660,7 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         Set<String> unlockedAchievements = getOrCreateUnlockedAchievementIds(playerId);
         Set<String> unlockedMilestones = getOrCreateUnlockedAchievementMilestoneIds(playerId);
+        double previousWoolMultiplier = getAchievementWoolRegenSpeedMultiplier(playerId);
         boolean changed = false;
 
         for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
@@ -3508,6 +3685,11 @@ public final class SheepMergeManager {
             if (notify) {
                 notifyAchievementMilestoneUnlocked(player, milestone, achievementPoints);
             }
+        }
+
+        double newWoolMultiplier = getAchievementWoolRegenSpeedMultiplier(playerId);
+        if (newWoolMultiplier > previousWoolMultiplier) {
+            applyAchievementWoolRegenBonusToActiveCooldowns(player, previousWoolMultiplier, newWoolMultiplier);
         }
 
         if (changed) {
@@ -4578,7 +4760,8 @@ public final class SheepMergeManager {
 
     public static int getShearPointMultiplier(Player player) {
         int level = getShearShopLevel(player);
-        return level + 1;
+        long multiplier = (long) (level + 1) * getAchievementPointMultiplier(player);
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, multiplier));
     }
 
     public static BigInteger getShearUpgradeCost(Player player) {
@@ -6272,6 +6455,7 @@ public final class SheepMergeManager {
         int regenLevel = getWoolRegenLevel(sheep.getWorld());
         double multiplier = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, regenLevel);
         UUID ownerId = getOwnerId(sheep.getWorld());
+        multiplier /= getAchievementWoolRegenSpeedMultiplier(ownerId);
         if (hasActiveRebirthSkill(ownerId, REBIRTH_SKILL_WOOL_REGEN_X10)) {
             multiplier *= 0.1D;
         }
@@ -9725,13 +9909,13 @@ public final class SheepMergeManager {
 
         int woolLevel = getWoolRegenLevel(player);
         int woolMaxLevel = getWoolRegenMaxLevel(player);
-        String woolCurrentCooldownPercent = getWoolCooldownPercentDisplayAtLevel(woolLevel);
-        String woolCurrentReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolLevel);
-        String woolCurrentFactor = getWoolCooldownFactorDisplayAtLevel(woolLevel);
+        String woolCurrentCooldownPercent = getWoolCooldownPercentDisplayAtLevel(player, woolLevel);
+        String woolCurrentReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(player, woolLevel);
+        String woolCurrentFactor = getWoolCooldownFactorDisplayAtLevel(player, woolLevel);
         int woolNextLevel = Math.min(woolMaxLevel, woolLevel + 1);
-        String woolNextCooldownPercent = getWoolCooldownPercentDisplayAtLevel(woolNextLevel);
-        String woolNextReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolNextLevel);
-        String woolNextFactor = getWoolCooldownFactorDisplayAtLevel(woolNextLevel);
+        String woolNextCooldownPercent = getWoolCooldownPercentDisplayAtLevel(player, woolNextLevel);
+        String woolNextReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(player, woolNextLevel);
+        String woolNextFactor = getWoolCooldownFactorDisplayAtLevel(player, woolNextLevel);
         BigInteger woolCost = getWoolRegenUpgradeCost(player);
         inventory.setItem(WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.WHITE_WOOL,
@@ -9982,13 +10166,13 @@ public final class SheepMergeManager {
 
         int woolLevel = getWoolRegenLevel(player);
         int woolMaxLevel = getWoolRegenMaxLevel(player);
-        String woolCurrentCooldownPercent = getWoolCooldownPercentDisplayAtLevel(woolLevel);
-        String woolCurrentReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolLevel);
-        String woolCurrentFactor = getWoolCooldownFactorDisplayAtLevel(woolLevel);
+        String woolCurrentCooldownPercent = getWoolCooldownPercentDisplayAtLevel(player, woolLevel);
+        String woolCurrentReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(player, woolLevel);
+        String woolCurrentFactor = getWoolCooldownFactorDisplayAtLevel(player, woolLevel);
         int woolNextLevel = Math.min(woolMaxLevel, woolLevel + 1);
-        String woolNextCooldownPercent = getWoolCooldownPercentDisplayAtLevel(woolNextLevel);
-        String woolNextReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(woolNextLevel);
-        String woolNextFactor = getWoolCooldownFactorDisplayAtLevel(woolNextLevel);
+        String woolNextCooldownPercent = getWoolCooldownPercentDisplayAtLevel(player, woolNextLevel);
+        String woolNextReductionPercent = getWoolCooldownReductionPercentDisplayAtLevel(player, woolNextLevel);
+        String woolNextFactor = getWoolCooldownFactorDisplayAtLevel(player, woolNextLevel);
         BigInteger woolCost = getWoolRegenUpgradeCost(player);
         setMenuItemIfChanged(inventory, WOOL_REGEN_UPGRADE_SLOT, MenuItemFactory.create(
                 Material.WHITE_WOOL,
@@ -10710,6 +10894,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Unlocked: " + unlockedCount + "/" + totalAchievements,
                         "Achievement points: " + achievementPoints,
+                        "Milestone line: unlock bonuses automatically",
                         nextMilestoneTarget > 0
                                 ? "Next milestone: " + nextMilestoneTarget + " AP"
                                 : "Milestone line complete")));
@@ -10723,9 +10908,9 @@ public final class SheepMergeManager {
 
         inventory.setItem(ACHIEVEMENTS_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ENCHANTED_BOOK,
-                "Achievement Upgrades",
+                "Achievement Milestones",
                 List.of(
-                        "Spend future achievement currency",
+                        "Unlock milestone bonuses with achievement points",
                         "Click to open")));
 
         inventory.setItem(ACHIEVEMENTS_BACK_SLOT, MenuItemFactory.create(
@@ -10744,13 +10929,14 @@ public final class SheepMergeManager {
         Inventory inventory = Bukkit.createInventory(null, 54, ACHIEVEMENTS_VIEW_MENU_TITLE);
         UUID playerId = player.getUniqueId();
         Set<String> unlocked = getUnlockedAchievementIds(playerId);
-        int slot = 10;
-        for (AchievementDefinition achievement : ACHIEVEMENT_DEFINITIONS) {
-            if (slot >= 44) {
+        List<Integer> slots = getAchievementGridSlots();
+        for (int index = 0; index < ACHIEVEMENT_DEFINITIONS.size(); index++) {
+            if (index >= slots.size()) {
                 break;
             }
+            AchievementDefinition achievement = ACHIEVEMENT_DEFINITIONS.get(index);
             boolean unlockedAchievement = unlocked.contains(achievement.id);
-            inventory.setItem(slot, MenuItemFactory.create(
+            inventory.setItem(slots.get(index), MenuItemFactory.create(
                     achievement.material,
                     achievement.name,
                     List.of(
@@ -10758,11 +10944,8 @@ public final class SheepMergeManager {
                             achievement.reward,
                             "Achievement points: +" + achievement.achievementPoints,
                             "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
-                            "Key: " + achievement.id)));
-            slot++;
-            if (slot % 9 == 8) {
-                slot += 2;
-            }
+                            "Key: " + achievement.id),
+                    unlockedAchievement));
         }
 
         inventory.setItem(ACHIEVEMENTS_VIEW_BACK_SLOT, MenuItemFactory.create(
@@ -10777,7 +10960,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        Inventory inventory = Bukkit.createInventory(null, 27, ACHIEVEMENTS_UPGRADES_MENU_TITLE);
+        Inventory inventory = Bukkit.createInventory(null, 54, ACHIEVEMENTS_UPGRADES_MENU_TITLE);
         UUID playerId = player.getUniqueId();
         Set<String> unlockedMilestones = getUnlockedAchievementMilestoneIds(playerId);
         int achievementPoints = getAchievementPoints(playerId);
@@ -10788,27 +10971,30 @@ public final class SheepMergeManager {
                 "Achievement Milestones",
                 List.of(
                         "Current points: " + achievementPoints,
+                        "Unlocked milestones: " + unlockedMilestones.size() + "/"
+                                + ACHIEVEMENT_MILESTONE_DEFINITIONS.size(),
                         nextTarget > 0
                                 ? "Next unlock: " + nextTarget + " AP"
                                 : "All milestones unlocked")));
 
-        int slot = 10;
-        for (AchievementMilestoneDefinition milestone : ACHIEVEMENT_MILESTONE_DEFINITIONS) {
-            if (slot > 16) {
+        List<Integer> slots = getAchievementGridSlots();
+        for (int index = 0; index < ACHIEVEMENT_MILESTONE_DEFINITIONS.size(); index++) {
+            if (index >= slots.size()) {
                 break;
             }
+            AchievementMilestoneDefinition milestone = ACHIEVEMENT_MILESTONE_DEFINITIONS.get(index);
             boolean unlockedMilestone = unlockedMilestones.contains(milestone.id);
-            inventory.setItem(slot, MenuItemFactory.create(
+            inventory.setItem(slots.get(index), MenuItemFactory.create(
                     milestone.material,
                     milestone.name,
                     List.of(
                             "Target: " + milestone.requiredPoints + " achievement points",
                             milestone.reward,
-                            "Status: " + (unlockedMilestone ? "UNLOCKED" : "LOCKED"))));
-            slot++;
+                            "Status: " + (unlockedMilestone ? "UNLOCKED" : "LOCKED")),
+                    unlockedMilestone));
         }
 
-        inventory.setItem(22, MenuItemFactory.create(
+        inventory.setItem(45, MenuItemFactory.create(
                 Material.PAPER,
                 "Milestone Line Progress",
                 List.of(
@@ -11023,7 +11209,7 @@ public final class SheepMergeManager {
                 "Achievements",
                 List.of(
                         "Framework: active",
-                        "Track milestones and claim upgrade paths",
+                        "Track milestones and claim bonuses",
                         "Click to open"));
     }
 
@@ -12953,44 +13139,45 @@ public final class SheepMergeManager {
         return woolRegenLevelByPlayer.getOrDefault(ownerId, 0);
     }
 
-    private static int getWoolCooldownPercentAtLevel(int level) {
+    private static int getWoolCooldownPercentAtLevel(Player player, int level) {
         int normalizedLevel = Math.max(0, level);
-        return Math.max(1, (int) Math.ceil(getWoolCooldownPercentRawAtLevel(normalizedLevel)));
+        return Math.max(1, (int) Math.ceil(getWoolCooldownPercentRawAtLevel(player, normalizedLevel)));
     }
 
-    private static double getWoolCooldownFactorAtLevel(int level) {
+    private static double getWoolCooldownFactorAtLevel(Player player, int level) {
         double factor = Math.pow(WOOL_REGEN_PER_LEVEL_MULTIPLIER, Math.max(0, level));
+        factor /= getAchievementWoolRegenSpeedMultiplier(player);
         if (!Double.isFinite(factor) || factor <= 0.0D) {
             return (100.0D - WOOL_REGEN_MAX_REDUCTION_PERCENT) / 100.0D;
         }
         return Math.max((100.0D - WOOL_REGEN_MAX_REDUCTION_PERCENT) / 100.0D, factor);
     }
 
-    private static double getWoolCooldownPercentRawAtLevel(int level) {
-        return getWoolCooldownFactorAtLevel(level) * 100.0D;
+    private static double getWoolCooldownPercentRawAtLevel(Player player, int level) {
+        return getWoolCooldownFactorAtLevel(player, level) * 100.0D;
     }
 
-    private static double getWoolCooldownReductionPercentRawAtLevel(int level) {
-        return Math.min(WOOL_REGEN_MAX_REDUCTION_PERCENT, 100.0D - getWoolCooldownPercentRawAtLevel(level));
+    private static double getWoolCooldownReductionPercentRawAtLevel(Player player, int level) {
+        return Math.min(WOOL_REGEN_MAX_REDUCTION_PERCENT, 100.0D - getWoolCooldownPercentRawAtLevel(player, level));
     }
 
-    private static String getWoolCooldownPercentDisplayAtLevel(int level) {
+    private static String getWoolCooldownPercentDisplayAtLevel(Player player, int level) {
         return String.format(Locale.ROOT, "%1$." + WOOL_REGEN_PERCENT_DISPLAY_DECIMALS + "f",
-                getWoolCooldownPercentRawAtLevel(level));
+                getWoolCooldownPercentRawAtLevel(player, level));
     }
 
-    private static String getWoolCooldownReductionPercentDisplayAtLevel(int level) {
+    private static String getWoolCooldownReductionPercentDisplayAtLevel(Player player, int level) {
         return String.format(Locale.ROOT, "%1$." + WOOL_REGEN_PERCENT_DISPLAY_DECIMALS + "f",
-                getWoolCooldownReductionPercentRawAtLevel(level));
+                getWoolCooldownReductionPercentRawAtLevel(player, level));
     }
 
-    private static String getWoolCooldownFactorDisplayAtLevel(int level) {
+    private static String getWoolCooldownFactorDisplayAtLevel(Player player, int level) {
         return String.format(Locale.ROOT, "%1$." + WOOL_REGEN_FACTOR_DISPLAY_DECIMALS + "f",
-                getWoolCooldownFactorAtLevel(level));
+                getWoolCooldownFactorAtLevel(player, level));
     }
 
     private static int getWoolCooldownReductionPercentAtLevel(int level) {
-        return Math.min(99, Math.max(0, 100 - getWoolCooldownPercentAtLevel(level)));
+        return Math.min(99, Math.max(0, 100 - getWoolCooldownPercentAtLevel(null, level)));
     }
 
     private static int getDoubledUpgradeCost(int baseCost, int level) {
