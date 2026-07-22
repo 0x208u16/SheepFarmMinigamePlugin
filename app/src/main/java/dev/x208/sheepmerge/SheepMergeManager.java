@@ -10716,13 +10716,13 @@ public final class SheepMergeManager {
                 "Track milestones and claim upgrade paths",
                 "Click to open"));
         bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
-                DyeColor.WHITE,
+                DyeColor.RED,
                 resolvePatternType("SKULL", PatternType.CROSS)));
         bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
-                DyeColor.WHITE,
+                DyeColor.RED,
                 resolvePatternType("BORDER", PatternType.STRIPE_TOP)));
         bannerMeta.addPattern(new org.bukkit.block.banner.Pattern(
-                DyeColor.WHITE,
+                DyeColor.RED,
                 resolvePatternType("CURLY_BORDER", PatternType.STRIPE_BOTTOM)));
         banner.setItemMeta(bannerMeta);
         return banner;
