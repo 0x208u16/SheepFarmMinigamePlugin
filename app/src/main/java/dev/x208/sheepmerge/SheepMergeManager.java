@@ -834,55 +834,60 @@ public final class SheepMergeManager {
         if (minY >= maxY) {
             return false;
         }
-        for (org.bukkit.Chunk chunk : sourceWorld.getLoadedChunks()) {
-            int chunkX = chunk.getX();
-            int chunkZ = chunk.getZ();
-            if (!chunkIntersectsFarmBounds(chunkX, chunkZ)) {
-                continue;
-            }
+        int minChunkX = FARM_MIN_XZ >> 4;
+        int maxChunkX = FARM_MAX_XZ >> 4;
+        int minChunkZ = FARM_MIN_XZ >> 4;
+        int maxChunkZ = FARM_MAX_XZ >> 4;
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                org.bukkit.Chunk chunk = sourceWorld.getChunkAt(chunkX, chunkZ);
+                if (chunk == null) {
+                    continue;
+                }
 
-            String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
-            farmLayoutConfig.set(chunkPath + ".x", chunkX);
-            farmLayoutConfig.set(chunkPath + ".z", chunkZ);
+                String chunkPath = "chunks." + chunkKeyFor(chunkX, chunkZ);
+                farmLayoutConfig.set(chunkPath + ".x", chunkX);
+                farmLayoutConfig.set(chunkPath + ".z", chunkZ);
 
-            List<String> palette = new ArrayList<>();
-            Map<String, Integer> paletteIndices = new HashMap<>();
-            StringBuilder encodedRuns = new StringBuilder();
-            int previousPaletteIndex = -1;
-            int runLength = 0;
+                List<String> palette = new ArrayList<>();
+                Map<String, Integer> paletteIndices = new HashMap<>();
+                StringBuilder encodedRuns = new StringBuilder();
+                int previousPaletteIndex = -1;
+                int runLength = 0;
 
-            for (int y = minY; y < maxY; y++) {
-                for (int localX = 0; localX < 16; localX++) {
-                    for (int localZ = 0; localZ < 16; localZ++) {
-                        int worldX = (chunkX << 4) + localX;
-                        int worldZ = (chunkZ << 4) + localZ;
-                        String serializedBlockData = sourceWorld.getBlockAt(worldX, y, worldZ)
-                                .getBlockData()
-                                .getAsString();
+                for (int y = minY; y < maxY; y++) {
+                    for (int localX = 0; localX < 16; localX++) {
+                        for (int localZ = 0; localZ < 16; localZ++) {
+                            int worldX = (chunkX << 4) + localX;
+                            int worldZ = (chunkZ << 4) + localZ;
+                            String serializedBlockData = sourceWorld.getBlockAt(worldX, y, worldZ)
+                                    .getBlockData()
+                                    .getAsString();
 
-                        Integer paletteIndex = paletteIndices.get(serializedBlockData);
-                        if (paletteIndex == null) {
-                            paletteIndex = palette.size();
-                            palette.add(serializedBlockData);
-                            paletteIndices.put(serializedBlockData, paletteIndex);
-                        }
+                            Integer paletteIndex = paletteIndices.get(serializedBlockData);
+                            if (paletteIndex == null) {
+                                paletteIndex = palette.size();
+                                palette.add(serializedBlockData);
+                                paletteIndices.put(serializedBlockData, paletteIndex);
+                            }
 
-                        if (paletteIndex == previousPaletteIndex) {
-                            runLength++;
-                        } else {
-                            appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
-                            previousPaletteIndex = paletteIndex;
-                            runLength = 1;
+                            if (paletteIndex == previousPaletteIndex) {
+                                runLength++;
+                            } else {
+                                appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
+                                previousPaletteIndex = paletteIndex;
+                                runLength = 1;
+                            }
                         }
                     }
                 }
-            }
 
-            appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
-            farmLayoutConfig.set(chunkPath + ".format", "rle-v1");
-            farmLayoutConfig.set(chunkPath + ".palette", palette);
-            farmLayoutConfig.set(chunkPath + ".data", encodedRuns.toString());
-            farmLayoutConfig.set(chunkPath + ".height", maxY - minY);
+                appendChunkRun(encodedRuns, previousPaletteIndex, runLength);
+                farmLayoutConfig.set(chunkPath + ".format", "rle-v1");
+                farmLayoutConfig.set(chunkPath + ".palette", palette);
+                farmLayoutConfig.set(chunkPath + ".data", encodedRuns.toString());
+                farmLayoutConfig.set(chunkPath + ".height", maxY - minY);
+            }
         }
         return saveFarmLayout();
     }
@@ -986,7 +991,7 @@ public final class SheepMergeManager {
                 int z = state[2];
 
                 Material material = getDefaultFarmMaterialAt(x, y, z);
-                world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), true);
+                world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), false);
                 processed++;
 
                 state[2]++;
@@ -1038,7 +1043,7 @@ public final class SheepMergeManager {
                 BlockData data = (serialized == null || serialized.isBlank())
                         ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
                         : parseBlockData(serialized);
-                world.getBlockAt(x, y, z).setBlockData(data, true);
+                world.getBlockAt(x, y, z).setBlockData(data, false);
                 processed++;
 
                 state[2]++;
@@ -1172,7 +1177,7 @@ public final class SheepMergeManager {
                     }
                 }
 
-                world.getBlockAt(worldX, y, worldZ).setBlockData(data, true);
+                world.getBlockAt(worldX, y, worldZ).setBlockData(data, false);
                 processed++;
             }
 
@@ -1195,9 +1200,9 @@ public final class SheepMergeManager {
                 if (!border) {
                     continue;
                 }
-                world.getBlockAt(x, FARM_BASE_Y + 1, z).setBlockData(Bukkit.createBlockData(Material.OAK_FENCE), true);
+                world.getBlockAt(x, FARM_BASE_Y + 1, z).setBlockData(Bukkit.createBlockData(Material.OAK_FENCE), false);
                 world.getBlockAt(x, FARM_BASE_Y + 2, z)
-                        .setBlockData(Bukkit.createBlockData(Material.WHITE_CARPET), true);
+                        .setBlockData(Bukkit.createBlockData(Material.WHITE_CARPET), false);
             }
         }
     }
@@ -1209,7 +1214,7 @@ public final class SheepMergeManager {
         for (int x = FARM_MIN_XZ; x <= FARM_MAX_XZ; x++) {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
                 for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
-                    world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(Material.AIR), true);
+                    world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(Material.AIR), false);
                 }
             }
         }
@@ -1228,7 +1233,7 @@ public final class SheepMergeManager {
                     BlockData data = (serialized == null || serialized.isBlank())
                             ? Bukkit.createBlockData(getDefaultFarmMaterialAt(x, y, z))
                             : parseBlockData(serialized);
-                    world.getBlockAt(x, y, z).setBlockData(data, true);
+                    world.getBlockAt(x, y, z).setBlockData(data, false);
                 }
             }
         }
@@ -1299,7 +1304,7 @@ public final class SheepMergeManager {
                         int worldX = (chunkX << 4) + localX;
                         int worldZ = (chunkZ << 4) + localZ;
                         int y = minY + yOffset;
-                        world.getBlockAt(worldX, y, worldZ).setBlockData(data, true);
+                        world.getBlockAt(worldX, y, worldZ).setBlockData(data, false);
                         blockIndex++;
                     }
                 }
@@ -1316,7 +1321,7 @@ public final class SheepMergeManager {
                         BlockData data = (serialized == null || serialized.isBlank())
                                 ? Bukkit.createBlockData(Material.AIR)
                                 : parseBlockData(serialized);
-                        world.getBlockAt(worldX, y, worldZ).setBlockData(data, true);
+                        world.getBlockAt(worldX, y, worldZ).setBlockData(data, false);
                         blockIndex++;
                     }
                 }
@@ -1329,7 +1334,7 @@ public final class SheepMergeManager {
             for (int y = FARM_MIN_Y; y <= FARM_MAX_Y; y++) {
                 for (int z = FARM_MIN_XZ; z <= FARM_MAX_XZ; z++) {
                     Material material = getDefaultFarmMaterialAt(x, y, z);
-                    world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), true);
+                    world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), false);
                 }
             }
         }
