@@ -2574,6 +2574,10 @@ public final class SheepMergeManager {
                             "Right-click: cast"));
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
+                if ("menu_socials".equals(definition.id) && meta instanceof SkullMeta skullMeta) {
+                    skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID));
+                    meta = skullMeta;
+                }
                 NamespacedKey key = getQuickAccessActionKey();
                 if (key != null) {
                     meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, definition.id);
