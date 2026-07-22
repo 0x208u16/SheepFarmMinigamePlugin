@@ -523,9 +523,8 @@ public final class SheepMergeManager {
     public static final int INVENTORY_LAYOUT_SELECTED_SLOT = 4;
     public static final int INVENTORY_LAYOUT_BACK_SLOT = 49;
     public static final int SOCIALS_TOP_POINTS_SLOT = 4;
-    public static final int SOCIALS_PREVIOUS_PAGE_SLOT = 0;
-    public static final int SOCIALS_NEXT_PAGE_SLOT = 1;
-    public static final int SOCIALS_AUTHOR_SLOT = 45;
+    public static final int SOCIALS_PREVIOUS_PAGE_SLOT = 45;
+    public static final int SOCIALS_NEXT_PAGE_SLOT = 46;
     public static final int SOCIALS_RETURN_HOME_SLOT = 49;
     public static final int SOCIALS_BACK_SLOT = 53;
     public static final int ACHIEVEMENTS_VIEW_SLOT = 11;
@@ -9532,7 +9531,7 @@ public final class SheepMergeManager {
                                 : "Buy now: +0 rebirth level(s)",
                         "Click to open")));
 
-        inventory.setItem(SOCIALS_MENU_OPEN_SLOT, createAuthorCreditsItem());
+        inventory.setItem(SOCIALS_MENU_OPEN_SLOT, createSocialsMenuOpenItem());
 
         player.openInventory(inventory);
     }
@@ -9795,7 +9794,7 @@ public final class SheepMergeManager {
                                 : "Buy now: +0 rebirth level(s)",
                         "Click to open")));
 
-        setMenuItemIfChanged(inventory, SOCIALS_MENU_OPEN_SLOT, createAuthorCreditsItem());
+        setMenuItemIfChanged(inventory, SOCIALS_MENU_OPEN_SLOT, createSocialsMenuOpenItem());
     }
 
     private static void refreshOpenSocialsMenuItems(Player player, Inventory inventory) {
@@ -10550,8 +10549,6 @@ public final class SheepMergeManager {
                 "Top Points",
                 topLore));
 
-        setMenuItemIfChanged(inventory, SOCIALS_AUTHOR_SLOT, createAuthorCreditsItem());
-
         boolean visitingAnotherFarm = isSheepFarmWorld(player.getWorld()) && !isFarmOwner(player, player.getWorld());
         setMenuItemIfChanged(inventory, SOCIALS_RETURN_HOME_SLOT, MenuItemFactory.create(
                 Material.COMPASS,
@@ -10659,23 +10656,34 @@ public final class SheepMergeManager {
         return head;
     }
 
-    private static ItemStack createAuthorCreditsItem() {
+    private static ItemStack createSocialsMenuOpenItem() {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD, 1);
         ItemMeta rawMeta = head.getItemMeta();
         if (!(rawMeta instanceof SkullMeta skullMeta)) {
-            return MenuItemFactory.create(Material.PLAYER_HEAD, "Author", List.of("0x208u16 (unknown)"));
+            return MenuItemFactory.create(
+                    Material.PLAYER_HEAD,
+                    "Socials",
+                    List.of(
+                            ChatColor.RED + "" + ChatColor.BOLD + "Author:",
+                            ChatColor.YELLOW + "" + ChatColor.ITALIC + "0x208u16 (unknown)"));
         }
 
         OfflinePlayer author = Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID);
         skullMeta.setOwningPlayer(author);
+        skullMeta.setDisplayName("Socials");
+        skullMeta.setLore(List.of(
+                ChatColor.RED + "" + ChatColor.BOLD + "Author:",
+                ChatColor.YELLOW + "" + ChatColor.ITALIC + getAuthorCredentialsText(author)));
+        head.setItemMeta(skullMeta);
+        return head;
+    }
+
+    private static String getAuthorCredentialsText(OfflinePlayer author) {
         String minecraftUsername = author == null ? null : author.getName();
         if (minecraftUsername == null || minecraftUsername.isBlank()) {
             minecraftUsername = "unknown";
         }
-        skullMeta.setDisplayName("Author");
-        skullMeta.setLore(List.of("0x208u16 (" + minecraftUsername + ")"));
-        head.setItemMeta(skullMeta);
-        return head;
+        return "0x208u16 (" + minecraftUsername + ")";
     }
 
     private static UUID getSocialVisitOwnerId(ItemStack itemStack) {
