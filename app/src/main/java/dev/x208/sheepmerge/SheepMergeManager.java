@@ -1278,52 +1278,17 @@ public final class SheepMergeManager {
     }
 
     private static void applyDefaultFarmLayoutAsync(World world, Runnable onComplete) {
-        if (plugin == null || world == null) {
-            applyDefaultFarmLayout(world);
+        if (world == null) {
             if (onComplete != null) {
                 onComplete.run();
             }
             return;
         }
 
-        final int[] state = { FARM_MIN_XZ, FARM_MIN_Y, FARM_MIN_XZ };
-        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
-            if (Bukkit.getWorld(world.getUID()) == null) {
-                task.cancel();
-                if (onComplete != null) {
-                    onComplete.run();
-                }
-                return;
-            }
-
-            int processed = 0;
-            while (state[1] <= FARM_MAX_Y && processed < FARM_LAYOUT_BLOCKS_PER_TICK) {
-                int x = state[0];
-                int y = state[1];
-                int z = state[2];
-
-                Material material = getDefaultFarmMaterialAt(x, y, z);
-                world.getBlockAt(x, y, z).setBlockData(Bukkit.createBlockData(material), false);
-                processed++;
-
-                state[2]++;
-                if (state[2] > FARM_MAX_XZ) {
-                    state[2] = FARM_MIN_XZ;
-                    state[0]++;
-                    if (state[0] > FARM_MAX_XZ) {
-                        state[0] = FARM_MIN_XZ;
-                        state[1]++;
-                    }
-                }
-            }
-
-            if (state[1] > FARM_MAX_Y) {
-                task.cancel();
-                if (onComplete != null) {
-                    onComplete.run();
-                }
-            }
-        }, 1L, 1L);
+        applyDefaultFarmLayout(world);
+        if (onComplete != null) {
+            onComplete.run();
+        }
     }
 
     private static void applySavedBlockLayoutAsync(World world, Runnable onComplete) {
