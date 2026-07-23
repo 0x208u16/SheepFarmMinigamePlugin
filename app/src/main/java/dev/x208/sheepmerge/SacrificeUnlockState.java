@@ -14,7 +14,6 @@ final class SacrificeUnlockState {
 
     private final Map<UUID, Integer> unlocksBoughtByPlayer = new HashMap<>();
     private final Map<UUID, Integer> unlockMaskByPlayer = new HashMap<>();
-    private final Map<UUID, Integer> pendingMaskByPlayer = new HashMap<>();
 
     int getUnlocksBought(UUID playerId) {
         if (playerId == null) {
@@ -34,13 +33,6 @@ final class SacrificeUnlockState {
         return normalizeMask(unlockMaskByPlayer.getOrDefault(playerId, 0));
     }
 
-    int getPendingMask(UUID playerId) {
-        if (playerId == null) {
-            return 0;
-        }
-        return normalizeMask(pendingMaskByPlayer.getOrDefault(playerId, 0));
-    }
-
     boolean hasUnlock(UUID playerId, int unlockId) {
         if (playerId == null || unlockId <= 0) {
             return false;
@@ -53,11 +45,6 @@ final class SacrificeUnlockState {
             return (getUnlockMask(playerId) & unlockBit) != 0;
         }
         return getUnlocksBought(playerId) >= unlockId;
-    }
-
-    boolean isPending(UUID playerId, int unlockId) {
-        int unlockBit = getUnlockBit(unlockId);
-        return playerId != null && unlockBit != 0 && (getPendingMask(playerId) & unlockBit) != 0;
     }
 
     boolean isActive(UUID playerId, int unlockId) {
@@ -84,47 +71,23 @@ final class SacrificeUnlockState {
         unlockMaskByPlayer.put(playerId, getUnlockMask(playerId) | unlockBit);
     }
 
-    void clearPending(UUID playerId) {
-        if (playerId == null) {
-            return;
-        }
-        pendingMaskByPlayer.remove(playerId);
-    }
-
-    boolean refund(UUID playerId) {
-        if (playerId == null) {
-            return false;
-        }
-        int current = getUnlocksBought(playerId);
-        if (current <= 0) {
-            return false;
-        }
-        unlocksBoughtByPlayer.remove(playerId);
-        unlockMaskByPlayer.remove(playerId);
-        pendingMaskByPlayer.remove(playerId);
-        return true;
-    }
-
     void remove(UUID playerId) {
         if (playerId == null) {
             return;
         }
         unlocksBoughtByPlayer.remove(playerId);
         unlockMaskByPlayer.remove(playerId);
-        pendingMaskByPlayer.remove(playerId);
     }
 
     void clear() {
         unlocksBoughtByPlayer.clear();
         unlockMaskByPlayer.clear();
-        pendingMaskByPlayer.clear();
     }
 
     Set<UUID> getTrackedPlayerIds() {
         Set<UUID> playerIds = new HashSet<>();
         playerIds.addAll(unlocksBoughtByPlayer.keySet());
         playerIds.addAll(unlockMaskByPlayer.keySet());
-        playerIds.addAll(pendingMaskByPlayer.keySet());
         return playerIds;
     }
 
@@ -134,16 +97,12 @@ final class SacrificeUnlockState {
         }
         dataConfig.set("sacrificeUnlocksBought", null);
         dataConfig.set("sacrificeUnlockMask", null);
-        dataConfig.set("sacrificeUnlockPendingMask", null);
         for (Map.Entry<UUID, Integer> entry : unlocksBoughtByPlayer.entrySet()) {
             dataConfig.set("sacrificeUnlocksBought." + entry.getKey(),
                     Math.max(0, Math.min(SheepMergeManager.SACRIFICE_UNLOCK_MAX, entry.getValue())));
         }
         for (Map.Entry<UUID, Integer> entry : unlockMaskByPlayer.entrySet()) {
             dataConfig.set("sacrificeUnlockMask." + entry.getKey(), normalizeMask(entry.getValue()));
-        }
-        for (Map.Entry<UUID, Integer> entry : pendingMaskByPlayer.entrySet()) {
-            dataConfig.set("sacrificeUnlockPendingMask." + entry.getKey(), normalizeMask(entry.getValue()));
         }
     }
 
@@ -176,23 +135,11 @@ final class SacrificeUnlockState {
                 }
             });
         }
-        if (dataConfig.isConfigurationSection("sacrificeUnlockPendingMask")) {
-            dataConfig.getConfigurationSection("sacrificeUnlockPendingMask").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    pendingMaskByPlayer.put(uuid,
-                            normalizeMask(dataConfig.getInt("sacrificeUnlockPendingMask." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
         for (Map.Entry<UUID, Integer> entry : unlocksBoughtByPlayer.entrySet()) {
             if (!unlockMaskByPlayer.containsKey(entry.getKey())) {
                 unlockMaskByPlayer.put(entry.getKey(), firstUnlockBits(entry.getValue()));
             }
         }
-        pendingMaskByPlayer.clear();
     }
 
     private static int getUnlockBit(int unlockId) {

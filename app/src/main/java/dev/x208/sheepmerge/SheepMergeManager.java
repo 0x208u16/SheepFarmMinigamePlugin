@@ -516,7 +516,6 @@ public final class SheepMergeManager {
     public static final int SACRIFICE_UNLOCK_SHEAR_RESETS_SLOT = 13;
     public static final int SACRIFICE_UNLOCK_EGG_COOLDOWN_SLOT = 14;
     public static final int SACRIFICE_UNLOCK_MAX_SHEEP_SLOT = 15;
-    public static final int SACRIFICE_REFUND_SLOT = 24;
     public static final int SACRIFICE_BACK_TO_UPGRADES_SLOT = 26;
     public static final int REBIRTH_PROGRESS_SLOT = 4;
     public static final int REBIRTH_ACTION_SLOT = 11;
@@ -2780,7 +2779,7 @@ public final class SheepMergeManager {
     }
 
     private static List<ItemStack> buildQuickAccessHotbarItems(Player player) {
-        if (player == null || !isInventoryQuickAccessCastingEnabled(player)) {
+        if (player == null) {
             return List.of();
         }
         List<String> selectedActions = getInventoryQuickAccessActions(player.getUniqueId());
@@ -2903,6 +2902,9 @@ public final class SheepMergeManager {
         String actionId = getQuickAccessActionId(itemStack);
         if (actionId == null) {
             return false;
+        }
+        if (!isInventoryQuickAccessCastingEnabled(player)) {
+            return true;
         }
         return executeQuickAccessAction(player, actionId);
     }
@@ -3661,7 +3663,7 @@ public final class SheepMergeManager {
                     && tutorialCompletedByPlayer.getOrDefault(playerId, false);
             case "quick_access_curator" ->
                 getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
-                        && inventoryQuickAccessCastingEnabledByPlayer.getOrDefault(playerId, false);
+                    && isInventoryQuickAccessCastingEnabled(playerId);
             case "quest_engineer" ->
                 getQuestUpgradeDurationLevel(player) >= 10 && getQuestUpgradePowerLevel(player) >= 10;
             case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 15;
@@ -4969,14 +4971,6 @@ public final class SheepMergeManager {
         return sacrificeUnlockState.getUnlockMask(playerId);
     }
 
-    private static int getSacrificeUnlockPendingMask(UUID playerId) {
-        return sacrificeUnlockState.getPendingMask(playerId);
-    }
-
-    private static boolean isSacrificeUnlockPending(UUID playerId, int unlockId) {
-        return sacrificeUnlockState.isPending(playerId, unlockId);
-    }
-
     private static boolean isSacrificeUnlockActive(UUID playerId, int unlockId) {
         return sacrificeUnlockState.isActive(playerId, unlockId);
     }
@@ -5088,19 +5082,6 @@ public final class SheepMergeManager {
                 addSaturated(totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0), 1));
         saveData();
         evaluateAchievementProgress(player, true);
-        return true;
-    }
-
-    private static boolean refundSacrificeUnlocks(Player player) {
-        if (player == null) {
-            return false;
-        }
-        UUID playerId = player.getUniqueId();
-        if (!sacrificeUnlockState.refund(playerId)) {
-            return false;
-        }
-        clampUpgradeLevelsToCurrentCaps(playerId);
-        saveData();
         return true;
     }
 
@@ -5516,7 +5497,6 @@ public final class SheepMergeManager {
         prestigeLevelByPlayer.put(playerId, nextPrestige);
         prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
-        sacrificeUnlockState.clearPending(playerId);
 
         runPrestigeResetEffects(player, false);
         saveData();
@@ -7759,8 +7739,7 @@ public final class SheepMergeManager {
             return false;
         }
 
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        File source = new File(backupDir, backupName);
+        File source = resolveBackupArchiveFile(backupName, true);
         if (!source.exists() || !source.isFile() || !source.getName().endsWith(".zip")) {
             return false;
         }
@@ -7773,6 +7752,9 @@ public final class SheepMergeManager {
 
     public static synchronized boolean recoverBackupMarkedForDeletion(String backupName) {
         if (plugin == null || backupName == null || backupName.isBlank()) {
+            return false;
+        }
+        if (!isValidBackupArchiveName(backupName)) {
             return false;
         }
         Map<String, Long> marks = getMarkedBackupsMap();
@@ -7801,7 +7783,6 @@ public final class SheepMergeManager {
             return 0;
         }
 
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
         long now = System.currentTimeMillis();
         int deleted = 0;
         boolean changed = false;
@@ -7810,11 +7791,15 @@ public final class SheepMergeManager {
         while (iterator.hasNext()) {
             Map.Entry<String, Long> entry = iterator.next();
             long markedAt = Math.max(0L, entry.getValue());
+            File target = resolveBackupArchiveFile(entry.getKey(), false);
+            if (target == null) {
+                iterator.remove();
+                changed = true;
+                continue;
+            }
             if (now - markedAt < BACKUP_SOFT_DELETE_GRACE_MS) {
                 continue;
             }
-
-            File target = new File(backupDir, entry.getKey());
             if (!target.exists() || target.delete()) {
                 if (target.exists()) {
                     // No-op fallback; delete may fail and file still exists.
@@ -7837,8 +7822,7 @@ public final class SheepMergeManager {
             return null;
         }
 
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        File source = new File(backupDir, backupName);
+        File source = resolveBackupArchiveFile(backupName, true);
         if (!source.exists() || !source.isFile() || !source.getName().endsWith(".zip")) {
             return null;
         }
@@ -8033,20 +8017,36 @@ public final class SheepMergeManager {
             return false;
         }
 
-        try (FileInputStream fileIn = new FileInputStream(source);
-                ZipInputStream zipIn = new ZipInputStream(fileIn)) {
-            ZipEntry entry;
-            while ((entry = zipIn.getNextEntry()) != null) {
-                String name = entry.getName();
-                if (!("scores.yml".equals(name) || "farm-layout.yml".equals(name) || "config.yml".equals(name))) {
+        Set<String> requiredEntries = Set.of("scores.yml", "farm-layout.yml", "config.yml");
+        Path tempDir = null;
+        try {
+            tempDir = Files.createTempDirectory(dataFolder.toPath(), "backup-restore-");
+            Set<String> restoredEntries = new HashSet<>();
+            try (FileInputStream fileIn = new FileInputStream(source);
+                    ZipInputStream zipIn = new ZipInputStream(fileIn)) {
+                ZipEntry entry;
+                while ((entry = zipIn.getNextEntry()) != null) {
+                    String name = entry.getName();
+                    if (!requiredEntries.contains(name) || entry.isDirectory()) {
+                        zipIn.closeEntry();
+                        continue;
+                    }
+
+                    Path tempTarget = tempDir.resolve(name);
+                    try (OutputStream out = Files.newOutputStream(tempTarget)) {
+                        copyStream(zipIn, out);
+                    }
+                    restoredEntries.add(name);
                     zipIn.closeEntry();
-                    continue;
                 }
-                File target = new File(dataFolder, name);
-                try (FileOutputStream out = new FileOutputStream(target)) {
-                    copyStream(zipIn, out);
-                }
-                zipIn.closeEntry();
+            }
+            if (!restoredEntries.containsAll(requiredEntries)) {
+                return false;
+            }
+
+            for (String name : requiredEntries) {
+                Files.move(tempDir.resolve(name), new File(dataFolder, name).toPath(),
+                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             }
             return true;
         } catch (IOException exception) {
@@ -8054,6 +8054,46 @@ public final class SheepMergeManager {
                 plugin.getLogger().warning("Unable to restore backup archive: " + exception.getMessage());
             }
             return false;
+        } finally {
+            if (tempDir != null) {
+                try {
+                    deleteDirectory(tempDir);
+                } catch (IOException ignored) {
+                    // Best-effort cleanup only.
+                }
+            }
+        }
+    }
+
+    private static boolean isValidBackupArchiveName(String backupName) {
+        return backupName != null
+                && !backupName.isBlank()
+                && backupName.endsWith(".zip")
+                && !backupName.contains("/")
+                && !backupName.contains("\\")
+                && backupName.equals(new File(backupName).getName());
+    }
+
+    private static File resolveBackupArchiveFile(String backupName, boolean requireExisting) {
+        if (plugin == null || !isValidBackupArchiveName(backupName)) {
+            return null;
+        }
+
+        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
+        File candidate = new File(backupDir, backupName);
+        try {
+            File canonicalDir = backupDir.getCanonicalFile();
+            File canonicalCandidate = candidate.getCanonicalFile();
+            File candidateParent = canonicalCandidate.getParentFile();
+            if (candidateParent == null || !candidateParent.equals(canonicalDir)) {
+                return null;
+            }
+            if (requireExisting && !canonicalCandidate.exists()) {
+                return null;
+            }
+            return canonicalCandidate;
+        } catch (IOException exception) {
+            return null;
         }
     }
 
@@ -10179,8 +10219,12 @@ public final class SheepMergeManager {
             refreshOpenPrestigeMenuItems(player, openInventory);
         } else if (isQuestMenuTitle(title)) {
             refreshOpenQuestMenuItems(player, openInventory);
+        } else if (isShopMenuTitle(title)) {
+            refreshOpenShopMenuItems(player, openInventory);
         } else if (isComboShopMenuTitle(title)) {
             refreshOpenComboMenuItems(player, openInventory);
+        } else if (isAutomationMenuTitle(title)) {
+            refreshOpenAutomationMenuItems(player, openInventory);
         } else if (isSocialsMenuTitle(title)) {
             refreshOpenSocialsMenuItems(player, openInventory);
         }
@@ -10571,6 +10615,47 @@ public final class SheepMergeManager {
                         "&aClick: Back")));
     }
 
+        private static void refreshOpenShopMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        int woolSaveLevel = getShearWoolSaveLevel(player);
+        int tierBoostLevel = getShearTierBoostLevel(player);
+        setMenuItemIfChanged(inventory, SHOP_SHEAR_SLOT, MenuItemFactory.create(
+            Material.SHEARS,
+            "Shear Value",
+            List.of(
+                "Level: " + getShearPointGainUpgradeLevel(player),
+                "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
+                "Points: base x" + getShearPointMultiplier(player),
+                "Wool reward scales with level",
+                "Click to purchase")));
+        setMenuItemIfChanged(inventory, SHOP_SHEAR_KEEP_WOOL_SLOT, MenuItemFactory.create(
+            Material.WHITE_WOOL,
+            "Wool Keeper",
+            List.of(
+                "Level: " + woolSaveLevel + " / " + SHEAR_WOOL_SAVE_MAX_LEVEL,
+                "Chance: " + getShearWoolSaveChancePercent(player) + "%",
+                woolSaveLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL
+                    ? "MAXED"
+                    : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " points",
+                "Chance for sheep to keep wool when sheared")));
+        setMenuItemIfChanged(inventory, SHOP_SHEAR_TIER_BOOST_SLOT, MenuItemFactory.create(
+            Material.GLOWSTONE_DUST,
+            "Tier Booster",
+            List.of(
+                "Level: " + tierBoostLevel + " / " + SHEAR_TIER_BOOST_MAX_LEVEL,
+                "Chance: " + getShearTierBoostChancePercent(player) + "%",
+                tierBoostLevel >= SHEAR_TIER_BOOST_MAX_LEVEL
+                    ? "MAXED"
+                    : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " points",
+                "Chance for shearing to upgrade sheep by one tier")));
+        setMenuItemIfChanged(inventory, SHOP_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
+            Material.ARROW,
+            "Back To Upgrades",
+            List.of("Click to go back")));
+        }
+
     private static void refreshOpenComboMenuItems(Player player, Inventory inventory) {
         if (player == null || inventory == null) {
             return;
@@ -10612,6 +10697,197 @@ public final class SheepMergeManager {
                                 : "Cost: " + formatPoints(getComboGainUpgradeCost(player)) + " points",
                         "Click to purchase")));
     }
+
+        private static void refreshOpenAutomationMenuItems(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+        setMenuItemIfChanged(inventory, 4, MenuItemFactory.create(
+            Material.EXPERIENCE_BOTTLE,
+            "Automation Points",
+            List.of(
+                "&7Current: &e" + formatPoints(getAutomationPoints(player)),
+                "&bEarned while farming")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_BUY_SLOT, MenuItemFactory.create(
+            Material.HOPPER,
+            "Auto Buy Upgrades",
+            List.of(
+                "&7Level: &e" + getAutomationAutoBuyUpgradeLevel(player) + " / "
+                    + AUTOMATION_AUTO_BUY_MAX_LEVEL,
+                isAutomationAutoBuyEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                "&7Rate: &b" + (getAutomationAutoBuyIntervalMs(player) <= 0L
+                    ? "instant"
+                    : formatDuration(getAutomationAutoBuyIntervalMs(player))),
+                getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
+                    ? "&6Cost: &aMAXED"
+                    : "&6Cost: &f" + formatPoints(getAutomationAutoBuyUpgradeCost(player)) + " AP",
+                "&fBuys cheap upgrades",
+                getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
+                    ? "&aClick: Maxed"
+                    : "&aClick: Upgrade")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_ABILITY_SLOT, MenuItemFactory.create(
+            Material.BREWING_STAND,
+            "Auto Activate Abilities",
+            List.of(
+                "&7Level: &e" + getAutomationAutoAbilityUpgradeLevel(player) + " / "
+                    + AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
+                isAutomationAutoAbilityEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                "&7Rate: &b"
+                    + (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                        ? "instant"
+                        : formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS)),
+                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                    ? "&6Cost: &aMAXED"
+                    : "&6Cost: &f" + formatPoints(getAutomationAutoAbilityUpgradeCost(player)) + " AP",
+                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                    ? "&fInstant ability refill"
+                    : getAutomationAutoAbilityUpgradeLevel(player) >= 2
+                        ? "&fBuys every missing ability"
+                        : "&fBuys one missing ability",
+                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                    ? "&bFully automatic"
+                    : "&7Upgrade for instant refill",
+                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                    ? "&aClick: Maxed"
+                    : "&aClick: Upgrade")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
+            Material.ANVIL,
+            "Auto Merge",
+            List.of(
+                "&7Level: &e" + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
+                    + AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
+                isAutomationSlowAutoMergeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                "&7Rate: &b" + formatDuration(getAutomationSlowAutoMergeIntervalMs(player)),
+                getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
+                    ? "&6Cost: &aMAXED"
+                    : "&6Cost: &f" + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player))
+                        + " AP",
+                "&fMerges one pair each cycle",
+                getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
+                    ? "&aClick: Maxed"
+                    : "&aClick: Upgrade")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_PRESTIGE_SLOT, MenuItemFactory.create(
+            Material.NETHER_STAR,
+            "Auto Prestige",
+            List.of(
+                "&7Level: &e" + getAutomationAutoPrestigeUpgradeLevel(player) + " / 1",
+                isAutomationAutoPrestigeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                "&7Rate: &b" + formatDuration(AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS),
+                getAutomationAutoPrestigeUpgradeLevel(player) > 0
+                    ? "&6Cost: &aMAXED"
+                    : "&6Cost: &f" + formatPoints(getAutomationAutoPrestigeUpgradeCost(player))
+                        + " AP",
+                "&fPrestiges when affordable",
+                getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Maxed" : "&aClick: Unlock")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_SHEAR_SLOT, MenuItemFactory.create(
+            Material.SHEARS,
+            "Auto Shear",
+            List.of(
+                "&7Level: &e" + getAutomationSlowAutoShearUpgradeLevel(player) + " / "
+                    + AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
+                isAutomationSlowAutoShearEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                "&7Rate: &b" + formatDuration(getAutomationSlowAutoShearIntervalMs(player)),
+                getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
+                    ? "&6Cost: &aMAXED"
+                    : "&6Cost: &f" + formatPoints(getAutomationSlowAutoShearUpgradeCost(player))
+                        + " AP",
+                "&fShears ready sheep each cycle",
+                getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
+                    ? "&aClick: Maxed"
+                    : "&aClick: Upgrade")));
+
+        long autoSpawnInterval = getAutomationAutoSpawnIntervalMs(player);
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_SPAWN_SLOT, MenuItemFactory.create(
+            Material.SHEEP_SPAWN_EGG,
+            "Auto Spawn Sheep",
+            List.of(
+                "&7Level: &e" + getAutomationAutoSpawnUpgradeLevel(player) + " / "
+                    + AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
+                isAutomationAutoSpawnEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                "&7Rate: &b" + (autoSpawnInterval <= 0L ? "instant" : formatDuration(autoSpawnInterval)),
+                "&fDrops sheep from the sky",
+                getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
+                    ? "&6Cost: &aMAXED"
+                    : "&6Cost: &f" + formatPoints(getAutomationAutoSpawnUpgradeCost(player)) + " AP",
+                "&7Uses eggs automatically",
+                getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
+                    ? "&aClick: Maxed"
+                    : "&aClick: Upgrade")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_BUY_TOGGLE_SLOT, MenuItemFactory.create(
+            Material.LEVER,
+            "Toggle Auto Buy",
+            List.of(
+                isAutomationAutoBuyEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                getAutomationAutoBuyUpgradeLevel(player) > 0 ? "&aClick: Toggle" : "&cBuy level 1 first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT, MenuItemFactory.create(
+            Material.LEVER,
+            "Toggle Auto Ability",
+            List.of(
+                isAutomationAutoAbilityEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                getAutomationAutoAbilityUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                    : "&cBuy level 1 first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT, MenuItemFactory.create(
+            Material.LEVER,
+            "Toggle Auto Spawn",
+            List.of(
+                isAutomationAutoSpawnEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                getAutomationAutoSpawnUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                    : "&cBuy level 1 first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT, MenuItemFactory.create(
+            Material.LEVER,
+            "Toggle Auto Merge",
+            List.of(
+                isAutomationSlowAutoMergeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                    : "&cBuy level 1 first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT, MenuItemFactory.create(
+            Material.LEVER,
+            "Toggle Auto Shear",
+            List.of(
+                isAutomationSlowAutoShearEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                    : "&cBuy level 1 first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT, MenuItemFactory.create(
+            Material.LEVER,
+            "Toggle Auto Prestige",
+            List.of(
+                isAutomationAutoPrestigeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                    : "&cBuy level 1 first")));
+
+        int unlockedAutomations = getUnlockedAutomationCount(player);
+        setMenuItemIfChanged(inventory, AUTOMATION_ENABLE_ALL_SLOT, MenuItemFactory.create(
+            Material.LIME_DYE,
+            "Enable All",
+            List.of(
+                "&7Unlocked: &e" + unlockedAutomations + " / 6",
+                unlockedAutomations > 0 ? "&aClick: Enable unlocked tracks"
+                    : "&cUnlock an automation first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_DISABLE_ALL_SLOT, MenuItemFactory.create(
+            Material.GRAY_DYE,
+            "Disable All",
+            List.of(
+                "&7Unlocked: &e" + unlockedAutomations + " / 6",
+                unlockedAutomations > 0 ? "&cClick: Disable unlocked tracks"
+                    : "&cUnlock an automation first")));
+
+        setMenuItemIfChanged(inventory, AUTOMATION_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
+            Material.ARROW,
+            "Back To Upgrades",
+            List.of("Click to go back")));
+        }
 
     private static void setMenuItemIfChanged(Inventory inventory, int slot, ItemStack next) {
         if (inventory == null || slot < 0 || slot >= inventory.getSize()) {
@@ -12304,15 +12580,6 @@ public final class SheepMergeManager {
                         "Raises max sheep limit by +50"),
                 maxSheepUnlocked));
 
-        inventory.setItem(SACRIFICE_REFUND_SLOT, MenuItemFactory.create(
-                Material.MILK_BUCKET,
-                "Reset Sacrifice Unlocks",
-                List.of(
-                        "Resets all sacrifice unlocks",
-                        "Does not refund spent sacrifice points",
-                        "No cooldown, no penalty",
-                        "Click to respec")));
-
         inventory.setItem(SACRIFICE_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back To Upgrades",
@@ -12368,14 +12635,6 @@ public final class SheepMergeManager {
                     player.sendMessage(action("Sacrifice unlock purchased."));
                 } else {
                     player.sendMessage(warning("Not enough sacrifice points."));
-                }
-            }
-            case SACRIFICE_REFUND_SLOT -> {
-                if (refundSacrificeUnlocks(player)) {
-                    playUpgradeSound(player);
-                    player.sendMessage(action("Sacrifice unlocks reset. Spent sacrifice points were not refunded."));
-                } else {
-                    player.sendMessage(warning("No sacrifice unlocks to reset."));
                 }
             }
             case SACRIFICE_BACK_TO_UPGRADES_SLOT -> {
