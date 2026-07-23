@@ -609,6 +609,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("That farm is closed to visitors.");
             return true;
         }
+        if (!player.isOp() && SheepMergeManager.isFarmVisitorBlocked(ownerId, player.getUniqueId())) {
+            player.sendMessage("That farm has blocked your visits.");
+            return true;
+        }
 
         String ownerWorldName = getWorldName(ownerId);
         if (!beginFarmLoadForPlayer(player)) {

@@ -192,6 +192,9 @@ public class SheepMergeWorldListener implements Listener {
                 && !SheepMergeManager.isRebirthTreeMenuTitle(title)
                 && !SheepMergeManager.isSocialsMenuTitle(title)
                 && !SheepMergeManager.isUniversalLayoutMenuTitle(title)
+                && !SheepMergeManager.isSoundEffectsMenuTitle(title)
+                && !SheepMergeManager.isParticleEffectsMenuTitle(title)
+                && !SheepMergeManager.isVisitAccessMenuTitle(title)
                 && !SheepMergeManager.isScoreboardLayoutMenuTitle(title)
                 && !SheepMergeManager.isInventoryLayoutMenuTitle(title)
                 && !SheepMergeManager.isScoreboardMenuTitle(title)) {
@@ -253,6 +256,18 @@ public class SheepMergeWorldListener implements Listener {
         }
         if (SheepMergeManager.isUniversalLayoutMenuTitle(title)) {
             SheepMergeManager.handleUniversalLayoutMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isSoundEffectsMenuTitle(title)) {
+            SheepMergeManager.handleSoundEffectsMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isParticleEffectsMenuTitle(title)) {
+            SheepMergeManager.handleParticleEffectsMenuClick(player, event.getRawSlot());
+            return;
+        }
+        if (SheepMergeManager.isVisitAccessMenuTitle(title)) {
+            SheepMergeManager.handleVisitAccessMenuClick(player, event.getRawSlot(), event.getCurrentItem());
             return;
         }
         if (SheepMergeManager.isScoreboardLayoutMenuTitle(title)) {

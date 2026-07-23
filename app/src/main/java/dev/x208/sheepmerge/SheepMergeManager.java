@@ -109,6 +109,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> tutorialPrestigedOnceByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialShearShopOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialBypassedByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> soundEffectsEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> particleEffectsEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> tutorialStartedAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialTaskTitleTimestampByPlayer = new HashMap<>();
@@ -196,6 +198,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Set<UUID>> farmVisitBlockedUsersByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> visitAccessPageByPlayer = new HashMap<>();
     private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
     private static final SacrificeUnlockState sacrificeUnlockState = new SacrificeUnlockState();
     private static final Map<UUID, Integer> rebirthLevelByPlayer = new HashMap<>();
@@ -449,9 +453,13 @@ public final class SheepMergeManager {
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
     public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
-    public static final String UNIVERSAL_LAYOUT_MENU_TITLE = "Universal Layout";
+    public static final String SETTINGS_MENU_TITLE = "Settings";
+    public static final String UNIVERSAL_LAYOUT_MENU_TITLE = SETTINGS_MENU_TITLE;
     public static final String SCOREBOARD_LAYOUT_MENU_TITLE = "Scoreboard Layout";
     public static final String INVENTORY_LAYOUT_MENU_TITLE = "Inventory Layout";
+    public static final String SOUND_EFFECTS_MENU_TITLE = "Sound Effects";
+    public static final String PARTICLE_EFFECTS_MENU_TITLE = "Particle Effects";
+    public static final String VISIT_ACCESS_MENU_TITLE = "Visit Access";
     public static final String SOCIALS_MENU_TITLE = "Socials";
     public static final int LIMIT_UPGRADE_SLOT = 10;
     public static final int EGG_SPEED_UPGRADE_SLOT = 12;
@@ -535,10 +543,22 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_BACK_SLOT = 26;
     public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 11;
     public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 15;
-    public static final int UNIVERSAL_LAYOUT_BACK_SLOT = 26;
+    public static final int UNIVERSAL_LAYOUT_SOUND_SLOT = 29;
+    public static final int UNIVERSAL_LAYOUT_PARTICLE_SLOT = 31;
+    public static final int UNIVERSAL_LAYOUT_VISIT_SLOT = 33;
+    public static final int UNIVERSAL_LAYOUT_BACK_SLOT = 49;
     public static final int SCOREBOARD_LAYOUT_DETAILED_SLOT = 11;
     public static final int SCOREBOARD_LAYOUT_COMPACT_SLOT = 15;
     public static final int SCOREBOARD_LAYOUT_BACK_SLOT = 26;
+    public static final int SOUND_EFFECTS_TOGGLE_SLOT = 11;
+    public static final int SOUND_EFFECTS_BACK_SLOT = 26;
+    public static final int PARTICLE_EFFECTS_TOGGLE_SLOT = 11;
+    public static final int PARTICLE_EFFECTS_BACK_SLOT = 26;
+    public static final int VISIT_ACCESS_TOGGLE_SLOT = 4;
+    public static final int VISIT_ACCESS_SUMMARY_SLOT = 8;
+    public static final int VISIT_ACCESS_PREVIOUS_PAGE_SLOT = 45;
+    public static final int VISIT_ACCESS_NEXT_PAGE_SLOT = 46;
+    public static final int VISIT_ACCESS_BACK_SLOT = 53;
     public static final int INVENTORY_LAYOUT_SELECTED_SLOT = 4;
     public static final int INVENTORY_LAYOUT_CASTING_TOGGLE_SLOT = 6;
     public static final int INVENTORY_LAYOUT_BACK_SLOT = 49;
@@ -766,70 +786,70 @@ public final class SheepMergeManager {
 
     private static final List<AchievementDefinition> ACHIEVEMENT_DEFINITIONS = List.of(
             new AchievementDefinition("first_shear", Material.SHEARS, "First Cut",
-                "Shear at least 10 sheep", "Reward: +2 achievement points", 2),
+                    "Shear at least 10 sheep", "Reward: +2 achievement points", 2),
             new AchievementDefinition("wool_tycoon", Material.WHITE_WOOL, "Wool Tycoon",
-                "Shear at least 1,000 sheep", "Reward: +4 achievement points", 4),
+                    "Shear at least 1,000 sheep", "Reward: +4 achievement points", 4),
             new AchievementDefinition("first_hatch", Material.SHEEP_SPAWN_EGG, "First Hatch",
-                "Spawn at least 10 sheep", "Reward: +2 achievement points", 2),
+                    "Spawn at least 10 sheep", "Reward: +2 achievement points", 2),
             new AchievementDefinition("breeder", Material.CHICKEN_SPAWN_EGG, "Breeder",
-                "Spawn at least 2,000 sheep", "Reward: +6 achievement points", 6),
+                    "Spawn at least 2,000 sheep", "Reward: +6 achievement points", 6),
             new AchievementDefinition("pair_maker", Material.ANVIL, "Pair Maker",
-                "Merge at least 250 sheep pairs", "Reward: +3 achievement points", 3),
+                    "Merge at least 250 sheep pairs", "Reward: +3 achievement points", 3),
             new AchievementDefinition("fusion_engine", Material.BLAST_FURNACE, "Fusion Engine",
-                "Merge at least 2,500 sheep pairs", "Reward: +7 achievement points", 7),
+                    "Merge at least 2,500 sheep pairs", "Reward: +7 achievement points", 7),
             new AchievementDefinition("quest_cadet", Material.BOOK, "Quest Cadet",
-                "Complete at least 3 full quest cycles", "Reward: +3 achievement points", 3),
+                    "Complete at least 3 full quest cycles", "Reward: +3 achievement points", 3),
             new AchievementDefinition("quest_veteran", Material.WRITABLE_BOOK, "Quest Veteran",
-                "Complete at least 15 full quest cycles", "Reward: +6 achievement points", 6),
+                    "Complete at least 15 full quest cycles", "Reward: +6 achievement points", 6),
             new AchievementDefinition("upgrade_mechanic", Material.CRAFTING_TABLE, "Upgrade Mechanic",
-                "Reach 20 total regular levels (Limit, Egg Speed, Wool Regen, Tier Chance)",
-                "Reward: +3 achievement points", 3),
+                    "Reach 20 total regular levels (Limit, Egg Speed, Wool Regen, Tier Chance)",
+                    "Reward: +3 achievement points", 3),
             new AchievementDefinition("shear_specialist", Material.SHEARS, "Shear Specialist",
-                "Reach Shear Shop value level 15", "Reward: +4 achievement points", 4),
+                    "Reach Shear Shop value level 15", "Reward: +4 achievement points", 4),
             new AchievementDefinition("prestige_initiate", Material.NETHER_STAR, "Prestige Initiate",
-                "Earn at least 3 total prestige levels", "Reward: +4 achievement points", 4),
+                    "Earn at least 3 total prestige levels", "Reward: +4 achievement points", 4),
             new AchievementDefinition("prestige_veteran", Material.BEACON, "Prestige Veteran",
-                "Earn at least 100 total prestige levels", "Reward: +7 achievement points", 7),
+                    "Earn at least 100 total prestige levels", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_online", Material.REDSTONE, "Automation Online",
-                "Unlock at least 2 automation tracks", "Reward: +4 achievement points", 4),
+                    "Unlock at least 2 automation tracks", "Reward: +4 achievement points", 4),
             new AchievementDefinition("automation_matrix", Material.COMPARATOR, "Automation Matrix",
-                "Unlock all 6 automation tracks", "Reward: +8 achievement points", 8),
+                    "Unlock all 6 automation tracks", "Reward: +8 achievement points", 8),
             new AchievementDefinition("sacrifice_initiate", Material.TOTEM_OF_UNDYING, "Sacrifice Initiate",
-                "Buy at least 2 sacrifice unlocks", "Reward: +4 achievement points", 4),
+                    "Buy at least 2 sacrifice unlocks", "Reward: +4 achievement points", 4),
             new AchievementDefinition("sacrifice_mastery", Material.NETHERITE_INGOT, "Sacrifice Mastery",
-                "Buy at least 5 sacrifice unlocks", "Reward: +6 achievement points", 6),
+                    "Buy at least 5 sacrifice unlocks", "Reward: +6 achievement points", 6),
             new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
-                "Reach rebirth level 3", "Reward: +6 achievement points", 6),
+                    "Reach rebirth level 3", "Reward: +6 achievement points", 6),
             new AchievementDefinition("rainbow_ascension", Material.PRISMARINE_CRYSTALS, "Rainbow Ascension",
-                "Reach Rainbow tier T4 or higher", "Reward: +6 achievement points", 6),
+                    "Reach Rainbow tier T4 or higher", "Reward: +6 achievement points", 6),
             new AchievementDefinition("tutorial_mastery", Material.TARGET, "Tutorial Mastery",
                     "Complete the tutorial", "Reward: +4 achievement points", 4),
             new AchievementDefinition("layout_designer", Material.ENDER_CHEST, "Layout Designer",
-                "Set scoreboard to Compact, fill all quick access slots, and open Socials",
-                "Reward: +5 achievement points", 5),
+                    "Set scoreboard to Compact, fill all quick access slots, and open Socials",
+                    "Reward: +5 achievement points", 5),
             new AchievementDefinition("socials_explorer", Material.PLAYER_HEAD, "Socials Explorer",
-                "Visit another player's farm at least once", "Reward: +5 achievement points", 5),
+                    "Visit another player's farm at least once", "Reward: +5 achievement points", 5),
             new AchievementDefinition("quick_access_curator", Material.COMPASS, "Quick Access Curator",
-                "Fill all quick access slots and enable quick-access casting", "Reward: +6 achievement points", 6),
+                    "Fill all quick access slots and enable quick-access casting", "Reward: +6 achievement points", 6),
             new AchievementDefinition("quest_engineer", Material.CLOCK, "Quest Engineer",
-                "Reach level 10 in both quest upgrades (Duration and Power)", "Reward: +5 achievement points",
-                5),
+                    "Reach level 10 in both quest upgrades (Duration and Power)", "Reward: +5 achievement points",
+                    5),
             new AchievementDefinition("combo_champion", Material.BLAZE_POWDER, "Combo Champion",
-                "Reach Combo Max upgrade level 15", "Reward: +5 achievement points", 5),
+                    "Reach Combo Max upgrade level 15", "Reward: +5 achievement points", 5),
             new AchievementDefinition("egg_cap_collector", Material.EGG, "Egg Cap Collector",
-                "Reach prestige Egg Cap level 10", "Reward: +6 achievement points", 6),
+                    "Reach prestige Egg Cap level 10", "Reward: +6 achievement points", 6),
             new AchievementDefinition("spawn_architect", Material.SPAWNER, "Spawn Architect",
-                "Reach Base Spawn Tier level 8", "Reward: +6 achievement points", 6),
+                    "Reach Base Spawn Tier level 8", "Reward: +6 achievement points", 6),
             new AchievementDefinition("prestige_planner", Material.NETHER_STAR, "Prestige Planner",
-                "Reach prestige Quest Reward level 18", "Reward: +7 achievement points", 7),
+                    "Reach prestige Quest Reward level 18", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_specialist", Material.REPEATER, "Automation Specialist",
-                "Unlock at least 5 automation tracks", "Reward: +7 achievement points", 7),
+                    "Unlock at least 5 automation tracks", "Reward: +7 achievement points", 7),
             new AchievementDefinition("rebirth_architect", Material.DRAGON_HEAD, "Rebirth Architect",
                     "Reach rebirth level 10", "Reward: +10 achievement points", 10),
             new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
-                "Reach your current maximum sheep limit", "Reward: +8 achievement points", 8),
+                    "Reach your current maximum sheep limit", "Reward: +8 achievement points", 8),
             new AchievementDefinition("wool_guardian", Material.SHIELD, "Wool Guardian",
-                "Reach your current Wool Regen max level", "Reward: +11 achievement points", 11));
+                    "Reach your current Wool Regen max level", "Reward: +11 achievement points", 11));
 
     private static final int ACHIEVEMENT_MILESTONE_COUNT = 26;
     private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = createAchievementMilestones(
@@ -843,20 +863,20 @@ public final class SheepMergeManager {
                 new AchievementMilestoneDefinition("points_2", getAchievementMilestoneTarget(total, 2),
                         Material.COAL_BLOCK, "Coal Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_3", getAchievementMilestoneTarget(total, 3),
-                    resolveMaterial("RAW_COPPER", Material.RAW_COPPER), MILESTONE_ITEM_NAME_RAW_COPPER,
+                        resolveMaterial("RAW_COPPER", Material.RAW_COPPER), MILESTONE_ITEM_NAME_RAW_COPPER,
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_4", getAchievementMilestoneTarget(total, 4),
-                    resolveMaterial("RAW_COPPER_BLOCK", Material.COPPER_BLOCK),
-                    MILESTONE_ITEM_NAME_RAW_COPPER_BLOCK,
+                        resolveMaterial("RAW_COPPER_BLOCK", Material.COPPER_BLOCK),
+                        MILESTONE_ITEM_NAME_RAW_COPPER_BLOCK,
                         AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_5", getAchievementMilestoneTarget(total, 5),
-                    resolveMaterial("COPPER_NUGGET", Material.GOLD_NUGGET), MILESTONE_ITEM_NAME_COPPER_NUGGET,
+                        resolveMaterial("COPPER_NUGGET", Material.GOLD_NUGGET), MILESTONE_ITEM_NAME_COPPER_NUGGET,
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_6", getAchievementMilestoneTarget(total, 6),
-                    Material.COPPER_INGOT, MILESTONE_ITEM_NAME_COPPER_INGOT,
+                        Material.COPPER_INGOT, MILESTONE_ITEM_NAME_COPPER_INGOT,
                         AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_7", getAchievementMilestoneTarget(total, 7),
-                    Material.COPPER_BLOCK, MILESTONE_ITEM_NAME_COPPER_BLOCK,
+                        Material.COPPER_BLOCK, MILESTONE_ITEM_NAME_COPPER_BLOCK,
                         AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_8", getAchievementMilestoneTarget(total, 8),
                         resolveMaterial("RAW_IRON", Material.IRON_INGOT), "Raw Iron",
@@ -2997,6 +3017,81 @@ public final class SheepMergeManager {
         return next;
     }
 
+    public static boolean areSoundEffectsEnabled(Player player) {
+        return player != null && soundEffectsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static boolean toggleSoundEffects(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        boolean next = !soundEffectsEnabledByPlayer.getOrDefault(playerId, true);
+        soundEffectsEnabledByPlayer.put(playerId, next);
+        saveData();
+        return next;
+    }
+
+    public static boolean areParticleEffectsEnabled(Player player) {
+        return player != null && particleEffectsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static boolean toggleParticleEffects(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        boolean next = !particleEffectsEnabledByPlayer.getOrDefault(playerId, true);
+        particleEffectsEnabledByPlayer.put(playerId, next);
+        saveData();
+        return next;
+    }
+
+    public static Set<UUID> getBlockedFarmVisitors(UUID ownerId) {
+        if (ownerId == null) {
+            return Set.of();
+        }
+        return farmVisitBlockedUsersByPlayer.computeIfAbsent(ownerId, ignored -> new LinkedHashSet<>());
+    }
+
+    public static boolean isFarmVisitorBlocked(UUID ownerId, UUID visitorId) {
+        if (ownerId == null || visitorId == null) {
+            return false;
+        }
+        return getBlockedFarmVisitors(ownerId).contains(visitorId);
+    }
+
+    public static boolean isFarmVisitorBlocked(Player owner, Player visitor) {
+        if (owner == null || visitor == null) {
+            return false;
+        }
+        return isFarmVisitorBlocked(owner.getUniqueId(), visitor.getUniqueId());
+    }
+
+    public static boolean toggleFarmVisitorBlocked(Player owner, UUID visitorId) {
+        if (owner == null || visitorId == null || visitorId.equals(owner.getUniqueId())) {
+            return false;
+        }
+        Set<UUID> blockedVisitors = getBlockedFarmVisitors(owner.getUniqueId());
+        boolean nextBlocked;
+        if (blockedVisitors.contains(visitorId)) {
+            blockedVisitors.remove(visitorId);
+            nextBlocked = false;
+        } else {
+            blockedVisitors.add(visitorId);
+            nextBlocked = true;
+        }
+        saveData();
+        return nextBlocked;
+    }
+
+    public static int getBlockedFarmVisitorCount(UUID ownerId) {
+        if (ownerId == null) {
+            return 0;
+        }
+        return getBlockedFarmVisitors(ownerId).size();
+    }
+
     public static boolean shouldNotifySpawnLimit(Player player) {
         if (player == null) {
             return false;
@@ -3469,8 +3564,14 @@ public final class SheepMergeManager {
         addQuestPoints(player, boostedReward);
         player.sendMessage(action(completionText + ": +" + formatPoints(boostedReward) + " quest points"));
         playSound(player, rewardSound, 1.0f, 1.1f);
-        player.getWorld().spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
-                player.getLocation().add(0, 1.0, 0), 14, 0.35, 0.4, 0.35, 0.02);
+        spawnParticle(player,
+                org.bukkit.Particle.VILLAGER_HAPPY,
+                player.getLocation().add(0, 1.0, 0),
+                14,
+                0.35,
+                0.4,
+                0.35,
+                0.02);
         if (areAllQuestsCompleted(playerId)) {
             completedQuestCyclesByPlayer.put(playerId,
                     addSaturated(completedQuestCyclesByPlayer.getOrDefault(playerId, 0), 1));
@@ -3663,10 +3764,10 @@ public final class SheepMergeManager {
             case "layout_designer" -> getScoreboardLayoutMode(player) == 1
                     && getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
                     && socialsPageByPlayer.containsKey(playerId);
-                case "socials_explorer" -> lifetimeOtherFarmVisitsByPlayer.getOrDefault(playerId, 0) >= 1;
+            case "socials_explorer" -> lifetimeOtherFarmVisitsByPlayer.getOrDefault(playerId, 0) >= 1;
             case "quick_access_curator" ->
                 getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
-                    && isInventoryQuickAccessCastingEnabled(playerId);
+                        && isInventoryQuickAccessCastingEnabled(playerId);
             case "quest_engineer" ->
                 getQuestUpgradeDurationLevel(player) >= 10 && getQuestUpgradePowerLevel(player) >= 10;
             case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 15;
@@ -4424,14 +4525,15 @@ public final class SheepMergeManager {
         setSheepTier(sheep, rollSpawnTier(world));
         sheep.setVelocity(new Vector(0.0D, -0.1D, 0.0D));
 
-        world.spawnParticle(org.bukkit.Particle.CLOUD,
+        spawnParticle(world,
+                org.bukkit.Particle.CLOUD,
                 spawnLocation.clone().add(0.0D, 0.4D, 0.0D),
                 14,
                 0.2D,
                 0.4D,
                 0.2D,
                 0.02D);
-        world.playSound(spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.7f, 1.5f);
+        playSound(world, spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.7f, 1.5f);
     }
 
     private static void tickAutoMergeAbility(Player player, UUID playerId, long now) {
@@ -4621,7 +4723,8 @@ public final class SheepMergeManager {
         }
         initializeMergedSheepAfterMerge(mergedSheep, mergedTier, combinedWoolRegenMs);
         mergedSheep.setVelocity(new Vector(0.0D, 0.18D, 0.0D));
-        world.spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
+        spawnParticle(world,
+                org.bukkit.Particle.VILLAGER_HAPPY,
                 spawnLocation.clone().add(0.0D, 0.5D, 0.0D),
                 10,
                 0.25D,
@@ -4725,14 +4828,15 @@ public final class SheepMergeManager {
             playSound(player, Sound.BLOCK_BEACON_DEACTIVATE, 0.6f, 1.6f);
             return;
         }
-        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 5, 0.25, 0.35, 0.25, 0.01);
+        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 5, 0.25, 0.35, 0.25, 0.01);
     }
 
     private static void emitAbilityAura(Player player, UUID playerId, long now) {
         boolean hasActiveAbility = false;
         if (isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId)) {
             hasActiveAbility = true;
-            player.getWorld().spawnParticle(org.bukkit.Particle.TOTEM,
+            spawnParticle(player,
+                    org.bukkit.Particle.TOTEM,
                     player.getLocation().add(0.0D, 1.1D, 0.0D),
                     2,
                     0.18D,
@@ -4743,7 +4847,8 @@ public final class SheepMergeManager {
 
         if (isAbilityActive(activeWoolRushUntilByPlayer, playerId)) {
             hasActiveAbility = true;
-            player.getWorld().spawnParticle(org.bukkit.Particle.SPORE_BLOSSOM_AIR,
+            spawnParticle(player,
+                    org.bukkit.Particle.SPORE_BLOSSOM_AIR,
                     player.getLocation().add(0.0D, 0.9D, 0.0D),
                     4,
                     0.22D,
@@ -4754,7 +4859,8 @@ public final class SheepMergeManager {
 
         if (isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)) {
             hasActiveAbility = true;
-            player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORKS_SPARK,
+            spawnParticle(player,
+                    org.bukkit.Particle.FIREWORKS_SPARK,
                     player.getLocation().add(0.0D, 1.25D, 0.0D),
                     3,
                     0.25D,
@@ -4765,7 +4871,8 @@ public final class SheepMergeManager {
 
         if (isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId)) {
             hasActiveAbility = true;
-            player.getWorld().spawnParticle(org.bukkit.Particle.WAX_ON,
+            spawnParticle(player,
+                    org.bukkit.Particle.WAX_ON,
                     player.getLocation().add(0.0D, 1.0D, 0.0D),
                     5,
                     0.22D,
@@ -4776,7 +4883,8 @@ public final class SheepMergeManager {
 
         if (isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)) {
             hasActiveAbility = true;
-            player.getWorld().spawnParticle(org.bukkit.Particle.WAX_OFF,
+            spawnParticle(player,
+                    org.bukkit.Particle.WAX_OFF,
                     player.getLocation().add(0.0D, 1.0D, 0.0D),
                     5,
                     0.22D,
@@ -6277,6 +6385,10 @@ public final class SheepMergeManager {
         tutorialShearTaskRewardGrantedByPlayer.remove(id);
         tutorialPrestigePrepRewardGrantedByPlayer.remove(id);
         farmVisitEnabledByPlayer.remove(id);
+        visitAccessPageByPlayer.remove(id);
+        soundEffectsEnabledByPlayer.remove(id);
+        particleEffectsEnabledByPlayer.remove(id);
+        farmVisitBlockedUsersByPlayer.remove(id);
         lastOutOfEggWarningTimestampByPlayer.remove(id);
         questPointsByPlayer.remove(id);
         nextQuestResetTimestampByPlayer.remove(id);
@@ -6582,7 +6694,8 @@ public final class SheepMergeManager {
         sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
 
         org.bukkit.Location mouth = sheep.getLocation().add(0.0D, 0.35D, 0.0D);
-        sheep.getWorld().spawnParticle(org.bukkit.Particle.CLOUD,
+        spawnParticle(sheep.getWorld(),
+                org.bukkit.Particle.CLOUD,
                 mouth,
                 10,
                 0.18D,
@@ -7059,8 +7172,14 @@ public final class SheepMergeManager {
 
         SheepTier upgradedTier = currentTier.next();
         setSheepTier(sheep, upgradedTier);
-        sheep.getWorld().spawnParticle(org.bukkit.Particle.VILLAGER_HAPPY,
-                sheep.getLocation().add(0, 0.7, 0), 12, 0.25, 0.2, 0.25, 0.02);
+        spawnParticle(sheep.getWorld(),
+                org.bukkit.Particle.VILLAGER_HAPPY,
+                sheep.getLocation().add(0, 0.7, 0),
+                12,
+                0.25,
+                0.2,
+                0.25,
+                0.02);
         showOverlay(player, accent("Tier Booster triggered: " + currentTier.getDisplayName()
                 + color(" &7-> ") + upgradedTier.getDisplayName()));
         playTierBoostProcSound(player);
@@ -7897,6 +8016,10 @@ public final class SheepMergeManager {
         tutorialPrestigedOnceByPlayer.clear();
         tutorialShearShopOpenedByPlayer.clear();
         farmVisitEnabledByPlayer.clear();
+        visitAccessPageByPlayer.clear();
+        soundEffectsEnabledByPlayer.clear();
+        particleEffectsEnabledByPlayer.clear();
+        farmVisitBlockedUsersByPlayer.clear();
         questPointsByPlayer.clear();
         nextQuestResetTimestampByPlayer.clear();
         questShearsByPlayer.clear();
@@ -8865,10 +8988,37 @@ public final class SheepMergeManager {
     }
 
     private static void playSound(Player player, Sound sound, float volume, float pitch) {
-        if (player == null || sound == null) {
+        if (player == null || sound == null || !areSoundEffectsEnabled(player)) {
             return;
         }
         player.playSound(player.getLocation(), sound, volume, pitch);
+    }
+
+    private static void playSound(World world, Location location, Sound sound, float volume, float pitch) {
+        if (world == null || location == null || sound == null) {
+            return;
+        }
+        for (Player player : world.getPlayers()) {
+            playSound(player, sound, volume, pitch);
+        }
+    }
+
+    private static void spawnParticle(Player player, org.bukkit.Particle particle, Location location, int count,
+            double offsetX, double offsetY, double offsetZ, double extra) {
+        if (player == null || particle == null || location == null || !areParticleEffectsEnabled(player)) {
+            return;
+        }
+        player.spawnParticle(particle, location, count, offsetX, offsetY, offsetZ, extra);
+    }
+
+    private static void spawnParticle(World world, org.bukkit.Particle particle, Location location, int count,
+            double offsetX, double offsetY, double offsetZ, double extra) {
+        if (world == null || particle == null || location == null) {
+            return;
+        }
+        for (Player player : world.getPlayers()) {
+            spawnParticle(player, particle, location, count, offsetX, offsetY, offsetZ, extra);
+        }
     }
 
     public static boolean trySpendPoints(Player player, long points) {
@@ -9119,7 +9269,8 @@ public final class SheepMergeManager {
 
         Location spawnLocation = sheep.getLocation();
         sheep.setVelocity(new Vector(0.0D, -0.1D, 0.0D));
-        sheep.getWorld().spawnParticle(org.bukkit.Particle.CLOUD,
+        spawnParticle(sheep.getWorld(),
+                org.bukkit.Particle.CLOUD,
                 spawnLocation.clone().add(0.0D, 0.4D, 0.0D),
                 10,
                 0.2D,
@@ -9459,7 +9610,7 @@ public final class SheepMergeManager {
         long until = System.currentTimeMillis() + durationMs;
         activeUntil.put(player.getUniqueId(), until);
         playSound(player, sound, 1.0f, 1.2f);
-        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         return true;
     }
 
@@ -9477,7 +9628,7 @@ public final class SheepMergeManager {
         long nextUntil = now + currentRemaining + durationMs;
         activeUntil.put(playerId, nextUntil);
         playSound(player, sound, 1.0f, 1.2f);
-        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         saveData();
         return true;
     }
@@ -9499,7 +9650,7 @@ public final class SheepMergeManager {
         remainingUsesByPlayer.put(playerId, addSaturated(remainingUsesByPlayer.getOrDefault(playerId, 0), useCount));
         enabledByPlayer.put(playerId, true);
         playSound(player, sound, 1.0f, 1.2f);
-        player.getWorld().spawnParticle(particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         saveData();
         return true;
     }
@@ -9981,10 +10132,10 @@ public final class SheepMergeManager {
         Inventory inventory = Bukkit.createInventory(null, 27, UPGRADE_MENU_TITLE);
         inventory.setItem(LAYOUTS_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.ENDER_CHEST,
-                "Layouts",
+                "Settings",
                 List.of(
-                        "Scoreboard and inventory layout",
-                        "Configure quick-access hotbar",
+                        "Scoreboard, inventory, sounds, particles, and visits",
+                        "Configure settings for your farm and UI",
                         "Click to open")));
         int limitLevel = getLimitUpgradeLevel(player);
         int currentLimit = getPlayerLimit(player);
@@ -10094,7 +10245,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear Shop",
                 List.of(
-                "Shear level: " + getShearPointGainUpgradeLevel(player),
+                        "Shear level: " + getShearPointGainUpgradeLevel(player),
                         "Points multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
@@ -10241,10 +10392,10 @@ public final class SheepMergeManager {
         }
         setMenuItemIfChanged(inventory, LAYOUTS_MENU_OPEN_SLOT, MenuItemFactory.create(
                 Material.ENDER_CHEST,
-                "Layouts",
+                "Settings",
                 List.of(
-                        "Scoreboard and inventory layout",
-                        "Configure quick-access hotbar",
+                        "Scoreboard, inventory, sounds, particles, and visits",
+                        "Configure settings for your farm and UI",
                         "Click to open")));
 
         int limitLevel = getLimitUpgradeLevel(player);
@@ -10355,7 +10506,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear Shop",
                 List.of(
-                "Shear level: " + getShearPointGainUpgradeLevel(player),
+                        "Shear level: " + getShearPointGainUpgradeLevel(player),
                         "Points multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
@@ -10620,46 +10771,46 @@ public final class SheepMergeManager {
                         "&aClick: Back")));
     }
 
-        private static void refreshOpenShopMenuItems(Player player, Inventory inventory) {
+    private static void refreshOpenShopMenuItems(Player player, Inventory inventory) {
         if (player == null || inventory == null) {
             return;
         }
         int woolSaveLevel = getShearWoolSaveLevel(player);
         int tierBoostLevel = getShearTierBoostLevel(player);
         setMenuItemIfChanged(inventory, SHOP_SHEAR_SLOT, MenuItemFactory.create(
-            Material.SHEARS,
-            "Shear Value",
-            List.of(
-                "Level: " + getShearPointGainUpgradeLevel(player),
-                "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
-                "Points: base x" + getShearPointMultiplier(player),
-                "Wool reward scales with level",
-                "Click to purchase")));
+                Material.SHEARS,
+                "Shear Value",
+                List.of(
+                        "Level: " + getShearPointGainUpgradeLevel(player),
+                        "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
+                        "Points: base x" + getShearPointMultiplier(player),
+                        "Wool reward scales with level",
+                        "Click to purchase")));
         setMenuItemIfChanged(inventory, SHOP_SHEAR_KEEP_WOOL_SLOT, MenuItemFactory.create(
-            Material.WHITE_WOOL,
-            "Wool Keeper",
-            List.of(
-                "Level: " + woolSaveLevel + " / " + SHEAR_WOOL_SAVE_MAX_LEVEL,
-                "Chance: " + getShearWoolSaveChancePercent(player) + "%",
-                woolSaveLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL
-                    ? "MAXED"
-                    : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " points",
-                "Chance for sheep to keep wool when sheared")));
+                Material.WHITE_WOOL,
+                "Wool Keeper",
+                List.of(
+                        "Level: " + woolSaveLevel + " / " + SHEAR_WOOL_SAVE_MAX_LEVEL,
+                        "Chance: " + getShearWoolSaveChancePercent(player) + "%",
+                        woolSaveLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " points",
+                        "Chance for sheep to keep wool when sheared")));
         setMenuItemIfChanged(inventory, SHOP_SHEAR_TIER_BOOST_SLOT, MenuItemFactory.create(
-            Material.GLOWSTONE_DUST,
-            "Tier Booster",
-            List.of(
-                "Level: " + tierBoostLevel + " / " + SHEAR_TIER_BOOST_MAX_LEVEL,
-                "Chance: " + getShearTierBoostChancePercent(player) + "%",
-                tierBoostLevel >= SHEAR_TIER_BOOST_MAX_LEVEL
-                    ? "MAXED"
-                    : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " points",
-                "Chance for shearing to upgrade sheep by one tier")));
+                Material.GLOWSTONE_DUST,
+                "Tier Booster",
+                List.of(
+                        "Level: " + tierBoostLevel + " / " + SHEAR_TIER_BOOST_MAX_LEVEL,
+                        "Chance: " + getShearTierBoostChancePercent(player) + "%",
+                        tierBoostLevel >= SHEAR_TIER_BOOST_MAX_LEVEL
+                                ? "MAXED"
+                                : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " points",
+                        "Chance for shearing to upgrade sheep by one tier")));
         setMenuItemIfChanged(inventory, SHOP_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
-            Material.ARROW,
-            "Back To Upgrades",
-            List.of("Click to go back")));
-        }
+                Material.ARROW,
+                "Back To Upgrades",
+                List.of("Click to go back")));
+    }
 
     private static void refreshOpenComboMenuItems(Player player, Inventory inventory) {
         if (player == null || inventory == null) {
@@ -10703,196 +10854,196 @@ public final class SheepMergeManager {
                         "Click to purchase")));
     }
 
-        private static void refreshOpenAutomationMenuItems(Player player, Inventory inventory) {
+    private static void refreshOpenAutomationMenuItems(Player player, Inventory inventory) {
         if (player == null || inventory == null) {
             return;
         }
         setMenuItemIfChanged(inventory, 4, MenuItemFactory.create(
-            Material.EXPERIENCE_BOTTLE,
-            "Automation Points",
-            List.of(
-                "&7Current: &e" + formatPoints(getAutomationPoints(player)),
-                "&bEarned while farming")));
+                Material.EXPERIENCE_BOTTLE,
+                "Automation Points",
+                List.of(
+                        "&7Current: &e" + formatPoints(getAutomationPoints(player)),
+                        "&bEarned while farming")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_BUY_SLOT, MenuItemFactory.create(
-            Material.HOPPER,
-            "Auto Buy Upgrades",
-            List.of(
-                "&7Level: &e" + getAutomationAutoBuyUpgradeLevel(player) + " / "
-                    + AUTOMATION_AUTO_BUY_MAX_LEVEL,
-                isAutomationAutoBuyEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
-                "&7Rate: &b" + (getAutomationAutoBuyIntervalMs(player) <= 0L
-                    ? "instant"
-                    : formatDuration(getAutomationAutoBuyIntervalMs(player))),
-                getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
-                    ? "&6Cost: &aMAXED"
-                    : "&6Cost: &f" + formatPoints(getAutomationAutoBuyUpgradeCost(player)) + " AP",
-                "&fBuys cheap upgrades",
-                getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
-                    ? "&aClick: Maxed"
-                    : "&aClick: Upgrade")));
+                Material.HOPPER,
+                "Auto Buy Upgrades",
+                List.of(
+                        "&7Level: &e" + getAutomationAutoBuyUpgradeLevel(player) + " / "
+                                + AUTOMATION_AUTO_BUY_MAX_LEVEL,
+                        isAutomationAutoBuyEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + (getAutomationAutoBuyIntervalMs(player) <= 0L
+                                ? "instant"
+                                : formatDuration(getAutomationAutoBuyIntervalMs(player))),
+                        getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoBuyUpgradeCost(player)) + " AP",
+                        "&fBuys cheap upgrades",
+                        getAutomationAutoBuyUpgradeLevel(player) >= AUTOMATION_AUTO_BUY_MAX_LEVEL
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_ABILITY_SLOT, MenuItemFactory.create(
-            Material.BREWING_STAND,
-            "Auto Activate Abilities",
-            List.of(
-                "&7Level: &e" + getAutomationAutoAbilityUpgradeLevel(player) + " / "
-                    + AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
-                isAutomationAutoAbilityEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
-                "&7Rate: &b"
-                    + (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                        ? "instant"
-                        : formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS)),
-                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                    ? "&6Cost: &aMAXED"
-                    : "&6Cost: &f" + formatPoints(getAutomationAutoAbilityUpgradeCost(player)) + " AP",
-                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                    ? "&fInstant ability refill"
-                    : getAutomationAutoAbilityUpgradeLevel(player) >= 2
-                        ? "&fBuys every missing ability"
-                        : "&fBuys one missing ability",
-                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                    ? "&bFully automatic"
-                    : "&7Upgrade for instant refill",
-                getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
-                    ? "&aClick: Maxed"
-                    : "&aClick: Upgrade")));
+                Material.BREWING_STAND,
+                "Auto Activate Abilities",
+                List.of(
+                        "&7Level: &e" + getAutomationAutoAbilityUpgradeLevel(player) + " / "
+                                + AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
+                        isAutomationAutoAbilityEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b"
+                                + (getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                        ? "instant"
+                                        : formatDuration(AUTOMATION_AUTO_ABILITY_INTERVAL_MS)),
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoAbilityUpgradeCost(player)) + " AP",
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                ? "&fInstant ability refill"
+                                : getAutomationAutoAbilityUpgradeLevel(player) >= 2
+                                        ? "&fBuys every missing ability"
+                                        : "&fBuys one missing ability",
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                ? "&bFully automatic"
+                                : "&7Upgrade for instant refill",
+                        getAutomationAutoAbilityUpgradeLevel(player) >= AUTOMATION_AUTO_ABILITY_MAX_LEVEL
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_MERGE_SLOT, MenuItemFactory.create(
-            Material.ANVIL,
-            "Auto Merge",
-            List.of(
-                "&7Level: &e" + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
-                    + AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
-                isAutomationSlowAutoMergeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
-                "&7Rate: &b" + formatDuration(getAutomationSlowAutoMergeIntervalMs(player)),
-                getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
-                    ? "&6Cost: &aMAXED"
-                    : "&6Cost: &f" + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player))
-                        + " AP",
-                "&fMerges one pair each cycle",
-                getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
-                    ? "&aClick: Maxed"
-                    : "&aClick: Upgrade")));
+                Material.ANVIL,
+                "Auto Merge",
+                List.of(
+                        "&7Level: &e" + getAutomationSlowAutoMergeUpgradeLevel(player) + " / "
+                                + AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
+                        isAutomationSlowAutoMergeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + formatDuration(getAutomationSlowAutoMergeIntervalMs(player)),
+                        getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationSlowAutoMergeUpgradeCost(player))
+                                        + " AP",
+                        "&fMerges one pair each cycle",
+                        getAutomationSlowAutoMergeUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_PRESTIGE_SLOT, MenuItemFactory.create(
-            Material.NETHER_STAR,
-            "Auto Prestige",
-            List.of(
-                "&7Level: &e" + getAutomationAutoPrestigeUpgradeLevel(player) + " / 1",
-                isAutomationAutoPrestigeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
-                "&7Rate: &b" + formatDuration(AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS),
-                getAutomationAutoPrestigeUpgradeLevel(player) > 0
-                    ? "&6Cost: &aMAXED"
-                    : "&6Cost: &f" + formatPoints(getAutomationAutoPrestigeUpgradeCost(player))
-                        + " AP",
-                "&fPrestiges when affordable",
-                getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Maxed" : "&aClick: Unlock")));
+                Material.NETHER_STAR,
+                "Auto Prestige",
+                List.of(
+                        "&7Level: &e" + getAutomationAutoPrestigeUpgradeLevel(player) + " / 1",
+                        isAutomationAutoPrestigeEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + formatDuration(AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS),
+                        getAutomationAutoPrestigeUpgradeLevel(player) > 0
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoPrestigeUpgradeCost(player))
+                                        + " AP",
+                        "&fPrestiges when affordable",
+                        getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Maxed" : "&aClick: Unlock")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_SHEAR_SLOT, MenuItemFactory.create(
-            Material.SHEARS,
-            "Auto Shear",
-            List.of(
-                "&7Level: &e" + getAutomationSlowAutoShearUpgradeLevel(player) + " / "
-                    + AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
-                isAutomationSlowAutoShearEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
-                "&7Rate: &b" + formatDuration(getAutomationSlowAutoShearIntervalMs(player)),
-                getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
-                    ? "&6Cost: &aMAXED"
-                    : "&6Cost: &f" + formatPoints(getAutomationSlowAutoShearUpgradeCost(player))
-                        + " AP",
-                "&fShears ready sheep each cycle",
-                getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
-                    ? "&aClick: Maxed"
-                    : "&aClick: Upgrade")));
+                Material.SHEARS,
+                "Auto Shear",
+                List.of(
+                        "&7Level: &e" + getAutomationSlowAutoShearUpgradeLevel(player) + " / "
+                                + AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
+                        isAutomationSlowAutoShearEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + formatDuration(getAutomationSlowAutoShearIntervalMs(player)),
+                        getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationSlowAutoShearUpgradeCost(player))
+                                        + " AP",
+                        "&fShears ready sheep each cycle",
+                        getAutomationSlowAutoShearUpgradeLevel(player) >= AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         long autoSpawnInterval = getAutomationAutoSpawnIntervalMs(player);
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_SPAWN_SLOT, MenuItemFactory.create(
-            Material.SHEEP_SPAWN_EGG,
-            "Auto Spawn Sheep",
-            List.of(
-                "&7Level: &e" + getAutomationAutoSpawnUpgradeLevel(player) + " / "
-                    + AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
-                isAutomationAutoSpawnEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
-                "&7Rate: &b" + (autoSpawnInterval <= 0L ? "instant" : formatDuration(autoSpawnInterval)),
-                "&fDrops sheep from the sky",
-                getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
-                    ? "&6Cost: &aMAXED"
-                    : "&6Cost: &f" + formatPoints(getAutomationAutoSpawnUpgradeCost(player)) + " AP",
-                "&7Uses eggs automatically",
-                getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
-                    ? "&aClick: Maxed"
-                    : "&aClick: Upgrade")));
+                Material.SHEEP_SPAWN_EGG,
+                "Auto Spawn Sheep",
+                List.of(
+                        "&7Level: &e" + getAutomationAutoSpawnUpgradeLevel(player) + " / "
+                                + AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
+                        isAutomationAutoSpawnEnabled(player) ? "&aStatus: ON" : "&cStatus: OFF",
+                        "&7Rate: &b" + (autoSpawnInterval <= 0L ? "instant" : formatDuration(autoSpawnInterval)),
+                        "&fDrops sheep from the sky",
+                        getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
+                                ? "&6Cost: &aMAXED"
+                                : "&6Cost: &f" + formatPoints(getAutomationAutoSpawnUpgradeCost(player)) + " AP",
+                        "&7Uses eggs automatically",
+                        getAutomationAutoSpawnUpgradeLevel(player) >= AUTOMATION_AUTO_SPAWN_MAX_LEVEL
+                                ? "&aClick: Maxed"
+                                : "&aClick: Upgrade")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_BUY_TOGGLE_SLOT, MenuItemFactory.create(
-            Material.LEVER,
-            "Toggle Auto Buy",
-            List.of(
-                isAutomationAutoBuyEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
-                getAutomationAutoBuyUpgradeLevel(player) > 0 ? "&aClick: Toggle" : "&cBuy level 1 first")));
+                Material.LEVER,
+                "Toggle Auto Buy",
+                List.of(
+                        isAutomationAutoBuyEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoBuyUpgradeLevel(player) > 0 ? "&aClick: Toggle" : "&cBuy level 1 first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT, MenuItemFactory.create(
-            Material.LEVER,
-            "Toggle Auto Ability",
-            List.of(
-                isAutomationAutoAbilityEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
-                getAutomationAutoAbilityUpgradeLevel(player) > 0 ? "&aClick: Toggle"
-                    : "&cBuy level 1 first")));
+                Material.LEVER,
+                "Toggle Auto Ability",
+                List.of(
+                        isAutomationAutoAbilityEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoAbilityUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT, MenuItemFactory.create(
-            Material.LEVER,
-            "Toggle Auto Spawn",
-            List.of(
-                isAutomationAutoSpawnEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
-                getAutomationAutoSpawnUpgradeLevel(player) > 0 ? "&aClick: Toggle"
-                    : "&cBuy level 1 first")));
+                Material.LEVER,
+                "Toggle Auto Spawn",
+                List.of(
+                        isAutomationAutoSpawnEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoSpawnUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT, MenuItemFactory.create(
-            Material.LEVER,
-            "Toggle Auto Merge",
-            List.of(
-                isAutomationSlowAutoMergeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
-                getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
-                    : "&cBuy level 1 first")));
+                Material.LEVER,
+                "Toggle Auto Merge",
+                List.of(
+                        isAutomationSlowAutoMergeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationSlowAutoMergeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT, MenuItemFactory.create(
-            Material.LEVER,
-            "Toggle Auto Shear",
-            List.of(
-                isAutomationSlowAutoShearEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
-                getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "&aClick: Toggle"
-                    : "&cBuy level 1 first")));
+                Material.LEVER,
+                "Toggle Auto Shear",
+                List.of(
+                        isAutomationSlowAutoShearEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationSlowAutoShearUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT, MenuItemFactory.create(
-            Material.LEVER,
-            "Toggle Auto Prestige",
-            List.of(
-                isAutomationAutoPrestigeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
-                getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
-                    : "&cBuy level 1 first")));
+                Material.LEVER,
+                "Toggle Auto Prestige",
+                List.of(
+                        isAutomationAutoPrestigeEnabled(player) ? "&aCurrent: ON" : "&cCurrent: OFF",
+                        getAutomationAutoPrestigeUpgradeLevel(player) > 0 ? "&aClick: Toggle"
+                                : "&cBuy level 1 first")));
 
         int unlockedAutomations = getUnlockedAutomationCount(player);
         setMenuItemIfChanged(inventory, AUTOMATION_ENABLE_ALL_SLOT, MenuItemFactory.create(
-            Material.LIME_DYE,
-            "Enable All",
-            List.of(
-                "&7Unlocked: &e" + unlockedAutomations + " / 6",
-                unlockedAutomations > 0 ? "&aClick: Enable unlocked tracks"
-                    : "&cUnlock an automation first")));
+                Material.LIME_DYE,
+                "Enable All",
+                List.of(
+                        "&7Unlocked: &e" + unlockedAutomations + " / 6",
+                        unlockedAutomations > 0 ? "&aClick: Enable unlocked tracks"
+                                : "&cUnlock an automation first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_DISABLE_ALL_SLOT, MenuItemFactory.create(
-            Material.GRAY_DYE,
-            "Disable All",
-            List.of(
-                "&7Unlocked: &e" + unlockedAutomations + " / 6",
-                unlockedAutomations > 0 ? "&cClick: Disable unlocked tracks"
-                    : "&cUnlock an automation first")));
+                Material.GRAY_DYE,
+                "Disable All",
+                List.of(
+                        "&7Unlocked: &e" + unlockedAutomations + " / 6",
+                        unlockedAutomations > 0 ? "&cClick: Disable unlocked tracks"
+                                : "&cUnlock an automation first")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
-            Material.ARROW,
-            "Back To Upgrades",
-            List.of("Click to go back")));
-        }
+                Material.ARROW,
+                "Back To Upgrades",
+                List.of("Click to go back")));
+    }
 
     private static void setMenuItemIfChanged(Inventory inventory, int slot, ItemStack next) {
         if (inventory == null || slot < 0 || slot >= inventory.getSize()) {
@@ -11040,7 +11191,7 @@ public final class SheepMergeManager {
     }
 
     public static boolean isUniversalLayoutMenuTitle(String title) {
-        return UNIVERSAL_LAYOUT_MENU_TITLE.equals(title);
+        return SETTINGS_MENU_TITLE.equals(title);
     }
 
     public static boolean isScoreboardLayoutMenuTitle(String title) {
@@ -11051,11 +11202,29 @@ public final class SheepMergeManager {
         return INVENTORY_LAYOUT_MENU_TITLE.equals(title);
     }
 
+    public static boolean isSoundEffectsMenuTitle(String title) {
+        return SOUND_EFFECTS_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isParticleEffectsMenuTitle(String title) {
+        return PARTICLE_EFFECTS_MENU_TITLE.equals(title);
+    }
+
+    public static boolean isVisitAccessMenuTitle(String title) {
+        return VISIT_ACCESS_MENU_TITLE.equals(title);
+    }
+
     public static void openUniversalLayoutMenu(Player player) {
         if (player == null) {
             return;
         }
-        Inventory inventory = Bukkit.createInventory(null, 27, UNIVERSAL_LAYOUT_MENU_TITLE);
+        Inventory inventory = Bukkit.createInventory(null, 54, SETTINGS_MENU_TITLE);
+        inventory.setItem(4, MenuItemFactory.create(
+                Material.NETHER_STAR,
+                "Settings Hub",
+                List.of(
+                        "Scoreboard, inventory, sound, particle, and visits",
+                        "Use the items below to open a section")));
         inventory.setItem(UNIVERSAL_LAYOUT_SCOREBOARD_SLOT, MenuItemFactory.create(
                 Material.BOOK,
                 "Scoreboard Settings",
@@ -11069,6 +11238,25 @@ public final class SheepMergeManager {
                 List.of(
                         "Quick access selected: " + getInventoryQuickAccessActions(player.getUniqueId()).size()
                                 + " / " + INVENTORY_QUICK_ACCESS_MAX_ITEMS,
+                        "Click: Open")));
+        inventory.setItem(UNIVERSAL_LAYOUT_SOUND_SLOT, MenuItemFactory.create(
+                Material.MUSIC_DISC_PIGSTEP,
+                "Sound Effects",
+                List.of(
+                        "Status: " + (areSoundEffectsEnabled(player) ? "Enabled" : "Disabled"),
+                        "Click: Open")));
+        inventory.setItem(UNIVERSAL_LAYOUT_PARTICLE_SLOT, MenuItemFactory.create(
+                Material.FIRE_CHARGE,
+                "Particle Effects",
+                List.of(
+                        "Status: " + (areParticleEffectsEnabled(player) ? "Enabled" : "Disabled"),
+                        "Click: Open")));
+        inventory.setItem(UNIVERSAL_LAYOUT_VISIT_SLOT, MenuItemFactory.create(
+                Material.OAK_DOOR,
+                "Visit Access & Blocks",
+                List.of(
+                        "Visit access: " + (isFarmVisitable(player.getUniqueId()) ? "Open" : "Closed"),
+                        "Blocked visitors: " + getBlockedFarmVisitorCount(player.getUniqueId()),
                         "Click: Open")));
         inventory.setItem(UNIVERSAL_LAYOUT_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -11084,11 +11272,262 @@ public final class SheepMergeManager {
         switch (slot) {
             case UNIVERSAL_LAYOUT_SCOREBOARD_SLOT -> openScoreboardMenu(player);
             case UNIVERSAL_LAYOUT_INVENTORY_SLOT -> openInventoryLayoutMenu(player);
+            case UNIVERSAL_LAYOUT_SOUND_SLOT -> openSoundEffectsMenu(player);
+            case UNIVERSAL_LAYOUT_PARTICLE_SLOT -> openParticleEffectsMenu(player);
+            case UNIVERSAL_LAYOUT_VISIT_SLOT -> openVisitAccessMenu(player);
             case UNIVERSAL_LAYOUT_BACK_SLOT -> openUpgradeMenu(player);
             default -> {
                 return;
             }
         }
+    }
+
+    public static void openSoundEffectsMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, SOUND_EFFECTS_MENU_TITLE);
+        boolean enabled = areSoundEffectsEnabled(player);
+        inventory.setItem(SOUND_EFFECTS_TOGGLE_SLOT, MenuItemFactory.create(
+                enabled ? Material.LIME_DYE : Material.GRAY_DYE,
+                "Sound Effects",
+                List.of(
+                        "Status: " + (enabled ? "Enabled" : "Disabled"),
+                        enabled ? "Click: Disable" : "Click: Enable")));
+        inventory.setItem(SOUND_EFFECTS_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Settings")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleSoundEffectsMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        if (slot == SOUND_EFFECTS_TOGGLE_SLOT) {
+            boolean enabled = toggleSoundEffects(player);
+            player.sendMessage(action("Sound effects " + (enabled ? "enabled." : "disabled.")));
+            openSoundEffectsMenu(player);
+            return;
+        }
+        if (slot == SOUND_EFFECTS_BACK_SLOT) {
+            openUniversalLayoutMenu(player);
+        }
+    }
+
+    public static void openParticleEffectsMenu(Player player) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 27, PARTICLE_EFFECTS_MENU_TITLE);
+        boolean enabled = areParticleEffectsEnabled(player);
+        inventory.setItem(PARTICLE_EFFECTS_TOGGLE_SLOT, MenuItemFactory.create(
+                enabled ? Material.LIME_DYE : Material.GRAY_DYE,
+                "Particle Effects",
+                List.of(
+                        "Status: " + (enabled ? "Enabled" : "Disabled"),
+                        enabled ? "Click: Disable" : "Click: Enable")));
+        inventory.setItem(PARTICLE_EFFECTS_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Settings")));
+        player.openInventory(inventory);
+    }
+
+    public static void handleParticleEffectsMenuClick(Player player, int slot) {
+        if (player == null) {
+            return;
+        }
+        if (slot == PARTICLE_EFFECTS_TOGGLE_SLOT) {
+            boolean enabled = toggleParticleEffects(player);
+            player.sendMessage(action("Particle effects " + (enabled ? "enabled." : "disabled.")));
+            openParticleEffectsMenu(player);
+            return;
+        }
+        if (slot == PARTICLE_EFFECTS_BACK_SLOT) {
+            openUniversalLayoutMenu(player);
+        }
+    }
+
+    public static void openVisitAccessMenu(Player player) {
+        openVisitAccessMenu(player, 0);
+    }
+
+    private static void openVisitAccessMenu(Player player, int requestedPage) {
+        if (player == null) {
+            return;
+        }
+        Inventory inventory = Bukkit.createInventory(null, 54, VISIT_ACCESS_MENU_TITLE);
+        populateVisitAccessMenuItems(player, inventory, requestedPage);
+        player.openInventory(inventory);
+    }
+
+    private static void populateVisitAccessMenuItems(Player player, Inventory inventory, int requestedPage) {
+        if (player == null || inventory == null) {
+            return;
+        }
+
+        UUID ownerId = player.getUniqueId();
+        List<Player> managedPlayers = getManagedVisitPlayers(player);
+        int totalPages = Math.max(1, (int) Math.ceil(managedPlayers.size() / (double) SOCIALS_VISIT_PAGE_SIZE));
+        int page = Math.max(0, Math.min(totalPages - 1, requestedPage));
+        visitAccessPageByPlayer.put(ownerId, page);
+
+        setMenuItemIfChanged(inventory, VISIT_ACCESS_TOGGLE_SLOT, MenuItemFactory.create(
+                isFarmVisitable(ownerId) ? Material.OAK_DOOR : Material.IRON_DOOR,
+                "Farm Visit Access",
+                List.of(
+                        "Status: " + (isFarmVisitable(ownerId) ? "Open" : "Closed"),
+                        "Blocked visitors: " + getBlockedFarmVisitorCount(ownerId),
+                        isFarmVisitable(ownerId) ? "Click: Close farm" : "Click: Open farm")));
+
+        setMenuItemIfChanged(inventory, VISIT_ACCESS_SUMMARY_SLOT, MenuItemFactory.create(
+                Material.PLAYER_HEAD,
+                "Blocked Visitors",
+                List.of(
+                        "Page " + (page + 1) + " / " + totalPages,
+                        "Click player heads to block or unblock")));
+
+        setMenuItemIfChanged(inventory, VISIT_ACCESS_PREVIOUS_PAGE_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Previous Page",
+                List.of(
+                        "Page " + (page + 1) + " / " + totalPages,
+                        page > 0 ? "Click to go back" : "Already at first page")));
+
+        setMenuItemIfChanged(inventory, VISIT_ACCESS_NEXT_PAGE_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Next Page",
+                List.of(
+                        "Page " + (page + 1) + " / " + totalPages,
+                        page + 1 < totalPages ? "Click to advance" : "Already at last page")));
+
+        setMenuItemIfChanged(inventory, VISIT_ACCESS_BACK_SLOT, MenuItemFactory.create(
+                Material.ARROW,
+                "Back",
+                List.of("Click: Settings")));
+
+        clearSocialVisitEntries(inventory);
+        List<Integer> displaySlots = getSocialVisitDisplaySlots();
+        int startIndex = page * SOCIALS_VISIT_PAGE_SIZE;
+        for (int offset = 0; offset < SOCIALS_VISIT_PAGE_SIZE; offset++) {
+            int playerIndex = startIndex + offset;
+            if (playerIndex >= managedPlayers.size() || offset >= displaySlots.size()) {
+                break;
+            }
+            Player target = managedPlayers.get(playerIndex);
+            if (target == null) {
+                continue;
+            }
+            ItemStack visitItem = createVisitAccessItem(player, target);
+            if (visitItem != null) {
+                setMenuItemIfChanged(inventory, displaySlots.get(offset), visitItem);
+            }
+        }
+    }
+
+    private static int getCurrentVisitAccessPage(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        return Math.max(0, visitAccessPageByPlayer.getOrDefault(player.getUniqueId(), 0));
+    }
+
+    private static List<Player> getManagedVisitPlayers(Player viewer) {
+        if (viewer == null) {
+            return List.of();
+        }
+
+        UUID viewerId = viewer.getUniqueId();
+        List<Player> players = new ArrayList<>();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null || !online.isOnline()) {
+                continue;
+            }
+            if (viewerId.equals(online.getUniqueId())) {
+                continue;
+            }
+            players.add(online);
+        }
+        players.sort((left, right) -> {
+            boolean leftBlocked = isFarmVisitorBlocked(viewerId, left.getUniqueId());
+            boolean rightBlocked = isFarmVisitorBlocked(viewerId, right.getUniqueId());
+            if (leftBlocked != rightBlocked) {
+                return leftBlocked ? -1 : 1;
+            }
+            return left.getName().compareToIgnoreCase(right.getName());
+        });
+        return players;
+    }
+
+    private static ItemStack createVisitAccessItem(Player owner, Player target) {
+        if (owner == null || target == null) {
+            return null;
+        }
+
+        boolean blocked = isFarmVisitorBlocked(owner, target);
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD, 1);
+        ItemMeta rawMeta = head.getItemMeta();
+        if (!(rawMeta instanceof SkullMeta skullMeta)) {
+            return MenuItemFactory.create(Material.PLAYER_HEAD,
+                    (blocked ? "Unblock " : "Block ") + target.getName(),
+                    List.of(
+                            "Status: " + (blocked ? "Blocked" : "Allowed"),
+                            "Click to " + (blocked ? "allow" : "block")));
+        }
+
+        skullMeta.setOwningPlayer(target);
+        skullMeta.setDisplayName((blocked ? "Unblock " : "Block ") + target.getName());
+        skullMeta.setLore(List.of(
+                "Player: " + target.getName(),
+                "Status: " + (blocked ? "Blocked" : "Allowed"),
+                "Click to " + (blocked ? "allow visits" : "block visits")));
+        NamespacedKey key = getSocialVisitOwnerKey();
+        if (key != null) {
+            skullMeta.getPersistentDataContainer().set(key, PersistentDataType.STRING, target.getUniqueId().toString());
+        }
+        head.setItemMeta(skullMeta);
+        return head;
+    }
+
+    public static void handleVisitAccessMenuClick(Player player, int slot, ItemStack clickedItem) {
+        if (player == null) {
+            return;
+        }
+        if (slot == VISIT_ACCESS_TOGGLE_SLOT) {
+            boolean open = toggleFarmVisitable(player);
+            player.sendMessage(action("Farm visit access " + (open ? "opened." : "closed.")));
+            openVisitAccessMenu(player, getCurrentVisitAccessPage(player));
+            return;
+        }
+        if (slot == VISIT_ACCESS_PREVIOUS_PAGE_SLOT) {
+            openVisitAccessMenu(player, getCurrentVisitAccessPage(player) - 1);
+            return;
+        }
+        if (slot == VISIT_ACCESS_NEXT_PAGE_SLOT) {
+            openVisitAccessMenu(player, getCurrentVisitAccessPage(player) + 1);
+            return;
+        }
+        if (slot == VISIT_ACCESS_BACK_SLOT) {
+            openUniversalLayoutMenu(player);
+            return;
+        }
+
+        UUID targetId = getSocialVisitOwnerId(clickedItem);
+        if (targetId == null) {
+            return;
+        }
+        if (targetId.equals(player.getUniqueId())) {
+            player.sendMessage(hint("You cannot block yourself."));
+            return;
+        }
+
+        boolean blocked = toggleFarmVisitorBlocked(player, targetId);
+        OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
+        String targetName = target == null || target.getName() == null ? targetId.toString() : target.getName();
+        player.sendMessage(action((blocked ? "Blocked: " : "Unblocked: ") + targetName));
+        openVisitAccessMenu(player, getCurrentVisitAccessPage(player));
     }
 
     public static void openScoreboardLayoutMenu(Player player) {
@@ -11535,6 +11974,9 @@ public final class SheepMergeManager {
                 continue;
             }
             if (!viewer.isOp() && !isFarmVisitable(ownerId)) {
+                continue;
+            }
+            if (!viewer.isOp() && isFarmVisitorBlocked(ownerId, viewerId)) {
                 continue;
             }
             owners.add(online);
@@ -13042,8 +13484,14 @@ public final class SheepMergeManager {
                         Sound.BLOCK_BEACON_POWER_SELECT,
                         org.bukkit.Particle.END_ROD)) {
                     markTutorialAbilityUsed(player);
-                    player.getWorld().spawnParticle(org.bukkit.Particle.TOTEM,
-                            player.getLocation().add(0, 1.1, 0), 18, 0.45, 0.45, 0.45, 0.0);
+                    spawnParticle(player,
+                            org.bukkit.Particle.TOTEM,
+                            player.getLocation().add(0, 1.1, 0),
+                            18,
+                            0.45,
+                            0.45,
+                            0.45,
+                            0.0);
                     playSound(player, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 0.9f, 1.5f);
                     player.sendMessage(action("Lucky Burst active."));
                 } else {
@@ -13074,8 +13522,14 @@ public final class SheepMergeManager {
                 if (applied) {
                     markTutorialAbilityUsed(player);
                     applyWoolRushToShearedSheep(player);
-                    player.getWorld().spawnParticle(org.bukkit.Particle.SPORE_BLOSSOM_AIR,
-                            player.getLocation().add(0, 1.0, 0), 28, 0.5, 0.35, 0.5, 0.01);
+                    spawnParticle(player,
+                            org.bukkit.Particle.SPORE_BLOSSOM_AIR,
+                            player.getLocation().add(0, 1.0, 0),
+                            28,
+                            0.5,
+                            0.35,
+                            0.5,
+                            0.01);
                     playSound(player, Sound.BLOCK_MOSS_CARPET_PLACE, 1.0f, 0.8f);
                     player.sendMessage(action(active ? "Wool Rush extended." : "Wool Rush active."));
                 } else {
@@ -13105,8 +13559,14 @@ public final class SheepMergeManager {
                                 org.bukkit.Particle.CRIT);
                 if (applied) {
                     markTutorialAbilityUsed(player);
-                    player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORKS_SPARK,
-                            player.getLocation().add(0, 1.1, 0), 22, 0.45, 0.45, 0.45, 0.02);
+                    spawnParticle(player,
+                            org.bukkit.Particle.FIREWORKS_SPARK,
+                            player.getLocation().add(0, 1.1, 0),
+                            22,
+                            0.45,
+                            0.45,
+                            0.45,
+                            0.02);
                     playSound(player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.8f, 1.6f);
                     player.sendMessage(action(active ? "Jackpot Shears extended." : "Jackpot Shears active."));
                 } else {
@@ -13134,8 +13594,14 @@ public final class SheepMergeManager {
                         org.bukkit.Particle.ENCHANTMENT_TABLE)) {
                     markTutorialAbilityUsed(player);
                     nextAutoMergeAtByPlayer.put(player.getUniqueId(), 0L);
-                    player.getWorld().spawnParticle(org.bukkit.Particle.WAX_ON,
-                            player.getLocation().add(0, 1.0, 0), 26, 0.5, 0.4, 0.5, 0.03);
+                    spawnParticle(player,
+                            org.bukkit.Particle.WAX_ON,
+                            player.getLocation().add(0, 1.0, 0),
+                            26,
+                            0.5,
+                            0.4,
+                            0.5,
+                            0.03);
                     playSound(player, Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.3f);
                     player.sendMessage(action("Merge Assist active."));
                 } else {
@@ -13163,8 +13629,14 @@ public final class SheepMergeManager {
                         org.bukkit.Particle.WAX_OFF)) {
                     markTutorialAbilityUsed(player);
                     nextAutoShearAtByPlayer.put(player.getUniqueId(), 0L);
-                    player.getWorld().spawnParticle(org.bukkit.Particle.WAX_OFF,
-                            player.getLocation().add(0, 1.0, 0), 26, 0.5, 0.4, 0.5, 0.03);
+                    spawnParticle(player,
+                            org.bukkit.Particle.WAX_OFF,
+                            player.getLocation().add(0, 1.0, 0),
+                            26,
+                            0.5,
+                            0.4,
+                            0.5,
+                            0.03);
                     playSound(player, Sound.ITEM_TRIDENT_RETURN, 0.8f, 1.4f);
                     player.sendMessage(action("Shear All Sheep active."));
                 } else {
@@ -13277,7 +13749,7 @@ public final class SheepMergeManager {
                 Material.SHEARS,
                 "Shear Value",
                 List.of(
-                "Level: " + getShearPointGainUpgradeLevel(player),
+                        "Level: " + getShearPointGainUpgradeLevel(player),
                         "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
                         "Points: base x" + getShearPointMultiplier(player),
                         "Wool reward scales with level",
@@ -13890,6 +14362,9 @@ public final class SheepMergeManager {
             dataConfig.set("tutorialPrestigedOnce", null);
             dataConfig.set("tutorialShearShopOpened", null);
             dataConfig.set("farmVisitEnabled", null);
+            dataConfig.set("soundEffectsEnabled", null);
+            dataConfig.set("particleEffectsEnabled", null);
+            dataConfig.set("farmVisitBlockedUsers", null);
             dataConfig.set("questPoints", null);
             dataConfig.set("questReset", null);
             dataConfig.set("questUpgradeDuration", null);
@@ -14063,6 +14538,27 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : farmVisitEnabledByPlayer.entrySet()) {
                 dataConfig.set("farmVisitEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : soundEffectsEnabledByPlayer.entrySet()) {
+                dataConfig.set("soundEffectsEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : particleEffectsEnabledByPlayer.entrySet()) {
+                dataConfig.set("particleEffectsEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Set<UUID>> entry : farmVisitBlockedUsersByPlayer.entrySet()) {
+                Set<UUID> blockedUsers = entry.getValue();
+                if (blockedUsers == null || blockedUsers.isEmpty()) {
+                    continue;
+                }
+                List<String> blockedIds = new ArrayList<>();
+                for (UUID blockedId : blockedUsers) {
+                    if (blockedId != null) {
+                        blockedIds.add(blockedId.toString());
+                    }
+                }
+                if (!blockedIds.isEmpty()) {
+                    dataConfig.set("farmVisitBlockedUsers." + entry.getKey().toString(), blockedIds);
+                }
             }
             for (Map.Entry<UUID, Integer> entry : questPointsByPlayer.entrySet()) {
                 dataConfig.set("questPoints." + entry.getKey().toString(), entry.getValue());
@@ -14678,6 +15174,59 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     farmVisitEnabledByPlayer.put(uuid, dataConfig.getBoolean("farmVisitEnabled." + key, true));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("soundEffectsEnabled")) {
+            dataConfig.getConfigurationSection("soundEffectsEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    boolean enabled = dataConfig.getBoolean("soundEffectsEnabled." + key, true);
+                    if (!enabled) {
+                        soundEffectsEnabledByPlayer.put(uuid, false);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("particleEffectsEnabled")) {
+            dataConfig.getConfigurationSection("particleEffectsEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    boolean enabled = dataConfig.getBoolean("particleEffectsEnabled." + key, true);
+                    if (!enabled) {
+                        particleEffectsEnabledByPlayer.put(uuid, false);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("farmVisitBlockedUsers")) {
+            dataConfig.getConfigurationSection("farmVisitBlockedUsers").getKeys(false).forEach(key -> {
+                try {
+                    UUID ownerId = UUID.fromString(key);
+                    List<String> loaded = dataConfig.getStringList("farmVisitBlockedUsers." + key);
+                    if (loaded == null || loaded.isEmpty()) {
+                        return;
+                    }
+                    Set<UUID> blocked = new LinkedHashSet<>();
+                    for (String raw : loaded) {
+                        if (raw == null || raw.isBlank()) {
+                            continue;
+                        }
+                        try {
+                            blocked.add(UUID.fromString(raw));
+                        } catch (IllegalArgumentException ignored) {
+                            // Ignore invalid UUIDs.
+                        }
+                    }
+                    if (!blocked.isEmpty()) {
+                        farmVisitBlockedUsersByPlayer.put(ownerId, blocked);
+                    }
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
