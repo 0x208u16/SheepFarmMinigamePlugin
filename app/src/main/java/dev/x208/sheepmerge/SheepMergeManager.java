@@ -438,7 +438,7 @@ public final class SheepMergeManager {
     private static int TUTORIAL_SHEAR_TARGET = 3;
     private static int TUTORIAL_SPAWN_TARGET = 3;
     private static int TUTORIAL_MERGE_TARGET = 1;
-    private static int TUTORIAL_MENU_SECTION_TARGET = 8;
+    private static int TUTORIAL_MENU_SECTION_TARGET = 7;
     private static int PRESTIGE_LEVEL_BASE_COST = 500;
     public static final String UPGRADE_MENU_TITLE = "Sheep Merge Menu";
     public static final String PRESTIGE_MENU_TITLE = "Prestige Upgrades";
@@ -6298,20 +6298,26 @@ public final class SheepMergeManager {
     }
 
     public static String getTutorialProgressLine(Player player) {
+        int menuSectionTarget = getEffectiveTutorialMenuSectionTarget();
         return "Spawn " + getTutorialSpawnCount(player) + "/" + TUTORIAL_SPAWN_TARGET
                 + " | Shear " + getTutorialShearCount(player) + "/" + TUTORIAL_SHEAR_TARGET
                 + " | Merge " + getTutorialMergeCount(player) + "/" + TUTORIAL_MERGE_TARGET
-                + " | Menus " + getTutorialSectionCount(player) + "/" + TUTORIAL_MENU_SECTION_TARGET;
+                + " | Menus " + getTutorialSectionCount(player) + "/" + menuSectionTarget;
+    }
+
+    private static int getEffectiveTutorialMenuSectionTarget() {
+        return Math.max(1, Math.min(TUTORIAL_MENU_SECTION_TARGET, 7));
     }
 
     private static void checkTutorialCompletion(Player player) {
         if (player == null || hasUnlockedFarm(player)) {
             return;
         }
+        int menuSectionTarget = getEffectiveTutorialMenuSectionTarget();
         if (getTutorialShearCount(player) >= TUTORIAL_SHEAR_TARGET
                 && getTutorialSpawnCount(player) >= TUTORIAL_SPAWN_TARGET
                 && getTutorialMergeCount(player) >= TUTORIAL_MERGE_TARGET
-                && getTutorialSectionCount(player) >= TUTORIAL_MENU_SECTION_TARGET) {
+                && getTutorialSectionCount(player) >= menuSectionTarget) {
             UUID playerId = player.getUniqueId();
             tutorialCompletedByPlayer.put(playerId, true);
             clearTutorialRuntimeState(playerId);
