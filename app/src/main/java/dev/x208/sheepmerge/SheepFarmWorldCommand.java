@@ -632,6 +632,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
             applyConfiguredSpawn(ownerWorld);
             teleportPlayerToConfiguredSpawnAsync(player, ownerWorld, () -> {
+                SheepMergeManager.recordVisitedOtherFarm(player, ownerId);
                 player.sendMessage("You were teleported to " + owner.getName() + "'s sheep farm.");
                 player.sendMessage("Use /sheepmerge to return to your own farm.");
                 Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance,

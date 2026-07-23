@@ -218,6 +218,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> lifetimeShearsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> lifetimeSpawnsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> lifetimeMergesByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> lifetimeOtherFarmVisitsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> completedQuestCyclesByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> totalPrestigeLevelsEarnedByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> totalSacrificeUnlocksPurchasedByPlayer = new HashMap<>();
@@ -765,67 +766,70 @@ public final class SheepMergeManager {
 
     private static final List<AchievementDefinition> ACHIEVEMENT_DEFINITIONS = List.of(
             new AchievementDefinition("first_shear", Material.SHEARS, "First Cut",
-                    "Shear 10 sheep", "Reward: +2 achievement points", 2),
+                "Shear at least 10 sheep", "Reward: +2 achievement points", 2),
             new AchievementDefinition("wool_tycoon", Material.WHITE_WOOL, "Wool Tycoon",
-                    "Shear 1,000 sheep", "Reward: +4 achievement points", 4),
+                "Shear at least 1,000 sheep", "Reward: +4 achievement points", 4),
             new AchievementDefinition("first_hatch", Material.SHEEP_SPAWN_EGG, "First Hatch",
-                    "Spawn 10 sheep", "Reward: +2 achievement points", 2),
+                "Spawn at least 10 sheep", "Reward: +2 achievement points", 2),
             new AchievementDefinition("breeder", Material.CHICKEN_SPAWN_EGG, "Breeder",
-                    "Spawn 2,000 sheep", "Reward: +6 achievement points", 6),
+                "Spawn at least 2,000 sheep", "Reward: +6 achievement points", 6),
             new AchievementDefinition("pair_maker", Material.ANVIL, "Pair Maker",
-                    "Merge 250 sheep pairs", "Reward: +3 achievement points", 3),
+                "Merge at least 250 sheep pairs", "Reward: +3 achievement points", 3),
             new AchievementDefinition("fusion_engine", Material.BLAST_FURNACE, "Fusion Engine",
-                    "Merge 2,500 sheep pairs", "Reward: +7 achievement points", 7),
+                "Merge at least 2,500 sheep pairs", "Reward: +7 achievement points", 7),
             new AchievementDefinition("quest_cadet", Material.BOOK, "Quest Cadet",
-                    "Complete 3 full quest cycles", "Reward: +3 achievement points", 3),
+                "Complete at least 3 full quest cycles", "Reward: +3 achievement points", 3),
             new AchievementDefinition("quest_veteran", Material.WRITABLE_BOOK, "Quest Veteran",
-                    "Complete 15 full quest cycles", "Reward: +6 achievement points", 6),
+                "Complete at least 15 full quest cycles", "Reward: +6 achievement points", 6),
             new AchievementDefinition("upgrade_mechanic", Material.CRAFTING_TABLE, "Upgrade Mechanic",
-                    "Reach 20 total regular upgrade levels", "Reward: +3 achievement points", 3),
+                "Reach 20 total regular levels (Limit, Egg Speed, Wool Regen, Tier Chance)",
+                "Reward: +3 achievement points", 3),
             new AchievementDefinition("shear_specialist", Material.SHEARS, "Shear Specialist",
-                    "Reach Shear Shop level 15", "Reward: +4 achievement points", 4),
+                "Reach Shear Shop value level 15", "Reward: +4 achievement points", 4),
             new AchievementDefinition("prestige_initiate", Material.NETHER_STAR, "Prestige Initiate",
-                    "Gain 3 total prestige levels", "Reward: +4 achievement points", 4),
+                "Earn at least 3 total prestige levels", "Reward: +4 achievement points", 4),
             new AchievementDefinition("prestige_veteran", Material.BEACON, "Prestige Veteran",
-                    "Gain 100 total prestige levels", "Reward: +7 achievement points", 7),
+                "Earn at least 100 total prestige levels", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_online", Material.REDSTONE, "Automation Online",
-                    "Unlock 2 automation tracks", "Reward: +4 achievement points", 4),
+                "Unlock at least 2 automation tracks", "Reward: +4 achievement points", 4),
             new AchievementDefinition("automation_matrix", Material.COMPARATOR, "Automation Matrix",
-                    "Unlock all automation tracks", "Reward: +8 achievement points", 8),
+                "Unlock all 6 automation tracks", "Reward: +8 achievement points", 8),
             new AchievementDefinition("sacrifice_initiate", Material.TOTEM_OF_UNDYING, "Sacrifice Initiate",
-                    "Buy 2 sacrifice unlocks", "Reward: +4 achievement points", 4),
+                "Buy at least 2 sacrifice unlocks", "Reward: +4 achievement points", 4),
             new AchievementDefinition("sacrifice_mastery", Material.NETHERITE_INGOT, "Sacrifice Mastery",
-                    "Buy 5 sacrifice unlocks", "Reward: +6 achievement points", 6),
+                "Buy at least 5 sacrifice unlocks", "Reward: +6 achievement points", 6),
             new AchievementDefinition("reborn", Material.DRAGON_EGG, "Reborn",
-                    "Rebirth 3 times", "Reward: +6 achievement points", 6),
+                "Reach rebirth level 3", "Reward: +6 achievement points", 6),
             new AchievementDefinition("rainbow_ascension", Material.PRISMARINE_CRYSTALS, "Rainbow Ascension",
-                    "Reach Rainbow tier T4", "Reward: +6 achievement points", 6),
+                "Reach Rainbow tier T4 or higher", "Reward: +6 achievement points", 6),
             new AchievementDefinition("tutorial_mastery", Material.TARGET, "Tutorial Mastery",
                     "Complete the tutorial", "Reward: +4 achievement points", 4),
             new AchievementDefinition("layout_designer", Material.ENDER_CHEST, "Layout Designer",
-                    "Set compact scoreboard, fill quick access, and open socials", "Reward: +5 achievement points", 5),
+                "Set scoreboard to Compact, fill all quick access slots, and open Socials",
+                "Reward: +5 achievement points", 5),
             new AchievementDefinition("socials_explorer", Material.PLAYER_HEAD, "Socials Explorer",
-                    "Open socials and complete the tutorial", "Reward: +5 achievement points", 5),
+                "Visit another player's farm at least once", "Reward: +5 achievement points", 5),
             new AchievementDefinition("quick_access_curator", Material.COMPASS, "Quick Access Curator",
-                    "Fill quick access and enable casting", "Reward: +6 achievement points", 6),
+                "Fill all quick access slots and enable quick-access casting", "Reward: +6 achievement points", 6),
             new AchievementDefinition("quest_engineer", Material.CLOCK, "Quest Engineer",
-                    "Reach level 10 in both quest upgrades", "Reward: +5 achievement points", 5),
+                "Reach level 10 in both quest upgrades (Duration and Power)", "Reward: +5 achievement points",
+                5),
             new AchievementDefinition("combo_champion", Material.BLAZE_POWDER, "Combo Champion",
-                    "Reach combo max upgrade level 15", "Reward: +5 achievement points", 5),
+                "Reach Combo Max upgrade level 15", "Reward: +5 achievement points", 5),
             new AchievementDefinition("egg_cap_collector", Material.EGG, "Egg Cap Collector",
-                    "Reach prestige egg cap level 10", "Reward: +6 achievement points", 6),
+                "Reach prestige Egg Cap level 10", "Reward: +6 achievement points", 6),
             new AchievementDefinition("spawn_architect", Material.SPAWNER, "Spawn Architect",
-                    "Reach base spawn tier level 8", "Reward: +6 achievement points", 6),
+                "Reach Base Spawn Tier level 8", "Reward: +6 achievement points", 6),
             new AchievementDefinition("prestige_planner", Material.NETHER_STAR, "Prestige Planner",
-                    "Reach quest reward level 18", "Reward: +7 achievement points", 7),
+                "Reach prestige Quest Reward level 18", "Reward: +7 achievement points", 7),
             new AchievementDefinition("automation_specialist", Material.REPEATER, "Automation Specialist",
-                    "Unlock 5 automation tracks", "Reward: +7 achievement points", 7),
+                "Unlock at least 5 automation tracks", "Reward: +7 achievement points", 7),
             new AchievementDefinition("rebirth_architect", Material.DRAGON_HEAD, "Rebirth Architect",
                     "Reach rebirth level 10", "Reward: +10 achievement points", 10),
             new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
-                    "Reach the maximum sheep limit", "Reward: +8 achievement points", 8),
+                "Reach your current maximum sheep limit", "Reward: +8 achievement points", 8),
             new AchievementDefinition("wool_guardian", Material.SHIELD, "Wool Guardian",
-                    "Max out wool regen", "Reward: +11 achievement points", 11));
+                "Reach your current Wool Regen max level", "Reward: +11 achievement points", 11));
 
     private static final int ACHIEVEMENT_MILESTONE_COUNT = 26;
     private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = createAchievementMilestones(
@@ -3659,8 +3663,7 @@ public final class SheepMergeManager {
             case "layout_designer" -> getScoreboardLayoutMode(player) == 1
                     && getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
                     && socialsPageByPlayer.containsKey(playerId);
-            case "socials_explorer" -> socialsPageByPlayer.containsKey(playerId)
-                    && tutorialCompletedByPlayer.getOrDefault(playerId, false);
+                case "socials_explorer" -> lifetimeOtherFarmVisitsByPlayer.getOrDefault(playerId, 0) >= 1;
             case "quick_access_curator" ->
                 getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
                     && isInventoryQuickAccessCastingEnabled(playerId);
@@ -6354,6 +6357,7 @@ public final class SheepMergeManager {
         lifetimeShearsByPlayer.remove(id);
         lifetimeSpawnsByPlayer.remove(id);
         lifetimeMergesByPlayer.remove(id);
+        lifetimeOtherFarmVisitsByPlayer.remove(id);
         completedQuestCyclesByPlayer.remove(id);
         totalPrestigeLevelsEarnedByPlayer.remove(id);
         totalSacrificeUnlocksPurchasedByPlayer.remove(id);
@@ -7971,6 +7975,7 @@ public final class SheepMergeManager {
         lifetimeShearsByPlayer.clear();
         lifetimeSpawnsByPlayer.clear();
         lifetimeMergesByPlayer.clear();
+        lifetimeOtherFarmVisitsByPlayer.clear();
         completedQuestCyclesByPlayer.clear();
         totalPrestigeLevelsEarnedByPlayer.clear();
         totalSacrificeUnlocksPurchasedByPlayer.clear();
@@ -13680,6 +13685,20 @@ public final class SheepMergeManager {
         renderPointsScoreboard(player, scoreboard, objective);
     }
 
+    public static void recordVisitedOtherFarm(Player visitor, UUID ownerId) {
+        if (visitor == null) {
+            return;
+        }
+        UUID visitorId = visitor.getUniqueId();
+        if (ownerId == null || ownerId.equals(visitorId)) {
+            return;
+        }
+        int updated = addSaturated(lifetimeOtherFarmVisitsByPlayer.getOrDefault(visitorId, 0), 1);
+        lifetimeOtherFarmVisitsByPlayer.put(visitorId, updated);
+        evaluateAchievementProgress(visitor, true);
+        saveData();
+    }
+
     private static String getQuestScoreLine(String label, int progress, int target, boolean complete) {
         return label + ": " + (complete ? "done" : (progress + "/" + target));
     }
@@ -13928,6 +13947,7 @@ public final class SheepMergeManager {
             dataConfig.set("lifetimeShears", null);
             dataConfig.set("lifetimeSpawns", null);
             dataConfig.set("lifetimeMerges", null);
+            dataConfig.set("lifetimeOtherFarmVisits", null);
             dataConfig.set("completedQuestCycles", null);
             dataConfig.set("totalPrestigeLevelsEarned", null);
             dataConfig.set("totalSacrificeUnlocksPurchased", null);
@@ -14220,6 +14240,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : lifetimeMergesByPlayer.entrySet()) {
                 dataConfig.set("lifetimeMerges." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Integer> entry : lifetimeOtherFarmVisitsByPlayer.entrySet()) {
+                dataConfig.set("lifetimeOtherFarmVisits." + entry.getKey().toString(), Math.max(0, entry.getValue()));
             }
             for (Map.Entry<UUID, Integer> entry : completedQuestCyclesByPlayer.entrySet()) {
                 dataConfig.set("completedQuestCycles." + entry.getKey().toString(), Math.max(0, entry.getValue()));
@@ -15288,6 +15311,17 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     lifetimeMergesByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeMerges." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("lifetimeOtherFarmVisits")) {
+            dataConfig.getConfigurationSection("lifetimeOtherFarmVisits").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    lifetimeOtherFarmVisitsByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("lifetimeOtherFarmVisits." + key, 0)));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
