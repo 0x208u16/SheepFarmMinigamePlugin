@@ -200,12 +200,19 @@ public class SheepFarmGameListener implements Listener {
         }
 
         Player player = event.getPlayer();
-        event.setCancelled(true);
-        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+        World world = player.getWorld();
+        if (!SheepMergeManager.isSheepFarmWorld(world)
+                && !SheepMergeManager.isTutorialWorld(world)
+                && !SheepMergeManager.isFarmBuildWorld(world)) {
             return;
         }
 
-        if (!SheepMergeManager.isFarmOwner(player, player.getWorld())) {
+        event.setCancelled(true);
+        if (!SheepMergeManager.isSheepFarmWorld(world)) {
+            return;
+        }
+
+        if (!SheepMergeManager.isFarmOwner(player, world)) {
             player.sendMessage(SheepMergeManager.warning("Visitors cannot spawn sheep here."));
             event.setCancelled(true);
             return;
@@ -218,7 +225,7 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
-        if (SheepMergeManager.isWorldAtLimit(player.getWorld())) {
+        if (SheepMergeManager.isWorldAtLimit(world)) {
             if (SheepMergeManager.shouldNotifySpawnLimit(player)) {
                 player.sendMessage(SheepMergeManager.warning("Farm full. Use /sheepmerge upgrade or merge sheep."));
             }
