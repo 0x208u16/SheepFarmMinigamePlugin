@@ -7,7 +7,12 @@
 package dev.x208.sheepmerge;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.function.Consumer;
 
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -24,6 +29,23 @@ public class SheepMergePlugin extends JavaPlugin {
     public static Logger log;
     public final static String NAME = "SheepMerge";
     public final static int BSTATS_PLUGIN_ID = 20765; // Optional: Replace with your own bStats plugin ID
+
+    private static final int LIVE_SHEEP_COUNT_WORLD_BATCH = 2;
+    private static final int SHEEP_EAT_BATCH_PER_WORLD = 120;
+    private static final int SHEEP_PLAYER_MOVEMENT_BATCH = 24;
+    private static final int AUTOMATION_AUTOSPAWN_PLAYER_BATCH = 32;
+    private static final int EGG_DISTRIBUTION_PLAYER_BATCH = 32;
+    private static final int GAMEPLAY_MENU_PLAYER_BATCH = 24;
+    private static final int SATURATION_PLAYER_BATCH = 40;
+
+    private int liveSheepWorldCursor = 0;
+    private int sheepWorldCursor = 0;
+    private int sheepPlayerCursor = 0;
+    private int automationAutoSpawnCursor = 0;
+    private int eggDistributionCursor = 0;
+    private int gameplayMenuCursor = 0;
+    private int saturationCursor = 0;
+    private final Map<UUID, Integer> sheepWorldOffsets = new HashMap<>();
 
     /**
      * Default constructor.
@@ -78,8 +100,8 @@ public class SheepMergePlugin extends JavaPlugin {
     private void scheduleLiveSheepCountUpdates() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
-        getServer().getScheduler().runTaskTimer(this,
-                () -> SheepMergeManager.refreshLiveSheepCounts(getServer().getWorlds()),
+        getServer().getScheduler().runTaskTimerAsynchronously(this,
+                () -> getServer().getScheduler().runTask(this, this::runLiveSheepCountBatch),
                 normalTickInterval,
                 normalTickInterval);
     }
@@ -87,28 +109,17 @@ public class SheepMergePlugin extends JavaPlugin {
     private void scheduleSheepNameUpdates() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long fastTickInterval = configuration == null ? 2L : configuration.getSchedulerFastTickInterval();
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (World world : getServer().getWorlds()) {
-                if (!SheepMergeManager.isSheepFarmWorld(world)) {
-                    continue;
-                }
-                for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
-                    SheepMergeManager.processSheepEatTimer(sheep);
-                }
-            }
-            for (Player player : getServer().getOnlinePlayers()) {
-                SheepMergeManager.recoverPlayerIfFallenFromPlatform(player);
-                SheepMergeManager.updateCarriedSheepPosition(player);
-            }
-        }, fastTickInterval, fastTickInterval);
+        getServer().getScheduler().runTaskTimerAsynchronously(this,
+                () -> getServer().getScheduler().runTask(this, this::runSheepNameUpdateBatch),
+                fastTickInterval,
+                fastTickInterval);
     }
 
     private void scheduleAutomationAutoSpawnEveryTick() {
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (Player player : getServer().getOnlinePlayers()) {
-                SheepMergeManager.tickAutomationAutoSpawnRealtime(player);
-            }
-        }, 1L, 1L);
+        getServer().getScheduler().runTaskTimerAsynchronously(this,
+                () -> getServer().getScheduler().runTask(this, this::runAutomationAutoSpawnBatch),
+                1L,
+                1L);
     }
 
     private void setup() {
@@ -124,43 +135,147 @@ public class SheepMergePlugin extends JavaPlugin {
     private void scheduleSheepEggDistribution() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long fastTickInterval = configuration == null ? 2L : configuration.getSchedulerFastTickInterval();
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (Player player : getServer().getOnlinePlayers()) {
-                SheepMergeManager.tickEggDistribution(player);
-            }
-        }, fastTickInterval, fastTickInterval);
+        getServer().getScheduler().runTaskTimerAsynchronously(this,
+                () -> getServer().getScheduler().runTask(this, this::runEggDistributionBatch),
+                fastTickInterval,
+                fastTickInterval);
     }
 
     private void scheduleFarmLoadoutAndReminderUpdates() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long reminderTickInterval = configuration == null ? 20L : configuration.getSchedulerReminderTickInterval();
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (Player player : getServer().getOnlinePlayers()) {
-                SheepMergeManager.tickOpenMenuStatRefresh(player);
-                SheepMergeManager.tickAutomationPlaytimePoints(player);
-                if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
-                    continue;
-                }
-                SheepMergeManager.enforceFarmLoadout(player);
-                SheepMergeManager.tickTutorialReminder(player);
-                SheepMergeManager.tickPrestigeReminder(player);
-                SheepMergeManager.tickMergeReminder(player);
-                SheepMergeManager.tickQuestSystem(player);
-                SheepMergeManager.tickActiveAbilities(player);
-                SheepMergeManager.tickCombo(player);
-                SheepMergeManager.tickPointsGainOverlay(player);
-            }
-        }, reminderTickInterval, reminderTickInterval);
+        getServer().getScheduler().runTaskTimerAsynchronously(this,
+                () -> getServer().getScheduler().runTask(this, this::runGameplayAndMenuBatch),
+                reminderTickInterval,
+                reminderTickInterval);
     }
 
     private void scheduleFarmSaturationUpdates() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (Player player : getServer().getOnlinePlayers()) {
-                SheepMergeManager.applyFarmSaturation(player);
-            }
-        }, normalTickInterval, normalTickInterval);
+        getServer().getScheduler().runTaskTimerAsynchronously(this,
+                () -> getServer().getScheduler().runTask(this, this::runFarmSaturationBatch),
+                normalTickInterval,
+                normalTickInterval);
+    }
+
+    private void runLiveSheepCountBatch() {
+        List<World> farmWorlds = getServer().getWorlds().stream()
+                .filter(SheepMergeManager::isSheepFarmWorld)
+                .toList();
+        if (farmWorlds.isEmpty()) {
+            SheepMergeManager.refreshLiveSheepCounts(getServer().getWorlds());
+            liveSheepWorldCursor = 0;
+            return;
+        }
+
+        liveSheepWorldCursor = runRoundRobinBatch(farmWorlds, liveSheepWorldCursor, LIVE_SHEEP_COUNT_WORLD_BATCH,
+                SheepMergeManager::refreshLiveSheepCount);
+    }
+
+    private void runSheepNameUpdateBatch() {
+        List<World> farmWorlds = getServer().getWorlds().stream()
+                .filter(SheepMergeManager::isSheepFarmWorld)
+                .toList();
+        if (farmWorlds.isEmpty()) {
+            sheepWorldCursor = 0;
+            sheepWorldOffsets.clear();
+        } else {
+            sheepWorldCursor = runRoundRobinBatch(farmWorlds, sheepWorldCursor, LIVE_SHEEP_COUNT_WORLD_BATCH,
+                    this::runSheepEatBatchForWorld);
+        }
+
+        List<Player> onlinePlayers = List.copyOf(getServer().getOnlinePlayers());
+        sheepPlayerCursor = runRoundRobinBatch(onlinePlayers, sheepPlayerCursor, SHEEP_PLAYER_MOVEMENT_BATCH,
+                player -> {
+                    SheepMergeManager.recoverPlayerIfFallenFromPlatform(player);
+                    SheepMergeManager.updateCarriedSheepPosition(player);
+                });
+    }
+
+    private void runSheepEatBatchForWorld(World world) {
+        if (world == null) {
+            return;
+        }
+
+        List<Sheep> sheepInWorld = List.copyOf(world.getEntitiesByClass(Sheep.class));
+        if (sheepInWorld.isEmpty()) {
+            sheepWorldOffsets.remove(world.getUID());
+            return;
+        }
+
+        int size = sheepInWorld.size();
+        int offset = Math.floorMod(sheepWorldOffsets.getOrDefault(world.getUID(), 0), size);
+        int processed = 0;
+
+        while (processed < SHEEP_EAT_BATCH_PER_WORLD && processed < size) {
+            SheepMergeManager.processSheepEatTimer(sheepInWorld.get(offset));
+            offset = (offset + 1) % size;
+            processed++;
+        }
+
+        sheepWorldOffsets.put(world.getUID(), offset);
+    }
+
+    private void runAutomationAutoSpawnBatch() {
+        List<Player> onlinePlayers = List.copyOf(getServer().getOnlinePlayers());
+        automationAutoSpawnCursor = runRoundRobinBatch(onlinePlayers,
+                automationAutoSpawnCursor,
+                AUTOMATION_AUTOSPAWN_PLAYER_BATCH,
+                SheepMergeManager::tickAutomationAutoSpawnRealtime);
+    }
+
+    private void runEggDistributionBatch() {
+        List<Player> onlinePlayers = List.copyOf(getServer().getOnlinePlayers());
+        eggDistributionCursor = runRoundRobinBatch(onlinePlayers,
+                eggDistributionCursor,
+                EGG_DISTRIBUTION_PLAYER_BATCH,
+                SheepMergeManager::tickEggDistribution);
+    }
+
+    private void runGameplayAndMenuBatch() {
+        List<Player> onlinePlayers = List.copyOf(getServer().getOnlinePlayers());
+        gameplayMenuCursor = runRoundRobinBatch(onlinePlayers, gameplayMenuCursor, GAMEPLAY_MENU_PLAYER_BATCH,
+                player -> {
+                    SheepMergeManager.tickOpenMenuStatRefresh(player);
+                    SheepMergeManager.tickAutomationPlaytimePoints(player);
+                    if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+                        return;
+                    }
+                    SheepMergeManager.enforceFarmLoadout(player);
+                    SheepMergeManager.tickTutorialReminder(player);
+                    SheepMergeManager.tickPrestigeReminder(player);
+                    SheepMergeManager.tickMergeReminder(player);
+                    SheepMergeManager.tickQuestSystem(player);
+                    SheepMergeManager.tickActiveAbilities(player);
+                    SheepMergeManager.tickCombo(player);
+                    SheepMergeManager.tickPointsGainOverlay(player);
+                });
+    }
+
+    private void runFarmSaturationBatch() {
+        List<Player> onlinePlayers = List.copyOf(getServer().getOnlinePlayers());
+        saturationCursor = runRoundRobinBatch(onlinePlayers,
+                saturationCursor,
+                SATURATION_PLAYER_BATCH,
+                SheepMergeManager::applyFarmSaturation);
+    }
+
+    private static <T> int runRoundRobinBatch(List<T> values, int cursor, int batchSize, Consumer<T> action) {
+        if (values == null || values.isEmpty() || batchSize <= 0 || action == null) {
+            return 0;
+        }
+
+        int size = values.size();
+        int safeCursor = Math.floorMod(cursor, size);
+        int toProcess = Math.min(batchSize, size);
+
+        for (int i = 0; i < toProcess; i++) {
+            int index = (safeCursor + i) % size;
+            action.accept(values.get(index));
+        }
+
+        return (safeCursor + toProcess) % size;
     }
 
     private void scheduleRandomFarmEvents() {
