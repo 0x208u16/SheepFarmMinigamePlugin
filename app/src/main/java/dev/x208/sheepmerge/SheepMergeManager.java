@@ -5817,9 +5817,6 @@ public final class SheepMergeManager {
         if (tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
             count++;
         }
-        if (tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
-            count++;
-        }
         if (tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
             count++;
         }
@@ -5867,9 +5864,6 @@ public final class SheepMergeManager {
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             return "Upgrade Menu -> Quest Menu -> Activate any quest ability";
         }
-        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
-            return "Upgrade Menu -> Quest Menu -> Quest Upgrades";
-        }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
             return "Upgrade Menu -> Shear Shop -> Buy one Shear Shop upgrade";
         }
@@ -5906,7 +5900,7 @@ public final class SheepMergeManager {
         player.sendMessage(hint("Step 1: Spawn " + TUTORIAL_SPAWN_TARGET + " sheep."));
         player.sendMessage(hint("Step 2: Shear " + TUTORIAL_SHEAR_TARGET + " sheep."));
         player.sendMessage(hint("Step 3: Merge " + TUTORIAL_MERGE_TARGET + " pair (SHIFT + RIGHT-CLICK)."));
-        player.sendMessage(hint("Step 4: Menus -> Upgrades, Quests, Quest Upgrades, Shear Shop, Prestige."));
+        player.sendMessage(hint("Step 4: Menus -> Upgrades, Quests, Shear Shop, Prestige."));
         player.sendMessage(accent("Tip: /sheepmerge status shows your current step."));
         sendTutorialStatusFeed(player);
     }
@@ -6037,7 +6031,6 @@ public final class SheepMergeManager {
                 || !tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)
                 || !tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)
                 || !tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)
-                || !tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)
                 || !tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)
                 || !tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)
                 || !tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
@@ -6056,7 +6049,6 @@ public final class SheepMergeManager {
         BUY_REGULAR_UPGRADE,
         OPEN_QUESTS,
         USE_ABILITY,
-        OPEN_QUEST_UPGRADES,
         BUY_SHEAR_UPGRADE,
         OPEN_PRESTIGE,
         PRESTIGE_ONCE,
@@ -6100,9 +6092,6 @@ public final class SheepMergeManager {
         if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.USE_ABILITY;
         }
-        if (!tutorialQuestUpgradesOpenedByPlayer.getOrDefault(playerId, false)) {
-            return TutorialStep.OPEN_QUEST_UPGRADES;
-        }
         if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
             return TutorialStep.BUY_SHEAR_UPGRADE;
         }
@@ -6128,7 +6117,6 @@ public final class SheepMergeManager {
             case BUY_REGULAR_UPGRADE -> "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade";
             case OPEN_QUESTS -> "Upgrade Menu -> Quest Menu";
             case USE_ABILITY -> "Upgrade Menu -> Quest Menu -> Activate any quest ability";
-            case OPEN_QUEST_UPGRADES -> "Upgrade Menu -> Quest Menu -> Quest Upgrades";
             case BUY_SHEAR_UPGRADE -> "Upgrade Menu -> Shear Shop -> Buy one Shear Shop upgrade";
             case OPEN_PRESTIGE -> "Upgrade Menu -> Prestige Menu";
             case PRESTIGE_ONCE -> "Upgrade Menu -> Prestige Menu -> Prestige Reset";
@@ -6233,7 +6221,6 @@ public final class SheepMergeManager {
                     || step == TutorialStep.BUY_REGULAR_UPGRADE
                     || step == TutorialStep.OPEN_QUESTS
                     || step == TutorialStep.USE_ABILITY
-                    || step == TutorialStep.OPEN_QUEST_UPGRADES
                     || step == TutorialStep.BUY_SHEAR_UPGRADE
                     || step == TutorialStep.OPEN_PRESTIGE
                     || step == TutorialStep.PRESTIGE_ONCE;
@@ -11816,6 +11803,13 @@ public final class SheepMergeManager {
                                     "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
                                     "Key: " + achievement.id),
                             unlockedAchievement);
+            if (unlockedAchievement && "socials_explorer".equals(achievement.id)) {
+                ItemMeta itemMeta = item.getItemMeta();
+                if (itemMeta instanceof SkullMeta skullMeta) {
+                    skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID));
+                    item.setItemMeta(skullMeta);
+                }
+            }
             inventory.setItem(slots.get(index), item);
         }
 
@@ -13729,9 +13723,9 @@ public final class SheepMergeManager {
                 Material.BOOK,
                 "Tutorial Tip",
                 List.of(
-                        "Opening this menu completes",
-                        "the 'Quest Upgrades' tutorial step.",
-                        "You do NOT need to buy here.")));
+                        "This menu is optional",
+                        "for tutorial completion.",
+                        "Buy here any time.")));
         inventory.setItem(QUEST_UPGRADE_DURATION_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Extended Buff Duration",
@@ -13764,7 +13758,7 @@ public final class SheepMergeManager {
         switch (slot) {
             case QUEST_UPGRADE_DURATION_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.COMPLETE,
-                        "Quest Upgrades only need to be opened for the tutorial")) {
+                        "Complete the tutorial before buying Quest Upgrades")) {
                     break;
                 }
                 if (upgradeQuestDuration(player)) {
@@ -13776,7 +13770,7 @@ public final class SheepMergeManager {
             }
             case QUEST_UPGRADE_POWER_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.COMPLETE,
-                        "Quest Upgrades only need to be opened for the tutorial")) {
+                        "Complete the tutorial before buying Quest Upgrades")) {
                     break;
                 }
                 if (upgradeQuestPower(player)) {
