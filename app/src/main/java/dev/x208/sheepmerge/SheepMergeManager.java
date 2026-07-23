@@ -110,6 +110,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> tutorialShearShopOpenedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> tutorialBypassedByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> soundEffectsEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> sheepSoundsEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> particleEffectsEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Long> tutorialStartedAtByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
@@ -458,6 +459,7 @@ public final class SheepMergeManager {
     public static final String SCOREBOARD_LAYOUT_MENU_TITLE = "Scoreboard Layout";
     public static final String INVENTORY_LAYOUT_MENU_TITLE = "Inventory Layout";
     public static final String SOUND_EFFECTS_MENU_TITLE = "Sound Effects";
+    public static final int SHEEP_SOUNDS_TOGGLE_SLOT = 15;
     public static final String PARTICLE_EFFECTS_MENU_TITLE = "Particle Effects";
     public static final String VISIT_ACCESS_MENU_TITLE = "Visit Access";
     public static final String SOCIALS_MENU_TITLE = "Socials";
@@ -3032,6 +3034,21 @@ public final class SheepMergeManager {
         return next;
     }
 
+    public static boolean areSheepSoundsEnabled(Player player) {
+        return player != null && sheepSoundsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+    }
+
+    public static boolean toggleSheepSounds(Player player) {
+        if (player == null) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        boolean next = !sheepSoundsEnabledByPlayer.getOrDefault(playerId, true);
+        sheepSoundsEnabledByPlayer.put(playerId, next);
+        saveData();
+        return next;
+    }
+
     public static boolean areParticleEffectsEnabled(Player player) {
         return player != null && particleEffectsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
     }
@@ -4533,7 +4550,7 @@ public final class SheepMergeManager {
                 0.4D,
                 0.2D,
                 0.02D);
-        playSound(world, spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.7f, 1.5f);
+        playSheepSound(world, spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.7f, 1.5f);
     }
 
     private static void tickAutoMergeAbility(Player player, UUID playerId, long now) {
@@ -6387,6 +6404,7 @@ public final class SheepMergeManager {
         farmVisitEnabledByPlayer.remove(id);
         visitAccessPageByPlayer.remove(id);
         soundEffectsEnabledByPlayer.remove(id);
+        sheepSoundsEnabledByPlayer.remove(id);
         particleEffectsEnabledByPlayer.remove(id);
         farmVisitBlockedUsersByPlayer.remove(id);
         lastOutOfEggWarningTimestampByPlayer.remove(id);
@@ -6702,7 +6720,7 @@ public final class SheepMergeManager {
                 0.08D,
                 0.18D,
                 0.01D);
-        sheep.getWorld().playSound(mouth, Sound.ENTITY_SHEEP_AMBIENT, 0.75f, 1.05f);
+        playSheepSound(sheep.getWorld(), mouth, Sound.ENTITY_SHEEP_AMBIENT, 0.75f, 1.05f);
 
         sheep.setSheared(false);
         updateSheepName(sheep);
@@ -8018,6 +8036,7 @@ public final class SheepMergeManager {
         farmVisitEnabledByPlayer.clear();
         visitAccessPageByPlayer.clear();
         soundEffectsEnabledByPlayer.clear();
+        sheepSoundsEnabledByPlayer.clear();
         particleEffectsEnabledByPlayer.clear();
         farmVisitBlockedUsersByPlayer.clear();
         questPointsByPlayer.clear();
@@ -8994,12 +9013,28 @@ public final class SheepMergeManager {
         player.playSound(player.getLocation(), sound, volume, pitch);
     }
 
+    private static void playSheepSound(Player player, Sound sound, float volume, float pitch) {
+        if (player == null || sound == null || !areSoundEffectsEnabled(player) || !areSheepSoundsEnabled(player)) {
+            return;
+        }
+        player.playSound(player.getLocation(), sound, volume, pitch);
+    }
+
     private static void playSound(World world, Location location, Sound sound, float volume, float pitch) {
         if (world == null || location == null || sound == null) {
             return;
         }
         for (Player player : world.getPlayers()) {
             playSound(player, sound, volume, pitch);
+        }
+    }
+
+    private static void playSheepSound(World world, Location location, Sound sound, float volume, float pitch) {
+        if (world == null || location == null || sound == null) {
+            return;
+        }
+        for (Player player : world.getPlayers()) {
+            playSheepSound(player, sound, volume, pitch);
         }
     }
 
@@ -9277,7 +9312,7 @@ public final class SheepMergeManager {
                 0.4D,
                 0.2D,
                 0.02D);
-        sheep.getWorld().playSound(spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.6f, 1.45f);
+        playSheepSound(sheep.getWorld(), spawnLocation, Sound.ENTITY_SHEEP_AMBIENT, 0.6f, 1.45f);
         return true;
     }
 
@@ -9609,7 +9644,11 @@ public final class SheepMergeManager {
         }
         long until = System.currentTimeMillis() + durationMs;
         activeUntil.put(player.getUniqueId(), until);
-        playSound(player, sound, 1.0f, 1.2f);
+        if (sound == Sound.ENTITY_SHEEP_SHEAR) {
+            playSheepSound(player, sound, 1.0f, 1.2f);
+        } else {
+            playSound(player, sound, 1.0f, 1.2f);
+        }
         spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         return true;
     }
@@ -9627,7 +9666,11 @@ public final class SheepMergeManager {
         long currentRemaining = Math.max(0L, activeUntil.getOrDefault(playerId, 0L) - now);
         long nextUntil = now + currentRemaining + durationMs;
         activeUntil.put(playerId, nextUntil);
-        playSound(player, sound, 1.0f, 1.2f);
+        if (sound == Sound.ENTITY_SHEEP_SHEAR) {
+            playSheepSound(player, sound, 1.0f, 1.2f);
+        } else {
+            playSound(player, sound, 1.0f, 1.2f);
+        }
         spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         saveData();
         return true;
@@ -9649,7 +9692,11 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         remainingUsesByPlayer.put(playerId, addSaturated(remainingUsesByPlayer.getOrDefault(playerId, 0), useCount));
         enabledByPlayer.put(playerId, true);
-        playSound(player, sound, 1.0f, 1.2f);
+        if (sound == Sound.ENTITY_SHEEP_SHEAR) {
+            playSheepSound(player, sound, 1.0f, 1.2f);
+        } else {
+            playSound(player, sound, 1.0f, 1.2f);
+        }
         spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         saveData();
         return true;
@@ -11294,6 +11341,13 @@ public final class SheepMergeManager {
                 List.of(
                         "Status: " + (enabled ? "Enabled" : "Disabled"),
                         enabled ? "Click: Disable" : "Click: Enable")));
+        boolean sheepSoundsEnabled = areSheepSoundsEnabled(player);
+        inventory.setItem(SHEEP_SOUNDS_TOGGLE_SLOT, MenuItemFactory.create(
+                sheepSoundsEnabled ? Material.WHITE_WOOL : Material.GRAY_DYE,
+                "Sheep Sounds",
+                List.of(
+                        "Status: " + (sheepSoundsEnabled ? "Enabled" : "Disabled"),
+                        sheepSoundsEnabled ? "Click: Disable" : "Click: Enable")));
         inventory.setItem(SOUND_EFFECTS_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back",
@@ -11308,6 +11362,12 @@ public final class SheepMergeManager {
         if (slot == SOUND_EFFECTS_TOGGLE_SLOT) {
             boolean enabled = toggleSoundEffects(player);
             player.sendMessage(action("Sound effects " + (enabled ? "enabled." : "disabled.")));
+            openSoundEffectsMenu(player);
+            return;
+        }
+        if (slot == SHEEP_SOUNDS_TOGGLE_SLOT) {
+            boolean enabled = toggleSheepSounds(player);
+            player.sendMessage(action("Sheep sounds " + (enabled ? "enabled." : "disabled.")));
             openSoundEffectsMenu(player);
             return;
         }
@@ -14363,6 +14423,7 @@ public final class SheepMergeManager {
             dataConfig.set("tutorialShearShopOpened", null);
             dataConfig.set("farmVisitEnabled", null);
             dataConfig.set("soundEffectsEnabled", null);
+            dataConfig.set("sheepSoundsEnabled", null);
             dataConfig.set("particleEffectsEnabled", null);
             dataConfig.set("farmVisitBlockedUsers", null);
             dataConfig.set("questPoints", null);
@@ -14541,6 +14602,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Boolean> entry : soundEffectsEnabledByPlayer.entrySet()) {
                 dataConfig.set("soundEffectsEnabled." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Boolean> entry : sheepSoundsEnabledByPlayer.entrySet()) {
+                dataConfig.set("sheepSoundsEnabled." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Boolean> entry : particleEffectsEnabledByPlayer.entrySet()) {
                 dataConfig.set("particleEffectsEnabled." + entry.getKey().toString(), entry.getValue());
@@ -15186,6 +15250,19 @@ public final class SheepMergeManager {
                     boolean enabled = dataConfig.getBoolean("soundEffectsEnabled." + key, true);
                     if (!enabled) {
                         soundEffectsEnabledByPlayer.put(uuid, false);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("sheepSoundsEnabled")) {
+            dataConfig.getConfigurationSection("sheepSoundsEnabled").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    boolean enabled = dataConfig.getBoolean("sheepSoundsEnabled." + key, true);
+                    if (!enabled) {
+                        sheepSoundsEnabledByPlayer.put(uuid, false);
                     }
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
