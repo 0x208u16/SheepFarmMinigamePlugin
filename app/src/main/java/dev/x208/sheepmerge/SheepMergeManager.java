@@ -938,6 +938,10 @@ public final class SheepMergeManager {
     private static int getAchievementPointPool() {
         int total = 0;
         for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
+            if ("secret_author_online".equals(definition.id)
+                    || "secret_owner_farm".equals(definition.id)) {
+                continue;
+            }
             total = addSaturated(total, definition.achievementPoints);
         }
         return total;
@@ -3802,7 +3806,11 @@ public final class SheepMergeManager {
             case "wool_guardian" -> getWoolRegenLevel(player) >= getWoolRegenMaxLevel(player);
             case "secret_author_online" -> {
                 Player author = Bukkit.getPlayer(SOCIALS_AUTHOR_UUID);
-                yield author != null && author.isOnline() && !SOCIALS_AUTHOR_UUID.equals(playerId);
+                yield author != null
+                        && author.isOnline()
+                        && !SOCIALS_AUTHOR_UUID.equals(playerId)
+                        && isSheepFarmWorld(player.getWorld())
+                        && isSheepFarmWorld(author.getWorld());
             }
             case "secret_owner_farm" -> visitedOwnerFarmByPlayer.getOrDefault(playerId, false);
             default -> false;
