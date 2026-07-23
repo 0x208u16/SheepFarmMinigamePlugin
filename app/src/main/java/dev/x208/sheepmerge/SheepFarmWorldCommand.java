@@ -6,9 +6,12 @@ import dev.x208.sheepmerge.commands.CheckpointsCommandModule;
 import dev.x208.sheepmerge.commands.ComboFrenzyCommandModule;
 import dev.x208.sheepmerge.commands.DashHelpCommandModule;
 import dev.x208.sheepmerge.commands.BackupCommandModule;
+import dev.x208.sheepmerge.commands.CompleteAchievementCommandModule;
+import dev.x208.sheepmerge.commands.CompleteAllAchievementsCommandModule;
 import dev.x208.sheepmerge.commands.GiveAutomationPointsCommandModule;
 import dev.x208.sheepmerge.commands.GivePointsCommandModule;
 import dev.x208.sheepmerge.commands.GiveQuestPointsCommandModule;
+import dev.x208.sheepmerge.commands.GiveSacrificePointsCommandModule;
 import dev.x208.sheepmerge.commands.HelpCommandModule;
 import dev.x208.sheepmerge.commands.KickCommandModule;
 import dev.x208.sheepmerge.commands.LeaderboardCommandModule;
@@ -44,6 +47,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 
 import java.util.ArrayList;
+import java.math.BigInteger;
 import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,10 +92,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "checkprestige",
             "givepoints",
             "giveautomationpoints",
+            "givesacrificepoints",
             "setpoints",
             "givequestpoints",
             "setquestpoints",
             "setprestige",
+            "completeachievement",
+            "completeallachievements",
             "backup",
             "world");
 
@@ -117,10 +124,14 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     private static final List<String> ADMIN_AMOUNT_PLAYER_SUBCOMMANDS = List.of(
             "givepoints",
             "giveautomationpoints",
+            "givesacrificepoints",
             "setpoints",
             "givequestpoints",
             "setquestpoints",
             "setprestige");
+    private static final List<String> ADMIN_ACHIEVEMENT_SUBCOMMANDS = List.of(
+            "completeachievement",
+            "completeallachievements");
     private static final List<String> ADMIN_PLAYER_TARGET_SUBCOMMANDS = List.of("resetdata");
     private static final List<String> ADMIN_STAT_CHECK_SUBCOMMANDS = List.of(
             "stats",
@@ -151,10 +162,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new GivePointsCommandModule(this::handleGivePointsCommand, this::tabCompleteAdminAmountPlayer),
             new GiveAutomationPointsCommandModule(this::handleGiveAutomationPointsCommand,
                     this::tabCompleteAdminAmountPlayer),
+            new GiveSacrificePointsCommandModule(this::handleGiveSacrificePointsCommand,
+                    this::tabCompleteAdminAmountPlayer),
             new SetPointsCommandModule(this::handleSetPointsCommand, this::tabCompleteAdminAmountPlayer),
             new GiveQuestPointsCommandModule(this::handleGiveQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
             new SetQuestPointsCommandModule(this::handleSetQuestPointsCommand, this::tabCompleteAdminAmountPlayer),
             new SetPrestigeCommandModule(this::handleSetPrestigeCommand, this::tabCompleteAdminAmountPlayer),
+            new CompleteAchievementCommandModule(this::handleCompleteAchievementCommand,
+                    this::tabCompleteAdminAchievement),
+            new CompleteAllAchievementsCommandModule(this::handleCompleteAllAchievementsCommand,
+                    this::tabCompleteAdminAchievement),
             new BackupCommandModule(this::handleBackupCommand, this::tabCompleteBackup),
             new WorldCommandModule(this::handleWorldCommand, this::tabCompleteWorld));
 
@@ -213,6 +230,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 ChatColor.GRAY + "- " + label("/sheepmerge givepoints <amount> [player]") + ": admin give points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge giveautomationpoints <amount> [player]")
                 + ": admin give automation points");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge givesacrificepoints <amount> [player]")
+                + ": admin give sacrifice points");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge setpoints <amount> [player]") + ": admin set points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge givequestpoints <amount> [player]")
@@ -221,6 +240,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ": admin set quest points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge setprestige <level> [player]")
                 + ": admin set prestige level");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge completeachievement <id> [player]")
+                + ": admin complete one achievement by id");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge completeallachievements [player]")
+                + ": admin complete all achievements");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup")
                 + ": create a permanent compressed backup");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup delete <file>")
@@ -295,7 +318,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon")
                     + ": spawn a sheep using normal egg tier roll logic");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge summon <tier>")
-                    + ": spawn an exact tier (0-" + SheepTier.RAINBOW.getLevel() + ")");
+                    + ": spawn an exact tier (0+; " + (SheepTier.RAINBOW.getLevel() + 1)
+                    + "+ means higher rainbow tiers)");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("completeachievement") || topic.equalsIgnoreCase("completeallachievements")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Achievement admin hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge completeachievement <id> [player]")
+                    + ": complete one achievement by id");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge completeachievement all [player]")
+                    + ": complete all achievements (alias)");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge completeallachievements [player]")
+                    + ": complete all achievements");
             return;
         }
 
@@ -804,11 +839,15 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         }
 
         SheepTier tier;
+        int rainbowTier = 1;
+        int requestedLevel = -1;
         boolean autoRolled = args.length == 1;
         if (autoRolled) {
             tier = SheepMergeManager.rollSpawnTier(player.getWorld());
+            if (tier == SheepTier.RAINBOW) {
+                rainbowTier = 1;
+            }
         } else {
-            int requestedLevel;
             try {
                 requestedLevel = Integer.parseInt(args[1]);
             } catch (NumberFormatException exception) {
@@ -816,17 +855,39 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            if (requestedLevel < 0 || requestedLevel > SheepTier.RAINBOW.getLevel()) {
-                player.sendMessage(error("Tier must be between 0 and " + SheepTier.RAINBOW.getLevel() + "."));
+            if (requestedLevel < 0) {
+                player.sendMessage(error("Tier must be 0 or higher."));
                 return true;
             }
-            tier = SheepTier.byLevel(requestedLevel);
+
+            if (requestedLevel <= SheepTier.RAINBOW.getLevel()) {
+                tier = SheepTier.byLevel(requestedLevel);
+                if (tier == SheepTier.RAINBOW) {
+                    rainbowTier = 1;
+                }
+            } else {
+                tier = SheepTier.RAINBOW;
+                rainbowTier = requestedLevel - SheepTier.RAINBOW.getLevel() + 1;
+            }
         }
 
         Sheep spawned = player.getWorld().spawn(player.getLocation().clone().add(0.0D, 0.15D, 0.0D), Sheep.class);
         SheepMergeManager.setSheepTier(spawned, tier);
-        player.sendMessage(adminHeader("Summon") + " " + value("Spawned ") + label(tier.getDisplayName())
-                + (autoRolled ? value(" using egg roll logic.") : value(" at tier level " + tier.getLevel() + ".")));
+        if (tier == SheepTier.RAINBOW) {
+            SheepMergeManager.setRainbowTier(spawned, rainbowTier);
+        }
+
+        String tierSummary;
+        if (tier == SheepTier.RAINBOW) {
+            int effectiveLevel = SheepTier.RAINBOW.getLevel() + Math.max(1, rainbowTier) - 1;
+            tierSummary = tier.getDisplayName() + " " + SheepMergeManager.formatRainbowTier(rainbowTier)
+                    + " (effective level " + effectiveLevel + ")";
+        } else {
+            tierSummary = tier.getDisplayName() + " (tier level " + tier.getLevel() + ")";
+        }
+
+        player.sendMessage(adminHeader("Summon") + " " + value("Spawned ") + label(tierSummary)
+                + (autoRolled ? value(" using egg roll logic.") : value(" from request " + requestedLevel + ".")));
         return true;
     }
 
@@ -1228,6 +1289,127 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return false;
     }
 
+    private boolean handleGiveSacrificePointsCommand(Player player, String[] args) {
+        if (args.length >= 2 && args[0].equalsIgnoreCase("givesacrificepoints")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            BigInteger amount;
+            try {
+                amount = new BigInteger(args[1]);
+            } catch (NumberFormatException exception) {
+                player.sendMessage(error("Invalid amount. Usage: /sheepmerge givesacrificepoints <amount> [player]"));
+                return true;
+            }
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+            BigInteger previous = SheepMergeManager.getSacrificePoints(target);
+            SheepMergeManager.adminGiveSacrificePoints(target, amount);
+            BigInteger updated = SheepMergeManager.getSacrificePoints(target);
+            SheepMergeManager.updatePointsScoreboard(target);
+            player.sendMessage(bigIntegerStatUpdateMessage(
+                    "Sacrifice Points Updated",
+                    target,
+                    "Sacrifice Points",
+                    previous,
+                    updated));
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleCompleteAchievementCommand(Player player, String[] args) {
+        if (args.length >= 2 && args[0].equalsIgnoreCase("completeachievement")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+
+            if (isHelpFlag(args[1])) {
+                player.sendMessage(error("Usage: /sheepmerge completeachievement <id|all> [player]"));
+                return true;
+            }
+
+            Player target = resolveTargetPlayer(player, args, 2);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+
+            if ("all".equalsIgnoreCase(args[1])) {
+                int unlockedNow = SheepMergeManager.adminCompleteAllAchievements(target, true);
+                SheepMergeManager.updatePointsScoreboard(target);
+                int total = SheepMergeManager.getAchievementIds().size();
+                player.sendMessage(adminHeader("Achievements") + " " + label("Player") + ": "
+                        + value(target.getName()) + ChatColor.DARK_GRAY + " | "
+                        + label("Unlocked") + ": " + value(String.valueOf(unlockedNow))
+                        + ChatColor.GRAY + " newly completed (" + total + " total available).");
+                return true;
+            }
+
+            boolean alreadyUnlocked = SheepMergeManager.isAchievementUnlocked(target, args[1]);
+            if (!SheepMergeManager.adminCompleteAchievement(target, args[1], true)) {
+                player.sendMessage(error("Unknown achievement id: " + args[1] + "."));
+                return true;
+            }
+
+            SheepMergeManager.updatePointsScoreboard(target);
+            String achievementName = SheepMergeManager.getAchievementDisplayName(args[1]);
+            if (achievementName == null || achievementName.isBlank()) {
+                achievementName = args[1];
+            }
+            if (alreadyUnlocked) {
+                player.sendMessage(adminHeader("Achievements") + " " + label("Player") + ": "
+                        + value(target.getName()) + ChatColor.DARK_GRAY + " | "
+                        + label("Achievement") + ": " + value(achievementName)
+                        + ChatColor.GRAY + " was already unlocked.");
+            } else {
+                player.sendMessage(adminHeader("Achievements") + " " + label("Player") + ": "
+                        + value(target.getName()) + ChatColor.DARK_GRAY + " | "
+                        + label("Completed") + ": " + value(achievementName));
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleCompleteAllAchievementsCommand(Player player, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("completeallachievements")) {
+            if (!player.isOp()) {
+                player.sendMessage(error("Only server operators can use this command."));
+                return true;
+            }
+            if (args.length > 2) {
+                player.sendMessage(error("Usage: /sheepmerge completeallachievements [player]"));
+                return true;
+            }
+            if (args.length == 2 && isHelpFlag(args[1])) {
+                player.sendMessage(error("Usage: /sheepmerge completeallachievements [player]"));
+                return true;
+            }
+
+            Player target = resolveTargetPlayer(player, args, 1);
+            if (target == null) {
+                player.sendMessage(error("That player is not online."));
+                return true;
+            }
+
+            int unlockedNow = SheepMergeManager.adminCompleteAllAchievements(target, true);
+            SheepMergeManager.updatePointsScoreboard(target);
+            int total = SheepMergeManager.getAchievementIds().size();
+            player.sendMessage(adminHeader("Achievements") + " " + label("Player") + ": "
+                    + value(target.getName()) + ChatColor.DARK_GRAY + " | "
+                    + label("Unlocked") + ": " + value(String.valueOf(unlockedNow))
+                    + ChatColor.GRAY + " newly completed (" + total + " total available).");
+            return true;
+        }
+        return false;
+    }
+
     private List<String> tabCompleteNone(CommandSender sender, String[] args) {
         return List.of();
     }
@@ -1267,7 +1449,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     "<tier>",
                     "0",
                     "1",
-                    String.valueOf(SheepTier.RAINBOW.getLevel())), args[1]);
+                    String.valueOf(SheepTier.RAINBOW.getLevel()),
+                    String.valueOf(SheepTier.RAINBOW.getLevel() + 1),
+                    String.valueOf(SheepTier.RAINBOW.getLevel() + 4)), args[1]);
         }
         return List.of();
     }
@@ -1368,6 +1552,30 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return List.of();
     }
 
+    private List<String> tabCompleteAdminAchievement(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            return List.of();
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("completeachievement")) {
+            List<String> suggestions = new ArrayList<>(HELP_FLAGS);
+            suggestions.add("<id>");
+            suggestions.add("all");
+            suggestions.addAll(SheepMergeManager.getAchievementIds());
+            return filterSuggestions(suggestions, args[1]);
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("completeachievement")) {
+            return appendHelpFlags(onlinePlayerNameSuggestions(args[2]), args[2]);
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("completeallachievements")) {
+            return appendHelpFlags(onlinePlayerNameSuggestions(args[1]), args[1]);
+        }
+
+        return List.of();
+    }
+
     private boolean matchesSubcommand(List<String> subcommands, String candidate) {
         if (candidate == null) {
             return false;
@@ -1460,9 +1668,11 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (root.equals("resetdata") || root.equals("stats") || root.equals("checkpoints")
                 || root.equals("checkquestpoints") || root.equals("checkprestige") || root.equals("givepoints")
                 || root.equals("setpoints") || root.equals("givequestpoints") || root.equals("setquestpoints")
+                || root.equals("givesacrificepoints")
                 || root.equals("reload")
                 || root.equals("setprestige")
-                || root.equals("summon")) {
+                || root.equals("summon")
+                || matchesSubcommand(ADMIN_ACHIEVEMENT_SUBCOMMANDS, root)) {
             player.sendMessage(error("Invalid admin command syntax for /sheepmerge " + root
                     + ". Use /sheepmerge help -help for command hints."));
             sendCommandHelp(player, root);
@@ -1698,6 +1908,25 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + label("From") + ": " + value(formattedFrom)
                 + ChatColor.DARK_GRAY + " -> "
                 + label("To") + ": " + value(formattedTo)
+                + ChatColor.DARK_GRAY + " | "
+                + label("Change") + ": " + deltaColor + signedDelta;
+    }
+
+    private String bigIntegerStatUpdateMessage(String importance, Player target, String statLabel,
+            BigInteger fromValue, BigInteger toValue) {
+        BigInteger safeFrom = fromValue == null ? BigInteger.ZERO : fromValue;
+        BigInteger safeTo = toValue == null ? BigInteger.ZERO : toValue;
+        BigInteger delta = safeTo.subtract(safeFrom);
+        ChatColor deltaColor = delta.signum() >= 0 ? ChatColor.GREEN : ChatColor.RED;
+        String signedDelta = (delta.signum() >= 0 ? "+" : "") + SheepMergeManager.formatPoints(delta.abs());
+        return adminHeader(importance)
+                + " " + label("Player") + ": " + value(target.getName())
+                + ChatColor.DARK_GRAY + " | "
+                + label("Stat") + ": " + value(statLabel)
+                + ChatColor.DARK_GRAY + " | "
+                + label("From") + ": " + value(SheepMergeManager.formatPoints(safeFrom))
+                + ChatColor.DARK_GRAY + " -> "
+                + label("To") + ": " + value(SheepMergeManager.formatPoints(safeTo))
                 + ChatColor.DARK_GRAY + " | "
                 + label("Change") + ": " + deltaColor + signedDelta;
     }

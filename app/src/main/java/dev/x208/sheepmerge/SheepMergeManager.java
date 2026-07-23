@@ -3632,6 +3632,84 @@ public final class SheepMergeManager {
         return null;
     }
 
+    private static String normalizeAchievementId(String achievementId) {
+        if (achievementId == null) {
+            return "";
+        }
+        return achievementId.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public static List<String> getAchievementIds() {
+        return ACHIEVEMENT_DEFINITIONS.stream()
+                .map(definition -> definition.id)
+                .toList();
+    }
+
+    public static String getAchievementDisplayName(String achievementId) {
+        AchievementDefinition definition = getAchievementDefinition(normalizeAchievementId(achievementId));
+        return definition == null ? null : definition.name;
+    }
+
+    public static boolean isAchievementUnlocked(Player player, String achievementId) {
+        if (player == null) {
+            return false;
+        }
+        String normalized = normalizeAchievementId(achievementId);
+        if (normalized.isBlank()) {
+            return false;
+        }
+        return getUnlockedAchievementIds(player.getUniqueId()).contains(normalized);
+    }
+
+    public static boolean adminCompleteAchievement(Player player, String achievementId, boolean notify) {
+        if (player == null) {
+            return false;
+        }
+        String normalized = normalizeAchievementId(achievementId);
+        AchievementDefinition definition = getAchievementDefinition(normalized);
+        if (definition == null) {
+            return false;
+        }
+
+        UUID playerId = player.getUniqueId();
+        Set<String> unlockedAchievements = getOrCreateUnlockedAchievementIds(playerId);
+        if (!unlockedAchievements.add(definition.id)) {
+            return true;
+        }
+
+        if (notify) {
+            notifyAchievementUnlocked(player, definition, getAchievementPoints(playerId));
+        }
+        saveData();
+        evaluateAchievementProgress(player, notify);
+        return true;
+    }
+
+    public static int adminCompleteAllAchievements(Player player, boolean notify) {
+        if (player == null) {
+            return 0;
+        }
+
+        UUID playerId = player.getUniqueId();
+        Set<String> unlockedAchievements = getOrCreateUnlockedAchievementIds(playerId);
+        int unlockedCount = 0;
+        for (AchievementDefinition definition : ACHIEVEMENT_DEFINITIONS) {
+            if (!unlockedAchievements.add(definition.id)) {
+                continue;
+            }
+            unlockedCount++;
+            if (notify) {
+                notifyAchievementUnlocked(player, definition, getAchievementPoints(playerId));
+            }
+        }
+
+        if (unlockedCount > 0) {
+            saveData();
+            evaluateAchievementProgress(player, notify);
+        }
+        return unlockedCount;
+    }
+
     private static AchievementMilestoneDefinition getAchievementMilestoneDefinition(String milestoneId) {
         if (milestoneId == null || milestoneId.isBlank()) {
             return null;
@@ -6606,6 +6684,15 @@ public final class SheepMergeManager {
         }
         UUID id = player.getUniqueId();
         automationPointsByPlayer.put(id, addSaturated(automationPointsByPlayer.getOrDefault(id, 0), amount));
+        saveData();
+    }
+
+    public static void adminGiveSacrificePoints(Player player, BigInteger amount) {
+        if (player == null || amount == null || amount.signum() == 0) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        sacrificePointsByPlayer.put(id, getSacrificePoints(id).add(amount).max(BigInteger.ZERO));
         saveData();
     }
 
