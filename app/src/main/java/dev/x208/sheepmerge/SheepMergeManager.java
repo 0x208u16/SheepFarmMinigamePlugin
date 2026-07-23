@@ -602,6 +602,10 @@ public final class SheepMergeManager {
     private static final UUID SOCIALS_AUTHOR_UUID = UUID.fromString("27268675-a9b7-4abd-9628-e6c4515a5cf6");
     private static final int SOCIALS_VISIT_PAGE_SIZE = 31;
 
+    public static boolean isAuthor(Player player) {
+        return player != null && SOCIALS_AUTHOR_UUID.equals(player.getUniqueId());
+    }
+
     private static SheepMergePlugin plugin;
     private static final SheepEggModule EGG_MODULE = new SheepEggModule();
     private static FileConfiguration dataConfig;

