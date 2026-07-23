@@ -3862,7 +3862,7 @@ public final class SheepMergeManager {
             case "automation_online" -> getUnlockedAutomationCount(player) >= 2;
             case "automation_matrix" -> getUnlockedAutomationCount(player) >= 6;
             case "sacrifice_initiate" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 2;
-            case "sacrifice_mastery" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 5;
+            case "sacrifice_mastery" -> getSacrificeUnlocksBought(playerId) >= SACRIFICE_UNLOCK_MAX;
             case "reborn" -> getRebirthLevel(player) >= 3;
             case "rainbow_ascension" -> highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0) >= 4;
             case "tutorial_mastery" -> tutorialCompletedByPlayer.getOrDefault(playerId, false);
@@ -3875,7 +3875,7 @@ public final class SheepMergeManager {
                         && isInventoryQuickAccessCastingEnabled(playerId);
             case "quest_engineer" ->
                 getQuestUpgradeDurationLevel(player) >= 10 && getQuestUpgradePowerLevel(player) >= 10;
-            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 15;
+            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 16;
             case "egg_cap_collector" -> getPrestigeEggCapLevel(player) >= 10;
             case "spawn_architect" -> getBaseSpawnTierLevel(player) >= 8;
             case "prestige_planner" -> getPrestigeQuestRewardLevel(player) >= 18;
@@ -11954,7 +11954,8 @@ public final class SheepMergeManager {
                                     achievement.reward,
                                     "Achievement points: +" + achievement.achievementPoints,
                                     "Status: " + (unlockedAchievement ? "UNLOCKED" : "LOCKED"),
-                                    "Key: " + achievement.id))
+                                    "Key: " + achievement.id),
+                            unlockedAchievement)
                     : MenuItemFactory.create(
                             achievement.material,
                             achievement.name,
