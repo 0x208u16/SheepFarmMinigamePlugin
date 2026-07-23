@@ -332,6 +332,7 @@ public class SheepFarmGameListener implements Listener {
             int targetRainbowTier = SheepMergeManager.getRainbowTier(targetSheep);
             if (pickedRainbowTier != targetRainbowTier) {
                 event.setCancelled(true);
+                SheepMergeManager.dropPickedUpSheep(player);
                 player.sendMessage(SheepMergeManager.warning(
                         "Rainbow sheep tiers must match to merge ("
                                 + SheepMergeManager.formatRainbowTier(pickedRainbowTier)
