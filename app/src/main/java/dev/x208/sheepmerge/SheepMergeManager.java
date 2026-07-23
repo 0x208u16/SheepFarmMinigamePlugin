@@ -224,6 +224,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> lifetimeSpawnsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> lifetimeMergesByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> lifetimeOtherFarmVisitsByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> visitedOwnerFarmByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> completedQuestCyclesByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> totalPrestigeLevelsEarnedByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> totalSacrificeUnlocksPurchasedByPlayer = new HashMap<>();
@@ -851,7 +852,11 @@ public final class SheepMergeManager {
             new AchievementDefinition("sheep_limit_master", Material.OAK_FENCE, "Sheep Limit Master",
                     "Reach your current maximum sheep limit", "Reward: +8 achievement points", 8),
             new AchievementDefinition("wool_guardian", Material.SHIELD, "Wool Guardian",
-                    "Reach your current Wool Regen max level", "Reward: +11 achievement points", 11));
+                    "Reach your current Wool Regen max level", "Reward: +11 achievement points", 11),
+            new AchievementDefinition("secret_author_online", Material.DRAGON_BREATH, "Secret: Shared Session",
+                    "Secret objective", "Reward: +12 achievement points", 12),
+            new AchievementDefinition("secret_owner_farm", Material.COMMAND_BLOCK, "Secret: Owner Visitor",
+                    "Secret objective", "Reward: +12 achievement points", 12));
 
     private static final int ACHIEVEMENT_MILESTONE_COUNT = 26;
     private static final List<AchievementMilestoneDefinition> ACHIEVEMENT_MILESTONE_DEFINITIONS = createAchievementMilestones(
@@ -3795,6 +3800,11 @@ public final class SheepMergeManager {
             case "rebirth_architect" -> getRebirthLevel(player) >= 10;
             case "sheep_limit_master" -> getPlayerLimit(player) >= getMaxSheepLimit(playerId);
             case "wool_guardian" -> getWoolRegenLevel(player) >= getWoolRegenMaxLevel(player);
+            case "secret_author_online" -> {
+                Player author = Bukkit.getPlayer(SOCIALS_AUTHOR_UUID);
+                yield author != null && author.isOnline() && !SOCIALS_AUTHOR_UUID.equals(playerId);
+            }
+            case "secret_owner_farm" -> visitedOwnerFarmByPlayer.getOrDefault(playerId, false);
             default -> false;
         };
     }
@@ -3830,6 +3840,27 @@ public final class SheepMergeManager {
                 + " &7(" + milestone.reward + ", " + milestone.requiredPoints + " AP reached, total " + totalPoints
                 + " AP)"));
         playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 0.9f, 1.25f);
+        if ("points_26".equals(milestone.id)) {
+            notifyCommandBlockMilestoneServerwide(player);
+        }
+    }
+
+    private static void notifyCommandBlockMilestoneServerwide(Player unlockedBy) {
+        if (unlockedBy == null || plugin == null) {
+            return;
+        }
+        String playerName = unlockedBy.getName() == null ? "Unknown" : unlockedBy.getName();
+        String message = color("&d" + playerName + " &7unlocked the &5Command Block &7achievement milestone!");
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null) {
+                continue;
+            }
+            online.sendMessage(message);
+            if (!isSheepFarmWorld(online.getWorld())) {
+                continue;
+            }
+            online.playSound(online.getLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 0.8f, 1.0f);
+        }
     }
 
     private static void evaluateAchievementProgress(Player player, boolean notify) {
@@ -3873,6 +3904,22 @@ public final class SheepMergeManager {
 
         if (changed) {
             saveData();
+        }
+    }
+
+    public static void evaluateAuthorOnlineSecretForOnlinePlayers() {
+        if (plugin == null) {
+            return;
+        }
+        Player author = Bukkit.getPlayer(SOCIALS_AUTHOR_UUID);
+        if (author == null || !author.isOnline()) {
+            return;
+        }
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == null || !online.isOnline()) {
+                continue;
+            }
+            evaluateAchievementProgress(online, true);
         }
     }
 
@@ -6481,6 +6528,7 @@ public final class SheepMergeManager {
         lifetimeSpawnsByPlayer.remove(id);
         lifetimeMergesByPlayer.remove(id);
         lifetimeOtherFarmVisitsByPlayer.remove(id);
+        visitedOwnerFarmByPlayer.remove(id);
         completedQuestCyclesByPlayer.remove(id);
         totalPrestigeLevelsEarnedByPlayer.remove(id);
         totalSacrificeUnlocksPurchasedByPlayer.remove(id);
@@ -8111,6 +8159,7 @@ public final class SheepMergeManager {
         lifetimeSpawnsByPlayer.clear();
         lifetimeMergesByPlayer.clear();
         lifetimeOtherFarmVisitsByPlayer.clear();
+        visitedOwnerFarmByPlayer.clear();
         completedQuestCyclesByPlayer.clear();
         totalPrestigeLevelsEarnedByPlayer.clear();
         totalSacrificeUnlocksPurchasedByPlayer.clear();
@@ -14227,6 +14276,9 @@ public final class SheepMergeManager {
         }
         int updated = addSaturated(lifetimeOtherFarmVisitsByPlayer.getOrDefault(visitorId, 0), 1);
         lifetimeOtherFarmVisitsByPlayer.put(visitorId, updated);
+        if (SOCIALS_AUTHOR_UUID.equals(ownerId)) {
+            visitedOwnerFarmByPlayer.put(visitorId, true);
+        }
         evaluateAchievementProgress(visitor, true);
         saveData();
     }
@@ -14484,6 +14536,7 @@ public final class SheepMergeManager {
             dataConfig.set("lifetimeSpawns", null);
             dataConfig.set("lifetimeMerges", null);
             dataConfig.set("lifetimeOtherFarmVisits", null);
+            dataConfig.set("visitedOwnerFarm", null);
             dataConfig.set("completedQuestCycles", null);
             dataConfig.set("totalPrestigeLevelsEarned", null);
             dataConfig.set("totalSacrificeUnlocksPurchased", null);
@@ -14803,6 +14856,12 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : lifetimeOtherFarmVisitsByPlayer.entrySet()) {
                 dataConfig.set("lifetimeOtherFarmVisits." + entry.getKey().toString(), Math.max(0, entry.getValue()));
+            }
+            for (Map.Entry<UUID, Boolean> entry : visitedOwnerFarmByPlayer.entrySet()) {
+                if (entry.getValue() == null || !entry.getValue()) {
+                    continue;
+                }
+                dataConfig.set("visitedOwnerFarm." + entry.getKey().toString(), true);
             }
             for (Map.Entry<UUID, Integer> entry : completedQuestCyclesByPlayer.entrySet()) {
                 dataConfig.set("completedQuestCycles." + entry.getKey().toString(), Math.max(0, entry.getValue()));
@@ -15948,6 +16007,18 @@ public final class SheepMergeManager {
                     UUID uuid = UUID.fromString(key);
                     lifetimeOtherFarmVisitsByPlayer.put(uuid,
                             Math.max(0, dataConfig.getInt("lifetimeOtherFarmVisits." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("visitedOwnerFarm")) {
+            dataConfig.getConfigurationSection("visitedOwnerFarm").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    if (dataConfig.getBoolean("visitedOwnerFarm." + key, false)) {
+                        visitedOwnerFarmByPlayer.put(uuid, true);
+                    }
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }

@@ -23,6 +23,7 @@ public class SheepMergeWorldListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        SheepMergeManager.evaluateAuthorOnlineSecretForOnlinePlayers();
         if (SheepMergeManager.isFarmBuildWorld(player.getWorld()) && !player.isOp()) {
             World fallbackWorld = player.getServer().getWorlds().isEmpty() ? null
                     : player.getServer().getWorlds().get(0);
