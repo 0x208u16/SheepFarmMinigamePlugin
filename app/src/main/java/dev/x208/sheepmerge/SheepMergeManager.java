@@ -535,7 +535,7 @@ public final class SheepMergeManager {
     public static final int REBIRTH_BACK_TO_UPGRADES_SLOT = 26;
     public static final int REBIRTH_TREE_RESPEC_SLOT = 45;
     public static final int REBIRTH_TREE_BACK_SLOT = 53;
-    public static final int SCOREBOARD_LAYOUT_SLOT = 10;
+    public static final int SCOREBOARD_LAYOUT_SLOT = 24;
     public static final int SCOREBOARD_QUEST_POINTS_SLOT = 10;
     public static final int SCOREBOARD_AUTOMATION_POINTS_SLOT = 12;
     public static final int SCOREBOARD_SACRIFICE_POINTS_SLOT = 14;
@@ -11284,6 +11284,7 @@ public final class SheepMergeManager {
             return;
         }
         Inventory inventory = Bukkit.createInventory(null, 27, SCOREBOARD_MENU_TITLE);
+        int layoutMode = getScoreboardLayoutMode(player);
 
         inventory.setItem(SCOREBOARD_QUEST_POINTS_SLOT, MenuItemFactory.create(
                 Material.BOOK,
@@ -11334,6 +11335,14 @@ public final class SheepMergeManager {
                         "Status: " + (shouldShowScoreboardAbilityStatus(player) ? "Shown" : "Hidden"),
                         shouldShowScoreboardAbilityStatus(player) ? "Click: Hide" : "Click: Show")));
 
+        inventory.setItem(SCOREBOARD_LAYOUT_SLOT, MenuItemFactory.create(
+                Material.MAP,
+                "Compact Layout",
+                List.of(
+                        "Status: " + (layoutMode == 1 ? "Enabled" : "Disabled"),
+                        "Mode: " + (layoutMode == 1 ? "Compact" : "Detailed"),
+                        "Click: Toggle")));
+
         inventory.setItem(SCOREBOARD_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
                 "Back",
@@ -11362,6 +11371,8 @@ public final class SheepMergeManager {
                     !shouldShowScoreboardQuestProgress(player));
             case SCOREBOARD_ABILITIES_SLOT -> scoreboardShowAbilityStatusByPlayer.put(playerId,
                     !shouldShowScoreboardAbilityStatus(player));
+            case SCOREBOARD_LAYOUT_SLOT -> scoreboardLayoutModeByPlayer.put(playerId,
+                    getScoreboardLayoutMode(player) == 1 ? 0 : 1);
             case SCOREBOARD_BACK_SLOT -> {
                 openUniversalLayoutMenu(player);
                 return;
