@@ -905,23 +905,23 @@ public final class SheepMergeManager {
                 new AchievementMilestoneDefinition("points_15", getAchievementMilestoneTarget(total, 15),
                         Material.GOLD_BLOCK, "Gold Block", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_16", getAchievementMilestoneTarget(total, 16),
-                        Material.EMERALD, "Emerald", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.EMERALD, "Emerald", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_17", getAchievementMilestoneTarget(total, 17),
-                        Material.EMERALD_BLOCK, "Emerald Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.EMERALD_BLOCK, "Emerald Block", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_18", getAchievementMilestoneTarget(total, 18),
-                        Material.DIAMOND, "Diamond", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.DIAMOND, "Diamond", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_19", getAchievementMilestoneTarget(total, 19),
-                        Material.DIAMOND_BLOCK, "Diamond Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.DIAMOND_BLOCK, "Diamond Block", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_20", getAchievementMilestoneTarget(total, 20),
-                        Material.NETHERITE_SCRAP, "Netherite Scrap", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.NETHERITE_SCRAP, "Netherite Scrap", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_21", getAchievementMilestoneTarget(total, 21),
-                        Material.ANCIENT_DEBRIS, "Ancient Debris", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.ANCIENT_DEBRIS, "Ancient Debris", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_22", getAchievementMilestoneTarget(total, 22),
-                        Material.NETHERITE_INGOT, "Netherite Ingot", AchievementMilestoneRewardType.POINTS, 2),
+                        Material.NETHERITE_INGOT, "Netherite Ingot", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_23", getAchievementMilestoneTarget(total, 23),
-                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.WOOL_REGEN, 2),
+                        Material.NETHERITE_BLOCK, "Netherite Block", AchievementMilestoneRewardType.POINTS, 2),
                 new AchievementMilestoneDefinition("points_24", getAchievementMilestoneTarget(total, 24),
-                        Material.NETHER_STAR, "Nether Star", AchievementMilestoneRewardType.POINTS, 10),
+                        Material.NETHER_STAR, "Nether Star", AchievementMilestoneRewardType.WOOL_REGEN, 2),
                 new AchievementMilestoneDefinition("points_25", getAchievementMilestoneTarget(total, 25),
                         Material.BEACON, "Beacon", AchievementMilestoneRewardType.POINTS, 10),
                 new AchievementMilestoneDefinition("points_26", getAchievementMilestoneTarget(total, 26),
@@ -3875,7 +3875,7 @@ public final class SheepMergeManager {
                         && isInventoryQuickAccessCastingEnabled(playerId);
             case "quest_engineer" ->
                 getQuestUpgradeDurationLevel(player) >= 10 && getQuestUpgradePowerLevel(player) >= 10;
-            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 16;
+            case "combo_champion" -> getComboMaxUpgradeLevel(player) >= 15;
             case "egg_cap_collector" -> getPrestigeEggCapLevel(player) >= 10;
             case "spawn_architect" -> getBaseSpawnTierLevel(player) >= 8;
             case "prestige_planner" -> getPrestigeQuestRewardLevel(player) >= 18;
