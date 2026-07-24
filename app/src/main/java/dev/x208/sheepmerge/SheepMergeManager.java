@@ -68,6 +68,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import net.md_5.bungee.api.ChatMessageType;
@@ -216,8 +217,10 @@ public final class SheepMergeManager {
     private static final Map<UUID, Boolean> scoreboardShowPrestigeStatsByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowQuestProgressByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> scoreboardShowAbilityStatusByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastPointsScoreboardUpdateAtByPlayer = new HashMap<>();
     private static final Map<UUID, List<String>> inventoryQuickAccessByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> inventoryQuickAccessCastingEnabledByPlayer = new HashMap<>();
+    private static final Map<UUID, BukkitTask> activeShearAllTaskByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastOutOfEggWarningTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> lifetimeShearsByPlayer = new HashMap<>();
@@ -354,6 +357,7 @@ public final class SheepMergeManager {
     private static final int SHEAR_TIER_BOOST_CHANCE_CAP = 75;
     private static final int SHEAR_WOOL_SAVE_MAX_LEVEL = SHEAR_WOOL_SAVE_CHANCE_CAP / SHEAR_WOOL_SAVE_CHANCE_PER_LEVEL;
     private static final int SHEAR_TIER_BOOST_MAX_LEVEL = 25;
+    private static final long SCOREBOARD_UPDATE_INTERVAL_MS = 1000L;
     private static final long SPAWN_LIMIT_WARNING_COOLDOWN_MS = 5_000L;
     private static final long OUT_OF_EGGS_WARNING_COOLDOWN_MS = 2_500L;
     private static long MERGE_REMINDER_DELAY_MS = 30_000L;
@@ -6563,6 +6567,7 @@ public final class SheepMergeManager {
         autoShearEnabledByPlayer.remove(id);
         pausedAutoShearRemainingMsByPlayer.remove(id);
         nextAutoShearAtByPlayer.remove(id);
+        stopQueuedShearAllTask(id);
         lastTierBoostSoundTimestampByPlayer.remove(id);
         EGG_MODULE.clearRuntimeState(id);
         lastSpawnLimitWarningTimestampByPlayer.remove(id);
@@ -6592,6 +6597,7 @@ public final class SheepMergeManager {
         scoreboardShowPrestigeStatsByPlayer.remove(id);
         scoreboardShowQuestProgressByPlayer.remove(id);
         scoreboardShowAbilityStatusByPlayer.remove(id);
+        lastPointsScoreboardUpdateAtByPlayer.remove(id);
         socialsPageByPlayer.remove(id);
         inventoryQuickAccessByPlayer.remove(id);
         inventoryQuickAccessCastingEnabledByPlayer.remove(id);
@@ -7215,42 +7221,124 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         if (isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)) {
-            int shearedCount = shearAllEligibleSheepForPlayer(player, sheep);
-            if (shearedCount > 0) {
-                consumeCountAbilityUses(activeAutoShearUsesByPlayer, playerId, shearedCount);
-                saveData();
-            }
-            return shearedCount > 0;
+            return queueShearAllEligibleSheepForPlayer(player, sheep);
         }
         return shearSingleSheepForPlayer(player, sheep);
     }
 
-    private static int shearAllEligibleSheepForPlayer(Player player, Sheep triggerSheep) {
+    private static boolean queueShearAllEligibleSheepForPlayer(Player player, Sheep triggerSheep) {
         if (player == null || triggerSheep == null || triggerSheep.getWorld() == null) {
-            return 0;
-        }
-        if (!isFarmOwner(player, triggerSheep.getWorld())) {
-            return 0;
+            return false;
         }
         World world = triggerSheep.getWorld();
-        long now = System.currentTimeMillis();
-        int shearedCount = 0;
+        if (!isFarmOwner(player, world)) {
+            return false;
+        }
+
+        UUID playerId = player.getUniqueId();
+        BukkitTask existingTask = activeShearAllTaskByPlayer.get(playerId);
+        if (existingTask != null && !existingTask.isCancelled()) {
+            return true;
+        }
+
+        List<UUID> targetSheepIds = collectEligibleShearTargetIds(world, triggerSheep);
+        if (targetSheepIds.isEmpty()) {
+            return false;
+        }
+
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            private int index = 0;
+
+            @Override
+            public void run() {
+                Player onlinePlayer = Bukkit.getPlayer(playerId);
+                if (onlinePlayer == null
+                        || !onlinePlayer.isOnline()
+                        || onlinePlayer.getWorld() == null
+                        || !onlinePlayer.getWorld().getUID().equals(world.getUID())
+                        || !isFarmOwner(onlinePlayer, world)
+                        || !isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)
+                        || getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) <= 0
+                        || index >= targetSheepIds.size()) {
+                    stopQueuedShearAllTask(playerId);
+                    return;
+                }
+
+                while (index < targetSheepIds.size()) {
+                    UUID sheepId = targetSheepIds.get(index++);
+                    Entity entity = Bukkit.getEntity(sheepId);
+                    if (!(entity instanceof Sheep candidate)
+                            || !candidate.isValid()
+                            || candidate.isDead()
+                            || candidate.getWorld() == null
+                            || !candidate.getWorld().getUID().equals(world.getUID())) {
+                        continue;
+                    }
+
+                    if (shearSingleSheepForPlayer(onlinePlayer, candidate)) {
+                        consumeCountAbilityUse(activeAutoShearUsesByPlayer, playerId);
+                        if (getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) <= 0) {
+                            saveData();
+                            stopQueuedShearAllTask(playerId);
+                        }
+                        return;
+                    }
+                }
+
+                saveData();
+                stopQueuedShearAllTask(playerId);
+            }
+        }, 1L, 1L);
+
+        activeShearAllTaskByPlayer.put(playerId, task);
+        return true;
+    }
+
+    private static List<UUID> collectEligibleShearTargetIds(World world, Sheep triggerSheep) {
+        List<UUID> targetSheepIds = new ArrayList<>();
+        if (world == null || triggerSheep == null) {
+            return targetSheepIds;
+        }
+
+        if (isEligibleShearAllTarget(triggerSheep)) {
+            targetSheepIds.add(triggerSheep.getUniqueId());
+        }
+
         for (Sheep candidate : new ArrayList<>(world.getEntitiesByClass(Sheep.class))) {
-            if (candidate == null || !candidate.isValid() || candidate.isDead() || !candidate.isAdult()) {
+            if (candidate == null || candidate.getUniqueId().equals(triggerSheep.getUniqueId())) {
                 continue;
             }
-            if (candidate.isSheared()) {
-                continue;
-            }
-            long nextEatAt = getNextEatTimestamp(candidate);
-            if (nextEatAt > now) {
-                continue;
-            }
-            if (shearSingleSheepForPlayer(player, candidate)) {
-                shearedCount++;
+            if (isEligibleShearAllTarget(candidate)) {
+                targetSheepIds.add(candidate.getUniqueId());
             }
         }
-        return shearedCount;
+        return targetSheepIds;
+    }
+
+    private static boolean isEligibleShearAllTarget(Sheep sheep) {
+        if (sheep == null || !sheep.isValid() || sheep.isDead() || !sheep.isAdult()) {
+            return false;
+        }
+        if (sheep.isSheared()) {
+            return false;
+        }
+        return getNextEatTimestamp(sheep) <= System.currentTimeMillis();
+    }
+
+    private static void stopQueuedShearAllTask(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        BukkitTask task = activeShearAllTaskByPlayer.remove(playerId);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    private static void stopAllQueuedShearAllTasks() {
+        for (UUID playerId : new ArrayList<>(activeShearAllTaskByPlayer.keySet())) {
+            stopQueuedShearAllTask(playerId);
+        }
     }
 
     private static boolean shearSingleSheepForPlayer(Player player, Sheep sheep) {
@@ -7327,6 +7415,11 @@ public final class SheepMergeManager {
 
         SheepTier upgradedTier = currentTier.next();
         setSheepTier(sheep, upgradedTier);
+        int upgradedRainbowTier = upgradedTier == SheepTier.RAINBOW ? getRainbowTier(sheep) : 0;
+        if (shouldAnnounceTierUnlock(player, upgradedTier, upgradedRainbowTier)) {
+            announceTierUnlock(player, upgradedTier, upgradedRainbowTier);
+            markTierUnlockAnnounced(player, upgradedTier, upgradedRainbowTier);
+        }
         spawnParticle(sheep.getWorld(),
                 org.bukkit.Particle.VILLAGER_HAPPY,
                 sheep.getLocation().add(0, 0.7, 0),
@@ -8135,6 +8228,7 @@ public final class SheepMergeManager {
     }
 
     private static void clearStateBeforeDataLoad() {
+        stopAllQueuedShearAllTasks();
         pointsByPlayer.clear();
         extraLimitByPlayer.clear();
         eggSpeedLevelByPlayer.clear();
@@ -8227,6 +8321,7 @@ public final class SheepMergeManager {
         scoreboardShowPrestigeStatsByPlayer.clear();
         scoreboardShowQuestProgressByPlayer.clear();
         scoreboardShowAbilityStatusByPlayer.clear();
+        lastPointsScoreboardUpdateAtByPlayer.clear();
         socialsPageByPlayer.clear();
         inventoryQuickAccessByPlayer.clear();
         inventoryQuickAccessCastingEnabledByPlayer.clear();
@@ -8643,6 +8738,8 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
+        stopQueuedShearAllTask(playerId);
+        lastPointsScoreboardUpdateAtByPlayer.remove(playerId);
         comboScoreByPlayer.remove(playerId);
         comboLastUpdateTimestampByPlayer.remove(playerId);
         lastPointsOverlayByPlayer.remove(playerId);
@@ -14358,11 +14455,18 @@ public final class SheepMergeManager {
         Objective objective = scoreboard.registerNewObjective("sheepmerge_points", "dummy", "Sheep Merge Coins");
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
         renderPointsScoreboard(player, scoreboard, objective);
+        lastPointsScoreboardUpdateAtByPlayer.put(player.getUniqueId(), System.currentTimeMillis());
         player.setScoreboard(scoreboard);
     }
 
     public static void updatePointsScoreboard(Player player) {
         if (player == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        UUID playerId = player.getUniqueId();
+        long lastUpdatedAt = lastPointsScoreboardUpdateAtByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastUpdatedAt < SCOREBOARD_UPDATE_INTERVAL_MS) {
             return;
         }
         Scoreboard scoreboard = player.getScoreboard();
@@ -14372,6 +14476,7 @@ public final class SheepMergeManager {
             return;
         }
         renderPointsScoreboard(player, scoreboard, objective);
+        lastPointsScoreboardUpdateAtByPlayer.put(playerId, now);
     }
 
     public static void recordVisitedOtherFarm(Player visitor, UUID ownerId) {
