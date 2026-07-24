@@ -10115,7 +10115,8 @@ public final class SheepMergeManager {
     private static String getAbilityScoreLine(String label, Map<UUID, Long> activeUntil,
             Map<UUID, Long> pausedRemainingMsByPlayer, UUID playerId) {
         long remaining = getAbilityRemainingMs(activeUntil, playerId);
-        return label + ": " + (remaining > 0L ? formatDuration(remaining) : "inactive");
+        return color((remaining > 0L ? "&d" : "&8") + label + "&8: &f"
+                + (remaining > 0L ? formatDuration(remaining) : "inactive"));
     }
 
     private static String getCountAbilityMenuStatus(Map<UUID, Integer> remainingUsesByPlayer,
@@ -10146,10 +10147,10 @@ public final class SheepMergeManager {
             UUID playerId) {
         int remaining = getCountAbilityRemainingUses(remainingUsesByPlayer, playerId);
         if (remaining <= 0) {
-            return label + ": inactive";
+            return color("&8" + label + "&8: &finactive");
         }
-        return label + ": " + remaining + " uses "
-                + (enabledByPlayer.getOrDefault(playerId, true) ? "ON" : "OFF");
+        return color("&d" + label + "&8: &f" + remaining + " uses "
+                + (enabledByPlayer.getOrDefault(playerId, true) ? "&aON" : "&cOFF"));
     }
 
     private static long getQuestResetRemainingMs(Player player) {
@@ -14392,7 +14393,8 @@ public final class SheepMergeManager {
     }
 
     private static String getQuestScoreLine(String label, int progress, int target, boolean complete) {
-        return label + ": " + (complete ? "done" : (progress + "/" + target));
+        return color((complete ? "&a" : "&b") + label + "&8: &f"
+                + (complete ? "done" : (progress + "/" + target)));
     }
 
     private static String makeScoreboardSpacer(int index) {
@@ -14404,36 +14406,39 @@ public final class SheepMergeManager {
             return;
         }
 
+        objective.setDisplayName(color("&6&lSheepMerge &f&lStats"));
+
         for (String entry : new HashSet<>(scoreboard.getEntries())) {
             scoreboard.resetScores(entry);
         }
 
         UUID playerId = player.getUniqueId();
         List<String> lines = new ArrayList<>();
-        lines.add("Points: " + formatPoints(getPlayerPointsBig(player)));
+        lines.add(color("&6Coins&8: &f" + formatPoints(getPlayerPointsBig(player))));
         if (shouldShowScoreboardAchievementPoints(player)) {
-            lines.add("Achv Pts: " + getAchievementPoints(player));
+            lines.add(color("&dAchv&8: &f" + getAchievementPoints(player)));
         }
         if (shouldShowScoreboardPrestigeStats(player)) {
-            lines.add("Prestige Lv: " + getPrestigeLevel(player));
-            lines.add("Prestige Pts: " + formatPoints(getPrestigePoints(player)));
+            lines.add(color("&5Prestige&8: &fLv " + getPrestigeLevel(player)));
+            lines.add(color("&5P.Pts&8: &f" + formatPoints(getPrestigePoints(player))));
         }
 
         if (shouldShowScoreboardQuestPoints(player)) {
-            lines.add("Quest Pts: " + formatPoints(getQuestPoints(player)));
+            lines.add(color("&aQuest&8: &f" + formatPoints(getQuestPoints(player))));
         }
         if (shouldShowScoreboardAutomationPoints(player)) {
-            lines.add("Auto Pts: " + formatPoints(getAutomationPoints(player)));
+            lines.add(color("&cAuto&8: &f" + formatPoints(getAutomationPoints(player))));
         }
         if (shouldShowScoreboardSacrificePoints(player)) {
-            lines.add("Sac Pts: " + formatPoints(getSacrificePoints(player)));
+            lines.add(color("&4Sac&8: &f" + formatPoints(getSacrificePoints(player))));
         }
 
         boolean compact = getScoreboardLayoutMode(player) == 1;
 
         if (!compact && shouldShowScoreboardQuestProgress(player)) {
             lines.add(makeScoreboardSpacer(lines.size() + 1));
-            lines.add("Quest Reset: " + formatDuration(getQuestResetRemainingMs(player)));
+            lines.add(color("&a&lQuest Track"));
+            lines.add(color("&2Reset&8: &f" + formatDuration(getQuestResetRemainingMs(player))));
             lines.add(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
                     getQuestTarget(player, QUEST_SHEARS_TARGET),
                     questShearsCompleteByPlayer.getOrDefault(playerId, false)));
@@ -14447,7 +14452,7 @@ public final class SheepMergeManager {
 
         if (!compact && shouldShowScoreboardAbilityStatus(player)) {
             lines.add(makeScoreboardSpacer(lines.size() + 1));
-            lines.add("Abilities");
+            lines.add(color("&d&lAbilities"));
             lines.add(getCountAbilityScoreLine("Lucky", activeLuckyBurstUsesByPlayer,
                     luckyBurstEnabledByPlayer, playerId));
             lines.add(getAbilityScoreLine("Wool", activeWoolRushUntilByPlayer,

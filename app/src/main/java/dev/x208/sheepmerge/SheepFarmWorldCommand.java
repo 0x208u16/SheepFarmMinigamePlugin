@@ -46,6 +46,11 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+
 import java.util.ArrayList;
 import java.math.BigInteger;
 import java.io.File;
@@ -1750,144 +1755,197 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
 
     private void sendDetailedStats(Player sender, Player target, String title) {
         sender.sendMessage(adminHeader(title)
-                + " " + label("Player") + ": " + value(target.getName()));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Points") + ": "
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Quest Points") + ": "
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Prestige") + ": " + value(String.valueOf(SheepMergeManager.getPrestigeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Prestige Points") + ": "
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Rebirth") + ": " + value(String.valueOf(SheepMergeManager.getRebirthLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Rebirth Points") + ": "
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getRebirthPoints(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Automation Points") + ": "
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getAutomationPoints(target))));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Sheep Limit") + ": "
-                + value(String.valueOf(SheepMergeManager.getPlayerLimit(target)))
-                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getLimitUpgradeLevel(target)))
-                + ChatColor.GRAY + ")"
-                + ChatColor.DARK_GRAY + " | "
-                + label("Egg Interval") + ": " + value(String.valueOf(SheepMergeManager.getEggIntervalSeconds(target)))
-                + ChatColor.GRAY + "s"
-                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getEggSpeedLevel(target)))
-                + ChatColor.GRAY + ")");
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Wool Regen Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getWoolRegenLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Higher-Tier Chance") + ": "
-                + value(String.valueOf(SheepMergeManager.getHigherTierChancePercent(target))) + ChatColor.GRAY + "%"
-                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getHigherTierChanceLevel(target)))
-                + ChatColor.GRAY + ")"
-                + ChatColor.DARK_GRAY + " | "
-                + label("Egg Cap") + ": " + value(String.valueOf(SheepMergeManager.getEggCap(target)))
-                + ChatColor.GRAY + " (Lv." + value(String.valueOf(SheepMergeManager.getPrestigeEggCapLevel(target)))
-                + ChatColor.GRAY + ")");
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Shear Shop") + ": Lv."
-                + value(String.valueOf(SheepMergeManager.getShearShopLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Wool Keeper") + ": Lv."
-                + value(String.valueOf(SheepMergeManager.getShearWoolSaveLevel(target)))
-                + ChatColor.GRAY + " (" + value(String.valueOf(SheepMergeManager.getShearWoolSaveChancePercent(target)))
-                + ChatColor.GRAY + "%)"
-                + ChatColor.DARK_GRAY + " | "
-                + label("Tier Booster") + ": Lv."
-                + value(String.valueOf(SheepMergeManager.getShearTierBoostLevel(target)))
-                + ChatColor.GRAY + " ("
-                + value(String.valueOf(SheepMergeManager.getShearTierBoostChancePercent(target)))
-                + ChatColor.GRAY + "%)");
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Quest Upgrades") + ": Duration Lv."
-                + value(String.valueOf(SheepMergeManager.getQuestUpgradeDurationLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Power Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getQuestUpgradePowerLevel(target))));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Combo Upgrades") + ": Decay Lv."
-                + value(String.valueOf(SheepMergeManager.getComboDecayUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Gain Lv") + ": " + value(String.valueOf(SheepMergeManager.getComboGainUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Max Lv") + ": " + value(String.valueOf(SheepMergeManager.getComboMaxUpgradeLevel(target))));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Prestige Upgrades") + ": Double Points Lv."
-                + value(String.valueOf(SheepMergeManager.getPrestigeDoublePointsChanceLevel(target)))
-                + ChatColor.GRAY + " (" + value(String.valueOf(SheepMergeManager.getDoublePointsChancePercent(target)))
-                + ChatColor.GRAY + "%)"
-                + ChatColor.DARK_GRAY + " | "
-                + label("Higher Max Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getPrestigeHigherMaxLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Start Eggs Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getPrestigeStartEggsLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Base Tier Lv") + ": " + value(String.valueOf(SheepMergeManager.getBaseSpawnTierLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Quest Reward Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getPrestigeQuestRewardLevel(target))));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Rebirth Progress") + ": "
-                + label("Level") + "=" + value(String.valueOf(SheepMergeManager.getRebirthLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Points") + "="
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getRebirthPoints(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Unspent") + "="
-                + value(SheepMergeManager.formatPoints(SheepMergeManager.getUnspentRebirthPointsDisplay(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Next Cost") + "="
-                + value(String.valueOf(SheepMergeManager.getRebirthNextCostInPrestigeLevels(target))) + ChatColor.GRAY
-                + " prestige levels"
-                + ChatColor.DARK_GRAY + " | "
-                + label("Affordable Now") + "="
-                + value(String.valueOf(SheepMergeManager.getAffordableRebirthLevelsDisplay(target))));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Automation Upgrades") + ": Auto Buy Lv."
-                + value(String.valueOf(SheepMergeManager.getAutomationAutoBuyUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Auto Ability Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getAutomationAutoAbilityUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Slow Merge Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getAutomationSlowAutoMergeUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Slow Shear Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getAutomationSlowAutoShearUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Auto Spawn Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getAutomationAutoSpawnUpgradeLevel(target)))
-                + ChatColor.DARK_GRAY + " | "
-                + label("Auto Prestige Lv") + ": "
-                + value(String.valueOf(SheepMergeManager.getAutomationAutoPrestigeUpgradeLevel(target))));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Automation Enabled") + ": "
-                + label("Auto Buy") + "="
-                + (SheepMergeManager.isAutomationAutoBuyEnabled(target) ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-                + ChatColor.DARK_GRAY + " | "
-                + label("Auto Ability") + "="
-                + (SheepMergeManager.isAutomationAutoAbilityEnabled(target) ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-                + ChatColor.DARK_GRAY + " | "
-                + label("Slow Merge") + "="
-                + (SheepMergeManager.isAutomationSlowAutoMergeEnabled(target) ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-                + ChatColor.DARK_GRAY + " | "
-                + label("Slow Shear") + "="
-                + (SheepMergeManager.isAutomationSlowAutoShearEnabled(target) ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-                + ChatColor.DARK_GRAY + " | "
-                + label("Auto Spawn") + "="
-                + (SheepMergeManager.isAutomationAutoSpawnEnabled(target) ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-                + ChatColor.DARK_GRAY + " | "
-                + label("Auto Prestige") + "="
-                + (SheepMergeManager.isAutomationAutoPrestigeEnabled(target) ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF"));
-        sender.sendMessage(ChatColor.GRAY + "- " + label("Farm Visit Access") + ": "
-                + (SheepMergeManager.isFarmVisitable(target.getUniqueId())
-                        ? ChatColor.GREEN + "open"
-                        : ChatColor.RED + "closed"));
+                + " " + label("Player") + ": " + value(target.getName())
+                + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "Hover each stat for details.");
+
+        sender.spigot().sendMessage(composeStatLine(
+                statChip("Pts", SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)),
+                        "Points",
+                        List.of(
+                                "Current sheep merge points",
+                                "Value: " + SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)))),
+                statChip("Quest", SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target)),
+                        "Quest Points",
+                        List.of(
+                                "Currency for ability activations",
+                                "Current: " + SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target)),
+                                "Quest duration lv: " + SheepMergeManager.getQuestUpgradeDurationLevel(target),
+                                "Quest power lv: " + SheepMergeManager.getQuestUpgradePowerLevel(target))),
+                statChip("Auto", SheepMergeManager.formatPoints(SheepMergeManager.getAutomationPoints(target)),
+                        "Automation Points",
+                        List.of(
+                                "Currency for automation upgrades",
+                                "Current: "
+                                        + SheepMergeManager.formatPoints(SheepMergeManager.getAutomationPoints(target)),
+                                "Auto Buy lv: " + SheepMergeManager.getAutomationAutoBuyUpgradeLevel(target),
+                                "Auto Ability lv: " + SheepMergeManager.getAutomationAutoAbilityUpgradeLevel(target),
+                                "Auto Spawn lv: " + SheepMergeManager.getAutomationAutoSpawnUpgradeLevel(target),
+                                "Auto Prestige lv: "
+                                        + SheepMergeManager.getAutomationAutoPrestigeUpgradeLevel(target))),
+                statChip("Sac", SheepMergeManager.formatPoints(SheepMergeManager.getSacrificePoints(target)),
+                        "Sacrifice Points",
+                        List.of(
+                                "Currency from sacrificing sheep",
+                                "Current: "
+                                        + SheepMergeManager.formatPoints(SheepMergeManager.getSacrificePoints(target)),
+                                "Unlocks bought: " + SheepMergeManager.getSacrificeUnlocksBought(target) + " / "
+                                        + SheepMergeManager.SACRIFICE_UNLOCK_MAX))));
+
+        sender.spigot().sendMessage(composeStatLine(
+                statChip("Prestige", String.valueOf(SheepMergeManager.getPrestigeLevel(target)),
+                        "Prestige",
+                        List.of(
+                                "Total prestige level",
+                                "Level: " + SheepMergeManager.getPrestigeLevel(target),
+                                "Prestige points: "
+                                        + SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)),
+                                "Double Points lv: " + SheepMergeManager.getPrestigeDoublePointsChanceLevel(target),
+                                "Higher Max lv: " + SheepMergeManager.getPrestigeHigherMaxLevel(target),
+                                "Start Eggs lv: " + SheepMergeManager.getPrestigeStartEggsLevel(target),
+                                "Egg Cap lv: " + SheepMergeManager.getPrestigeEggCapLevel(target),
+                                "Base Tier lv: " + SheepMergeManager.getBaseSpawnTierLevel(target),
+                                "Quest Reward lv: " + SheepMergeManager.getPrestigeQuestRewardLevel(target))),
+                statChip("P.Pts", SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)),
+                        "Prestige Points",
+                        List.of(
+                                "Unspent prestige currency",
+                                "Current: "
+                                        + SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)),
+                                "Double Points chance: " + SheepMergeManager.getDoublePointsChancePercent(target)
+                                        + "%")),
+                statChip("Rebirth", String.valueOf(SheepMergeManager.getRebirthLevel(target)),
+                        "Rebirth",
+                        List.of(
+                                "Long-term reset progression",
+                                "Level: " + SheepMergeManager.getRebirthLevel(target),
+                                "Rebirth points: "
+                                        + SheepMergeManager.formatPoints(SheepMergeManager.getRebirthPoints(target)),
+                                "Unspent: " + SheepMergeManager
+                                        .formatPoints(SheepMergeManager.getUnspentRebirthPointsDisplay(target)),
+                                "Next cost: " + SheepMergeManager.getRebirthNextCostInPrestigeLevels(target)
+                                        + " prestige levels",
+                                "Affordable now: " + SheepMergeManager.getAffordableRebirthLevelsDisplay(target))),
+                statChip("A.Pts", String.valueOf(SheepMergeManager.getAchievementPoints(target)),
+                        "Achievement Points",
+                        List.of(
+                                "Permanent milestone currency",
+                                "Current: " + SheepMergeManager.getAchievementPoints(target),
+                                "Used for milestone multipliers"))));
+
+        sender.spigot().sendMessage(composeStatLine(
+                statChip("Limit", String.valueOf(SheepMergeManager.getPlayerLimit(target)),
+                        "Sheep Limit",
+                        List.of(
+                                "Current farm capacity",
+                                "Limit: " + SheepMergeManager.getPlayerLimit(target),
+                                "Upgrade lv: " + SheepMergeManager.getLimitUpgradeLevel(target))),
+                statChip("Egg", SheepMergeManager.getEggIntervalSeconds(target) + "s",
+                        "Egg Interval",
+                        List.of(
+                                "Auto egg spawn interval",
+                                "Interval: " + SheepMergeManager.getEggIntervalSeconds(target) + " seconds",
+                                "Egg Speed lv: " + SheepMergeManager.getEggSpeedLevel(target),
+                                "Egg Cap: " + SheepMergeManager.getEggCap(target))),
+                statChip("Wool", "Lv " + SheepMergeManager.getWoolRegenLevel(target),
+                        "Wool Regen",
+                        List.of(
+                                "Passive wool recovery upgrade",
+                                "Level: " + SheepMergeManager.getWoolRegenLevel(target),
+                                "Current max level: " + SheepMergeManager.getWoolRegenMaxLevel(target))),
+                statChip("Tier", SheepMergeManager.getHigherTierChancePercent(target) + "%",
+                        "Higher-Tier Chance",
+                        List.of(
+                                "Chance to spawn higher-tier sheep",
+                                "Chance: " + SheepMergeManager.getHigherTierChancePercent(target) + "%",
+                                "Upgrade lv: " + SheepMergeManager.getHigherTierChanceLevel(target)))));
+
+        sender.spigot().sendMessage(composeStatLine(
+                statChip("Shears", "Lv " + SheepMergeManager.getShearShopLevel(target),
+                        "Shear Shop",
+                        List.of(
+                                "Main shearing value upgrade",
+                                "Level: " + SheepMergeManager.getShearShopLevel(target),
+                                "Wool Keeper lv: " + SheepMergeManager.getShearWoolSaveLevel(target),
+                                "Wool Keeper chance: " + SheepMergeManager.getShearWoolSaveChancePercent(target) + "%",
+                                "Tier Booster lv: " + SheepMergeManager.getShearTierBoostLevel(target),
+                                "Tier Booster chance: " + SheepMergeManager.getShearTierBoostChancePercent(target)
+                                        + "%")),
+                statChip("Combo", "D" + SheepMergeManager.getComboDecayUpgradeLevel(target)
+                        + " G" + SheepMergeManager.getComboGainUpgradeLevel(target)
+                        + " M" + SheepMergeManager.getComboMaxUpgradeLevel(target),
+                        "Combo Upgrades",
+                        List.of(
+                                "Decay / Gain / Max upgrade levels",
+                                "Decay lv: " + SheepMergeManager.getComboDecayUpgradeLevel(target),
+                                "Gain lv: " + SheepMergeManager.getComboGainUpgradeLevel(target),
+                                "Max lv: " + SheepMergeManager.getComboMaxUpgradeLevel(target))),
+                statChip("QuestUp", "D" + SheepMergeManager.getQuestUpgradeDurationLevel(target)
+                        + " P" + SheepMergeManager.getQuestUpgradePowerLevel(target),
+                        "Quest Upgrades",
+                        List.of(
+                                "Quest duration and power upgrades",
+                                "Duration lv: " + SheepMergeManager.getQuestUpgradeDurationLevel(target),
+                                "Power lv: " + SheepMergeManager.getQuestUpgradePowerLevel(target))),
+                statChip("Visit", SheepMergeManager.isFarmVisitable(target.getUniqueId()) ? "Open" : "Closed",
+                        "Farm Visit Access",
+                        List.of(
+                                "Whether other players can visit this farm",
+                                "Current: " + (SheepMergeManager.isFarmVisitable(target.getUniqueId()) ? "Open"
+                                        : "Closed")))));
+
+        sender.spigot().sendMessage(composeStatLine(
+                statChip("AutoBuy", onOffShort(SheepMergeManager.isAutomationAutoBuyEnabled(target)),
+                        "Automation Toggle: Auto Buy",
+                        List.of("Status: " + onOffLong(SheepMergeManager.isAutomationAutoBuyEnabled(target)))),
+                statChip("Ability", onOffShort(SheepMergeManager.isAutomationAutoAbilityEnabled(target)),
+                        "Automation Toggle: Auto Ability",
+                        List.of("Status: " + onOffLong(SheepMergeManager.isAutomationAutoAbilityEnabled(target)))),
+                statChip("Merge", onOffShort(SheepMergeManager.isAutomationSlowAutoMergeEnabled(target)),
+                        "Automation Toggle: Slow Merge",
+                        List.of("Status: " + onOffLong(SheepMergeManager.isAutomationSlowAutoMergeEnabled(target)))),
+                statChip("Shear", onOffShort(SheepMergeManager.isAutomationSlowAutoShearEnabled(target)),
+                        "Automation Toggle: Slow Shear",
+                        List.of("Status: " + onOffLong(SheepMergeManager.isAutomationSlowAutoShearEnabled(target)))),
+                statChip("Spawn", onOffShort(SheepMergeManager.isAutomationAutoSpawnEnabled(target)),
+                        "Automation Toggle: Auto Spawn",
+                        List.of("Status: " + onOffLong(SheepMergeManager.isAutomationAutoSpawnEnabled(target)))),
+                statChip("Prestg", onOffShort(SheepMergeManager.isAutomationAutoPrestigeEnabled(target)),
+                        "Automation Toggle: Auto Prestige",
+                        List.of("Status: " + onOffLong(SheepMergeManager.isAutomationAutoPrestigeEnabled(target))))));
+    }
+
+    private BaseComponent[] composeStatLine(TextComponent... chips) {
+        ComponentBuilder builder = new ComponentBuilder();
+        for (int index = 0; index < chips.length; index++) {
+            if (index > 0) {
+                builder.append("  ").color(net.md_5.bungee.api.ChatColor.DARK_GRAY);
+            }
+            builder.append(chips[index]);
+        }
+        return builder.create();
+    }
+
+    private TextComponent statChip(String shortLabel, String value, String hoverTitle, List<String> hoverLines) {
+        TextComponent chip = new TextComponent(shortLabel + ": " + value);
+        chip.setColor(net.md_5.bungee.api.ChatColor.AQUA);
+        chip.setBold(true);
+
+        ComponentBuilder hover = new ComponentBuilder(hoverTitle)
+                .color(net.md_5.bungee.api.ChatColor.GOLD)
+                .bold(true);
+        for (String line : hoverLines) {
+            hover.append("\n" + line).color(net.md_5.bungee.api.ChatColor.GRAY).bold(false);
+        }
+        chip.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover.create()));
+        return chip;
+    }
+
+    private String onOffShort(boolean enabled) {
+        return enabled ? "ON" : "OFF";
+    }
+
+    private String onOffLong(boolean enabled) {
+        return enabled ? "Enabled" : "Disabled";
     }
 
     private String statUpdateMessage(String importance, Player target, String statLabel, long fromValue, long toValue) {
