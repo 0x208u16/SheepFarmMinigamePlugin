@@ -100,10 +100,11 @@ public class SheepMergePlugin extends JavaPlugin {
     private void scheduleLiveSheepCountUpdates() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
+        long liveCountInterval = Math.max(normalTickInterval, normalTickInterval * 3L);
         getServer().getScheduler().runTaskTimerAsynchronously(this,
                 () -> getServer().getScheduler().runTask(this, this::runLiveSheepCountBatch),
-                normalTickInterval,
-                normalTickInterval);
+                liveCountInterval,
+                liveCountInterval);
     }
 
     private void scheduleSheepNameUpdates() {
@@ -153,10 +154,11 @@ public class SheepMergePlugin extends JavaPlugin {
     private void scheduleFarmSaturationUpdates() {
         SheepMergeConfiguration configuration = SheepMergeConfiguration.get();
         long normalTickInterval = configuration == null ? 20L : configuration.getSchedulerNormalTickInterval();
+        long saturationInterval = Math.max(normalTickInterval, normalTickInterval * 4L);
         getServer().getScheduler().runTaskTimerAsynchronously(this,
                 () -> getServer().getScheduler().runTask(this, this::runFarmSaturationBatch),
-                normalTickInterval,
-                normalTickInterval);
+                saturationInterval,
+                saturationInterval);
     }
 
     private void runLiveSheepCountBatch() {

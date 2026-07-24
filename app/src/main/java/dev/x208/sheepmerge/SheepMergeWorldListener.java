@@ -78,7 +78,6 @@ public class SheepMergeWorldListener implements Listener {
         SheepMergeManager.enforceFarmLoadout(player);
         SheepMergeManager.applyFarmSaturation(player);
         SheepMergeManager.showPointsScoreboard(player);
-        SheepMergeManager.updatePointsScoreboard(player);
         SheepMergeManager.resetEggTimer(player);
         SheepMergeManager.resetMergeReminder(player);
         SheepMergeManager.updateVisitFarmBossBar(player);
@@ -149,7 +148,6 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.enforceFarmLoadout(player);
             SheepMergeManager.applyFarmSaturation(player);
             SheepMergeManager.showPointsScoreboard(player);
-            SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
             SheepMergeManager.resetMergeReminder(player);
             SheepMergeManager.updateVisitFarmBossBar(player);
@@ -170,7 +168,6 @@ public class SheepMergeWorldListener implements Listener {
             SheepMergeManager.enforceFarmLoadout(player);
             SheepMergeManager.applyFarmSaturation(player);
             SheepMergeManager.showPointsScoreboard(player);
-            SheepMergeManager.updatePointsScoreboard(player);
             SheepMergeManager.resetEggTimer(player);
             SheepMergeManager.resetMergeReminder(player);
             SheepMergeManager.updateVisitFarmBossBar(player);

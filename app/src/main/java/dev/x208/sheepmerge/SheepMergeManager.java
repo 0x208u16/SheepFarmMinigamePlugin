@@ -14365,7 +14365,6 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        evaluateAchievementProgress(player, true);
         Scoreboard scoreboard = player.getScoreboard();
         Objective objective = scoreboard == null ? null : scoreboard.getObjective("sheepmerge_points");
         if (objective == null) {
@@ -14471,12 +14470,7 @@ public final class SheepMergeManager {
             score--;
         }
 
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online == null) {
-                continue;
-            }
-            updateTabListPointsVisibility(online);
-        }
+        updateTabListPointsVisibility(player);
     }
 
     public static void updateTabListPointsVisibility(Player player) {
