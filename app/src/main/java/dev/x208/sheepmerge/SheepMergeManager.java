@@ -14437,7 +14437,7 @@ public final class SheepMergeManager {
         if (!compact && shouldShowScoreboardQuestProgress(player)) {
             long questResetSeconds = Math.max(0L, (getQuestResetRemainingMs(player) + 999L) / 1000L);
             lines.add(makeScoreboardSpacer(lines.size() + 1));
-            lines.add(color("&a&lQuest &8(&f" + questResetSeconds + "s&8)"));
+            lines.add(color("&a&lQuests &8(&f" + questResetSeconds + "s&8)"));
             lines.add(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
                     getQuestTarget(player, QUEST_SHEARS_TARGET),
                     questShearsCompleteByPlayer.getOrDefault(playerId, false)));
