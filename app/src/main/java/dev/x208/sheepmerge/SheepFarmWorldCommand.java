@@ -200,7 +200,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge upgrade") + ": open upgrade menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge prestige") + ": open prestige menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge shop") + ": open shop menu");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge top") + ": show top players by points");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge top") + ": show top players by Coins");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge status") + ": view your current stats");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit <player>") + ": visit another open farm");
         player.sendMessage(
@@ -226,19 +226,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                         + ": save/load shared farm chunks for all farms");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge resetdata [player]") + ": admin reset a player");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge stats [player]") + ": admin stats view");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge checkpoints [player]") + ": admin points check");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge checkpoints [player]") + ": admin coin check");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge checkquestpoints [player]") + ": admin quest points check");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge checkprestige [player]") + ": admin prestige check");
         player.sendMessage(
-                ChatColor.GRAY + "- " + label("/sheepmerge givepoints <amount> [player]") + ": admin give points");
+                ChatColor.GRAY + "- " + label("/sheepmerge givepoints <amount> [player]") + ": admin give Coins");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge giveautomationpoints <amount> [player]")
                 + ": admin give automation points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge givesacrificepoints <amount> [player]")
                 + ": admin give sacrifice points");
         player.sendMessage(
-                ChatColor.GRAY + "- " + label("/sheepmerge setpoints <amount> [player]") + ": admin set points");
+                ChatColor.GRAY + "- " + label("/sheepmerge setpoints <amount> [player]") + ": admin set Coins");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge givequestpoints <amount> [player]")
                 + ": admin give quest points");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge setquestpoints <amount> [player]")
@@ -288,7 +288,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         if (topic.equalsIgnoreCase("top")) {
             player.sendMessage(ChatColor.DARK_AQUA + "Top hints:");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge top")
-                    + ": view top players by sheep merge points");
+                    + ": view top players by sheep merge Coins");
             return;
         }
 
@@ -567,7 +567,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(error("That player is not online."));
                 return true;
             }
-            sendDetailedStats(player, target, "Checkpoints");
+            sendDetailedStats(player, target, "Coins");
             return true;
         }
         return false;
@@ -1119,9 +1119,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             long updated = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.updatePointsScoreboard(target);
             player.sendMessage(statUpdateMessage(
-                    "Points Updated",
+                    "Coins Updated",
                     target,
-                    "Points",
+                    "Coins",
                     previous,
                     updated));
             return true;
@@ -1152,9 +1152,9 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             long updated = SheepMergeManager.getPlayerPoints(target);
             SheepMergeManager.updatePointsScoreboard(target);
             player.sendMessage(statUpdateMessage(
-                    "Points Updated",
+                    "Coins Updated",
                     target,
-                    "Points",
+                    "Coins",
                     previous,
                     updated));
             return true;
@@ -1759,10 +1759,10 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + "Hover each stat for details.");
 
         sender.spigot().sendMessage(composeStatLine(
-                statChip("Pts", SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)),
-                        "Points",
+                statChip("Coins", SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)),
+                        "Coins",
                         List.of(
-                                "Current sheep merge points",
+                                "Current coin balance",
                                 "Value: " + SheepMergeManager.formatPoints(SheepMergeManager.getPlayerPoints(target)))),
                 statChip("Quest", SheepMergeManager.formatPoints(SheepMergeManager.getQuestPoints(target)),
                         "Quest Points",
@@ -1799,7 +1799,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                                 "Level: " + SheepMergeManager.getPrestigeLevel(target),
                                 "Prestige points: "
                                         + SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)),
-                                "Double Points lv: " + SheepMergeManager.getPrestigeDoublePointsChanceLevel(target),
+                                "Double Coins lv: " + SheepMergeManager.getPrestigeDoublePointsChanceLevel(target),
                                 "Higher Max lv: " + SheepMergeManager.getPrestigeHigherMaxLevel(target),
                                 "Start Eggs lv: " + SheepMergeManager.getPrestigeStartEggsLevel(target),
                                 "Egg Cap lv: " + SheepMergeManager.getPrestigeEggCapLevel(target),
@@ -1811,7 +1811,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                                 "Unspent prestige currency",
                                 "Current: "
                                         + SheepMergeManager.formatPoints(SheepMergeManager.getPrestigePoints(target)),
-                                "Double Points chance: " + SheepMergeManager.getDoublePointsChancePercent(target)
+                                "Double Coins chance: " + SheepMergeManager.getDoublePointsChancePercent(target)
                                         + "%")),
                 statChip("Rebirth", String.valueOf(SheepMergeManager.getRebirthLevel(target)),
                         "Rebirth",
@@ -1990,7 +1990,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean shouldFormatPointStat(String statLabel) {
-        return "Points".equals(statLabel)
+        return "Coins".equals(statLabel)
                 || "Quest Points".equals(statLabel)
                 || "Prestige Points".equals(statLabel)
                 || "Rebirth Points".equals(statLabel);

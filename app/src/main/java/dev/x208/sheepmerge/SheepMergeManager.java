@@ -771,7 +771,7 @@ public final class SheepMergeManager {
             this.rewardType = rewardType;
             this.rewardMultiplier = Math.max(1, rewardMultiplier);
             this.reward = switch (this.rewardType) {
-                case POINTS -> "Bonus: x" + this.rewardMultiplier + " points";
+                case POINTS -> "Bonus: x" + this.rewardMultiplier + " Coins";
                 case WOOL_REGEN -> "Bonus: x" + this.rewardMultiplier + " wool regen speed";
             };
         }
@@ -1038,7 +1038,7 @@ public final class SheepMergeManager {
                     49,
                     Material.NETHER_STAR,
                     "Point Surge",
-                    "x10 normal points"),
+                    "x10 Coins"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_POINTS_X10_LEFT,
                     REBIRTH_SKILL_POINTS_X10_ROOT,
@@ -1046,7 +1046,7 @@ public final class SheepMergeManager {
                     38,
                     Material.EMERALD,
                     "Deep Surge",
-                    "x10 more normal points"),
+                    "x10 more Coins"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_QUEST_POINTS_X10,
                     REBIRTH_SKILL_POINTS_X10_LEFT,
@@ -1093,8 +1093,8 @@ public final class SheepMergeManager {
                     3,
                     32,
                     Material.CHEST,
-                    "Keep Points",
-                    "Keep normal points after prestige"),
+                    "Keep Coins",
+                    "Keep Coins after prestige"),
             new RebirthSkillNode(
                     REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE,
                     REBIRTH_SKILL_KEEP_POINTS_AFTER_PRESTIGE,
@@ -1127,7 +1127,7 @@ public final class SheepMergeManager {
             "&7Farm worlds now load from a cached structure copy instead of rebuilding every block.",
             "&7Auto Prestige can run automatically once unlocked and toggled on.",
             "&7Use &e/sheepmerge visit <player> &7to visit open farms and &e/sheepmerge visit -toggle &7to manage access.",
-            "&7Use &e/sheepmerge status &7to quickly check your points, quests, combo, and prestige progress.",
+            "&7Use &e/sheepmerge status &7to quickly check your Coins, quests, combo, and prestige progress.",
             "&7Admins: &e/sheepmerge backup list/load/delete/recover &7manage compressed backups safely.");
 
     private SheepMergeManager() {
@@ -6329,8 +6329,8 @@ public final class SheepMergeManager {
         BigInteger missing = requiredPoints.subtract(currentPoints).max(BigInteger.ZERO);
         String taskLabel = getCurrentTutorialTaskLabel(step);
         lastTutorialMergePointsReminderTimestampByPlayer.put(playerId, now);
-        player.sendMessage(warning("Need " + formatPoints(requiredPoints) + " points for: " + taskLabel));
-        player.sendMessage(hint("You are short " + formatPoints(missing) + ". Merge sheep to gain points fast."));
+        player.sendMessage(warning("Need " + formatPoints(requiredPoints) + " Coins for: " + taskLabel));
+        player.sendMessage(hint("You are short " + formatPoints(missing) + ". Merge sheep to gain Coins fast."));
     }
 
     private static BigInteger minPositive(BigInteger current, BigInteger candidate) {
@@ -7362,7 +7362,7 @@ public final class SheepMergeManager {
 
     private static String buildTopPointsText(Map<UUID, BigInteger> pointsSnapshot, Map<UUID, String> nameSnapshot,
             int maxEntries) {
-        StringBuilder builder = new StringBuilder("Top Sheep Merge Points");
+        StringBuilder builder = new StringBuilder("Top Sheep Merge Coins");
         pointsSnapshot.entrySet().stream()
                 .sorted((left, right) -> {
                     int pointsCompare = right.getValue().compareTo(left.getValue());
@@ -7383,7 +7383,7 @@ public final class SheepMergeManager {
                         .append(getSafeTopPointsName(entry.getKey(), nameSnapshot))
                         .append(": ")
                         .append(formatPoints(entry.getValue())));
-        if (builder.toString().equals("Top Sheep Merge Points")) {
+        if (builder.toString().equals("Top Sheep Merge Coins")) {
             builder.append("\nNo scores yet");
         }
         return builder.toString();
@@ -7759,7 +7759,7 @@ public final class SheepMergeManager {
 
             String text = display.getText();
             String stripped = text == null ? null : ChatColor.stripColor(text);
-            if (stripped != null && stripped.toLowerCase(Locale.ROOT).contains("top sheep merge points")) {
+            if (stripped != null && stripped.toLowerCase(Locale.ROOT).contains("top sheep merge coins")) {
                 display.remove();
             }
         }
@@ -7779,7 +7779,7 @@ public final class SheepMergeManager {
             }
             String customName = armorStand.getCustomName();
             String stripped = customName == null ? null : ChatColor.stripColor(customName);
-            if (stripped != null && stripped.toLowerCase(Locale.ROOT).contains("top sheep merge points")) {
+            if (stripped != null && stripped.toLowerCase(Locale.ROOT).contains("top sheep merge coins")) {
                 hasLegacyHeader = true;
                 break;
             }
@@ -8584,7 +8584,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        showOverlay(player, action("+" + formatPoints(lastPoints) + " points"));
+        showOverlay(player, action("+" + formatPoints(lastPoints) + " Coins"));
     }
 
     public static void showOverlay(Player player, String message) {
@@ -8812,7 +8812,7 @@ public final class SheepMergeManager {
         bar.setProgress(progress);
         String title = color("&6Combo &f" + (int) Math.floor(comboScore)
                 + "&7/&f" + (int) Math.floor(maxScore)
-                + " &7| &ePoints x" + formatComboMultiplier(getComboMultiplier(player, comboScore)));
+                + " &7| &eCoins x" + formatComboMultiplier(getComboMultiplier(player, comboScore)));
         if (frenzyActive) {
             long remaining = Math.max(0L, comboFrenzyEventEndsAtMs - now);
             title += color(" &7| &cFrenzy " + formatDuration(remaining));
@@ -10198,7 +10198,7 @@ public final class SheepMergeManager {
             return true;
         }
         player.sendMessage(warning("Tutorial: keep at least " + formatPoints(getPrestigeCostBig(player))
-                + " points for your prestige step."));
+                + " Coins for your prestige step."));
         player.sendMessage(hint("Merge/shear a bit more before buying this upgrade."));
         return false;
     }
@@ -10336,7 +10336,7 @@ public final class SheepMergeManager {
                         "Current limit: " + currentLimit + " / " + maxLimit,
                         "Next: " + currentLimit + " -> "
                                 + Math.min(maxLimit, currentLimit + getLimitUpgradeStep()),
-                        limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " points",
+                        limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " Coins",
                         limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
         int eggLevel = getEggSpeedLevel(player);
@@ -10355,7 +10355,7 @@ public final class SheepMergeManager {
                                 ? "Next: MAXED"
                                 : "Next: " + eggCurrentSeconds + "s -> " + eggNextSeconds + "s",
                         eggLevel >= eggMaxLevel ? "MAXED"
-                                : "Cost: " + formatPoints(eggCost) + " points",
+                                : "Cost: " + formatPoints(eggCost) + " Coins",
                         "Click to purchase")));
 
         int woolLevel = getWoolRegenLevel(player);
@@ -10382,7 +10382,7 @@ public final class SheepMergeManager {
                                         + ")",
                         woolLevel >= woolMaxLevel
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(woolCost) + " points",
+                                : "Cost: " + formatPoints(woolCost) + " Coins",
                         "Click to purchase")));
 
         int chanceLevel = getHigherTierChanceLevel(player);
@@ -10402,7 +10402,7 @@ public final class SheepMergeManager {
                                 : "Next: " + chanceCurrentPercent + "% -> " + chanceNextPercent + "%",
                         "Hard cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
                         chanceLevel >= chanceMaxLevel ? "MAXED"
-                                : "Cost: " + formatPoints(chanceCost) + " points",
+                                : "Cost: " + formatPoints(chanceCost) + " Coins",
                         "Click to purchase")));
 
         inventory.setItem(PRESTIGE_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -10432,7 +10432,7 @@ public final class SheepMergeManager {
                 "Shear Shop",
                 List.of(
                         "Shear level: " + getShearPointGainUpgradeLevel(player),
-                        "Points multiplier: x" + getShearPointMultiplier(player),
+                        "Coin multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
         inventory.setItem(COMBO_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -10441,7 +10441,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Combo score: " + (int) Math.floor(getComboScore(player))
                                 + " / " + (int) Math.floor(getComboMaxScore(player)),
-                        "Points x" + formatComboMultiplier(getComboMultiplier(player, getComboScore(player))),
+                        "Coins x" + formatComboMultiplier(getComboMultiplier(player, getComboScore(player))),
                         "Click to open")));
 
         inventory.setItem(AUTOMATION_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -10597,7 +10597,7 @@ public final class SheepMergeManager {
                         "Current limit: " + currentLimit + " / " + maxLimit,
                         "Next: " + currentLimit + " -> "
                                 + Math.min(maxLimit, currentLimit + getLimitUpgradeStep()),
-                        limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " points",
+                        limitMaxed ? "MAXED" : "Cost: " + formatPoints(limitCost) + " Coins",
                         limitMaxed ? "Limit cap reached" : "Click to purchase")));
 
         int eggLevel = getEggSpeedLevel(player);
@@ -10616,7 +10616,7 @@ public final class SheepMergeManager {
                                 ? "Next: MAXED"
                                 : "Next: " + eggCurrentSeconds + "s -> " + eggNextSeconds + "s",
                         eggLevel >= eggMaxLevel ? "MAXED"
-                                : "Cost: " + formatPoints(eggCost) + " points",
+                                : "Cost: " + formatPoints(eggCost) + " Coins",
                         "Click to purchase")));
 
         int woolLevel = getWoolRegenLevel(player);
@@ -10643,7 +10643,7 @@ public final class SheepMergeManager {
                                         + ")",
                         woolLevel >= woolMaxLevel
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(woolCost) + " points",
+                                : "Cost: " + formatPoints(woolCost) + " Coins",
                         "Click to purchase")));
 
         int chanceLevel = getHigherTierChanceLevel(player);
@@ -10663,7 +10663,7 @@ public final class SheepMergeManager {
                                 : "Next: " + chanceCurrentPercent + "% -> " + chanceNextPercent + "%",
                         "Hard cap: " + HIGHER_TIER_CHANCE_BASE_CAP_PERCENT + "%",
                         chanceLevel >= chanceMaxLevel ? "MAXED"
-                                : "Cost: " + formatPoints(chanceCost) + " points",
+                                : "Cost: " + formatPoints(chanceCost) + " Coins",
                         "Click to purchase")));
 
         setMenuItemIfChanged(inventory, PRESTIGE_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -10693,7 +10693,7 @@ public final class SheepMergeManager {
                 "Shear Shop",
                 List.of(
                         "Shear level: " + getShearPointGainUpgradeLevel(player),
-                        "Points multiplier: x" + getShearPointMultiplier(player),
+                        "Coin multiplier: x" + getShearPointMultiplier(player),
                         "Click to open")));
 
         setMenuItemIfChanged(inventory, COMBO_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -10702,7 +10702,7 @@ public final class SheepMergeManager {
                 List.of(
                         "Combo score: " + (int) Math.floor(getComboScore(player))
                                 + " / " + (int) Math.floor(getComboMaxScore(player)),
-                        "Points x" + formatComboMultiplier(getComboMultiplier(player, getComboScore(player))),
+                        "Coins x" + formatComboMultiplier(getComboMultiplier(player, getComboScore(player))),
                         "Click to open")));
 
         setMenuItemIfChanged(inventory, AUTOMATION_MENU_OPEN_SLOT, MenuItemFactory.create(
@@ -10770,16 +10770,16 @@ public final class SheepMergeManager {
                         affordablePrestiges > 0
                                 ? "Gain prestige points: +" + formatPoints(rewardForAffordable)
                                 : "Gain prestige points: +0",
-                        "Next prestige cost: " + formatPoints(getPrestigeCostBig(player)) + " normal points",
+                        "Next prestige cost: " + formatPoints(getPrestigeCostBig(player)) + " Coins",
                         affordablePrestiges > 0
-                                ? "Total cost now: " + formatPoints(totalCostForAffordable) + " normal points"
-                                : "Need more points for next prestige",
-                        "Resets normal-point upgrades",
+                                ? "Total cost now: " + formatPoints(totalCostForAffordable) + " Coins"
+                                : "Need more Coins for next prestige",
+                        "Resets Coin upgrades",
                         "Click to prestige multiple")));
 
         setMenuItemIfChanged(inventory, PRESTIGE_DOUBLE_POINTS_SLOT, MenuItemFactory.create(
                 Material.EMERALD,
-                "Double Points Chance",
+                "Double Coins Chance",
                 List.of(
                         "Level: " + getPrestigeDoublePointsChanceLevel(player) + " / "
                                 + PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
@@ -10904,7 +10904,7 @@ public final class SheepMergeManager {
                 "Jackpot Shears",
                 List.of(
                         "&6Cost: &f" + formatPoints(jackpotCost) + " qp",
-                        "&bBoost: &fx" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
+                        "&bBoost: &fx" + (2 + getQuestUpgradePowerLevel(player)) + " shear Coins",
                         "&7Time: &f"
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
                         currentQuestPoints >= jackpotCost ? "&aReady to buy" : "&cNeed more quest points",
@@ -10968,8 +10968,8 @@ public final class SheepMergeManager {
                 "Shear Value",
                 List.of(
                         "Level: " + getShearPointGainUpgradeLevel(player),
-                        "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
-                        "Points: base x" + getShearPointMultiplier(player),
+                        "Cost: " + formatPoints(getShearUpgradeCost(player)) + " Coins",
+                        "Coins: base x" + getShearPointMultiplier(player),
                         "Wool reward scales with level",
                         "Click to purchase")));
         setMenuItemIfChanged(inventory, SHOP_SHEAR_KEEP_WOOL_SLOT, MenuItemFactory.create(
@@ -10980,7 +10980,7 @@ public final class SheepMergeManager {
                         "Chance: " + getShearWoolSaveChancePercent(player) + "%",
                         woolSaveLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " points",
+                                : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " Coins",
                         "Chance for sheep to keep wool when sheared")));
         setMenuItemIfChanged(inventory, SHOP_SHEAR_TIER_BOOST_SLOT, MenuItemFactory.create(
                 Material.GLOWSTONE_DUST,
@@ -10990,7 +10990,7 @@ public final class SheepMergeManager {
                         "Chance: " + getShearTierBoostChancePercent(player) + "%",
                         tierBoostLevel >= SHEAR_TIER_BOOST_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " points",
+                                : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " Coins",
                         "Chance for shearing to upgrade sheep by one tier")));
         setMenuItemIfChanged(inventory, SHOP_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -11014,7 +11014,7 @@ public final class SheepMergeManager {
                         "Decay speed: " + (int) Math.round(getComboDecayMultiplier(player) * 100) + "%",
                         decayLevel >= COMBO_DECAY_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(getComboDecayUpgradeCost(player)) + " points",
+                                : "Cost: " + formatPoints(getComboDecayUpgradeCost(player)) + " Coins",
                         "Click to purchase")));
 
         setMenuItemIfChanged(inventory, COMBO_MAX_SLOT, MenuItemFactory.create(
@@ -11036,7 +11036,7 @@ public final class SheepMergeManager {
                         "Combo gain boost: +" + (int) Math.round(gainLevel * COMBO_GAIN_PERCENT_PER_LEVEL) + "%",
                         gainLevel >= COMBO_GAIN_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(getComboGainUpgradeCost(player)) + " points",
+                                : "Cost: " + formatPoints(getComboGainUpgradeCost(player)) + " Coins",
                         "Click to purchase")));
     }
 
@@ -12110,11 +12110,11 @@ public final class SheepMergeManager {
 
         List<String> topLines = getTopPointsLines(5);
         List<String> topLore = new ArrayList<>();
-        topLore.add("Top players by points:");
+        topLore.add("Top players by Coins:");
         topLore.addAll(topLines);
         setMenuItemIfChanged(inventory, SOCIALS_TOP_POINTS_SLOT, MenuItemFactory.create(
                 Material.GOLD_INGOT,
-                "Top Points",
+                "Top Coins",
                 topLore));
 
         boolean visitingAnotherFarm = isSheepFarmWorld(player.getWorld()) && !isFarmOwner(player, player.getWorld());
@@ -12363,7 +12363,7 @@ public final class SheepMergeManager {
                     player.sendMessage(action("Limit up: " + getPlayerLimit(player)));
                     markTutorialRegularUpgradesIfComplete(player);
                 } else {
-                    player.sendMessage(warning("Not enough points."));
+                    player.sendMessage(warning("Not enough Coins."));
                 }
             }
             case EGG_SPEED_UPGRADE_SLOT -> {
@@ -12376,7 +12376,7 @@ public final class SheepMergeManager {
                     player.sendMessage(action("Eggs: every " + getEggIntervalSeconds(player) + "s"));
                     markTutorialRegularUpgradesIfComplete(player);
                 } else {
-                    player.sendMessage(warning("Not enough points."));
+                    player.sendMessage(warning("Not enough Coins."));
                 }
             }
             case WOOL_REGEN_UPGRADE_SLOT -> {
@@ -12389,7 +12389,7 @@ public final class SheepMergeManager {
                     player.sendMessage(action("Wool regen up"));
                     markTutorialRegularUpgradesIfComplete(player);
                 } else {
-                    player.sendMessage(warning("Not enough points."));
+                    player.sendMessage(warning("Not enough Coins."));
                 }
             }
             case HIGHER_TIER_CHANCE_UPGRADE_SLOT -> {
@@ -12407,7 +12407,7 @@ public final class SheepMergeManager {
                     player.sendMessage(action("Spawn chance: " + getHigherTierChancePercent(player) + "%"));
                     markTutorialRegularUpgradesIfComplete(player);
                 } else {
-                    player.sendMessage(warning("Not enough points."));
+                    player.sendMessage(warning("Not enough Coins."));
                 }
             }
             case PRESTIGE_MENU_OPEN_SLOT -> {
@@ -12475,16 +12475,16 @@ public final class SheepMergeManager {
                         affordablePrestiges > 0
                                 ? "Gain prestige points: +" + formatPoints(rewardForAffordable)
                                 : "Gain prestige points: +0",
-                        "Next prestige cost: " + formatPoints(getPrestigeCostBig(player)) + " normal points",
+                        "Next prestige cost: " + formatPoints(getPrestigeCostBig(player)) + " Coins",
                         affordablePrestiges > 0
-                                ? "Total cost now: " + formatPoints(totalCostForAffordable) + " normal points"
-                                : "Need more points for next prestige",
-                        "Resets normal-point upgrades",
+                                ? "Total cost now: " + formatPoints(totalCostForAffordable) + " Coins"
+                                : "Need more Coins for next prestige",
+                        "Resets Coin upgrades",
                         "Click to prestige multiple")));
 
         inventory.setItem(PRESTIGE_DOUBLE_POINTS_SLOT, MenuItemFactory.create(
                 Material.EMERALD,
-                "Double Points Chance",
+                "Double Coins Chance",
                 List.of(
                         "Level: " + getPrestigeDoublePointsChanceLevel(player) + " / "
                                 + PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
@@ -12600,7 +12600,7 @@ public final class SheepMergeManager {
                     playPrestigeSound(player);
                     player.sendMessage(action("Prestige +" + gained));
                 } else {
-                    player.sendMessage(warning("Not enough points."));
+                    player.sendMessage(warning("Not enough Coins."));
                 }
             }
             case PRESTIGE_DOUBLE_POINTS_SLOT -> {
@@ -12609,12 +12609,12 @@ public final class SheepMergeManager {
                     break;
                 }
                 if (getPrestigeDoublePointsChanceLevel(player) >= PRESTIGE_DOUBLE_POINTS_MAX_LEVEL) {
-                    player.sendMessage(warning("Double points chance is maxed."));
+                    player.sendMessage(warning("Double Coins chance is maxed."));
                     break;
                 }
                 if (upgradePrestigeDoublePoints(player)) {
                     playUpgradeSound(player);
-                    player.sendMessage(action("Double points: " + getDoublePointsChancePercent(player) + "%"));
+                    player.sendMessage(action("Double Coins: " + getDoublePointsChancePercent(player) + "%"));
                 } else {
                     player.sendMessage(warning("Not enough prestige points."));
                 }
@@ -13623,7 +13623,7 @@ public final class SheepMergeManager {
                 "Jackpot Shears",
                 List.of(
                         "&6Cost: &f" + formatPoints(jackpotCost) + " qp",
-                        "&bBoost: &fx" + (2 + getQuestUpgradePowerLevel(player)) + " shear points",
+                        "&bBoost: &fx" + (2 + getQuestUpgradePowerLevel(player)) + " shear Coins",
                         "&7Time: &f"
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
                         currentQuestPoints >= jackpotCost ? "&aReady to buy" : "&cNeed more quest points",
@@ -13968,8 +13968,8 @@ public final class SheepMergeManager {
                 "Shear Value",
                 List.of(
                         "Level: " + getShearPointGainUpgradeLevel(player),
-                        "Cost: " + formatPoints(getShearUpgradeCost(player)) + " points",
-                        "Points: base x" + getShearPointMultiplier(player),
+                        "Cost: " + formatPoints(getShearUpgradeCost(player)) + " Coins",
+                        "Coins: base x" + getShearPointMultiplier(player),
                         "Wool reward scales with level",
                         "Click to purchase")));
         inventory.setItem(SHOP_SHEAR_KEEP_WOOL_SLOT, MenuItemFactory.create(
@@ -13980,7 +13980,7 @@ public final class SheepMergeManager {
                         "Chance: " + getShearWoolSaveChancePercent(player) + "%",
                         woolSaveLevel >= SHEAR_WOOL_SAVE_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " points",
+                                : "Cost: " + formatPoints(getShearWoolSaveUpgradeCost(player)) + " Coins",
                         "Chance for sheep to keep wool when sheared")));
         inventory.setItem(SHOP_SHEAR_TIER_BOOST_SLOT, MenuItemFactory.create(
                 Material.GLOWSTONE_DUST,
@@ -13990,7 +13990,7 @@ public final class SheepMergeManager {
                         "Chance: " + getShearTierBoostChancePercent(player) + "%",
                         tierBoostLevel >= SHEAR_TIER_BOOST_MAX_LEVEL
                                 ? "MAXED"
-                                : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " points",
+                                : "Cost: " + formatPoints(getShearTierBoostUpgradeCost(player)) + " Coins",
                         "Chance for shearing to upgrade sheep by one tier")));
         inventory.setItem(SHOP_BACK_TO_UPGRADES_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -14014,7 +14014,7 @@ public final class SheepMergeManager {
                     playUpgradeSound(player);
                     player.sendMessage(action("Shear shop +1"));
                 } else {
-                    player.sendMessage(warning("Not enough points."));
+                    player.sendMessage(warning("Not enough Coins."));
                 }
             }
             case SHOP_SHEAR_KEEP_WOOL_SLOT -> {
@@ -14355,7 +14355,7 @@ public final class SheepMergeManager {
         }
 
         Scoreboard scoreboard = player.getServer().getScoreboardManager().getNewScoreboard();
-        Objective objective = scoreboard.registerNewObjective("sheepmerge_points", "dummy", "Sheep Merge Points");
+        Objective objective = scoreboard.registerNewObjective("sheepmerge_points", "dummy", "Sheep Merge Coins");
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
         renderPointsScoreboard(player, scoreboard, objective);
         player.setScoreboard(scoreboard);
@@ -14435,9 +14435,9 @@ public final class SheepMergeManager {
         boolean compact = getScoreboardLayoutMode(player) == 1;
 
         if (!compact && shouldShowScoreboardQuestProgress(player)) {
+            long questResetSeconds = Math.max(0L, (getQuestResetRemainingMs(player) + 999L) / 1000L);
             lines.add(makeScoreboardSpacer(lines.size() + 1));
-            lines.add(color("&a&lQuest Track"));
-            lines.add(color("&2Reset&8: &f" + formatDuration(getQuestResetRemainingMs(player))));
+            lines.add(color("&a&lQuest &8(&f" + questResetSeconds + "s&8)"));
             lines.add(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
                     getQuestTarget(player, QUEST_SHEARS_TARGET),
                     questShearsCompleteByPlayer.getOrDefault(playerId, false)));
