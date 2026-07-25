@@ -16685,7 +16685,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        Location carryLocation = player.getLocation().clone().add(0.0D, 2.15D, 0.0D);
+        Location carryLocation = player.getLocation().clone().add(0.0D, 1.8D, 0.0D);
         carryLocation.setYaw(player.getLocation().getYaw());
         carryLocation.setPitch(0.0F);
         sheep.teleport(carryLocation);
