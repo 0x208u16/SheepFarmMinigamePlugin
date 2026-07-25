@@ -115,6 +115,12 @@ object LiveUpdateCoordinator {
             return
         }
 
+        if (!manifest.liveSafeMigration) {
+            sender?.sendMessage(ChatColor.YELLOW.toString() + "Update " + manifest.tagName
+                + " is not marked as live-safe and cannot be applied in-place.")
+            return
+        }
+
         val applied = SheepMergeManager.applyLiveDataSchemaVersion(manifest.dataSchemaVersion, manifest.summary)
         if (!applied) {
             sender?.sendMessage(ChatColor.RED.toString() + "Unable to apply staged live migration to schema v" + manifest.dataSchemaVersion + ".")
@@ -174,7 +180,7 @@ object LiveUpdateCoordinator {
         val tagName = latest.first
         val currentVersion = plugin.description.version ?: ""
         val assets = latest.second
-        if (tagName.equals(currentVersion, ignoreCase = true)) {
+        if (normalizeReleaseVersion(tagName).equals(normalizeReleaseVersion(currentVersion), ignoreCase = true)) {
             val message = "Already on latest release $tagName."
             SheepMergeManager.recordLiveUpdateCheck(message)
             return message
@@ -273,5 +279,12 @@ object LiveUpdateCoordinator {
 
     private fun unescape(value: String): String {
         return value.replace("\\/", "/")
+    }
+
+    private fun normalizeReleaseVersion(value: String?): String {
+        if (value.isNullOrBlank()) {
+            return ""
+        }
+        return value.trim().removePrefix("refs/tags/").removePrefix("v")
     }
 }
