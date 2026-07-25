@@ -7,8 +7,8 @@ scheduling:
 liveUpdates:
   checkIntervalTicks: 72000
   github:
-    owner: x208
-    repo: SheepMerge
+    owner: 0x208u16
+    repo: SheepFarmMinigamePlugin
     manifestAssetName: live-update.yml
     apiTimeoutMs: 10000
 

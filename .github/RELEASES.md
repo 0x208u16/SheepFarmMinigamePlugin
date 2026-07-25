@@ -1,6 +1,6 @@
 # GitHub Releases
 
-This repository is configured to publish release assets for SheepMerge live updates.
+This repository is configured to publish release assets for SheepMerge live updates from `0x208u16/SheepFarmMinigamePlugin`.
 
 ## How to publish a release
 
@@ -43,3 +43,7 @@ Fields:
 ## Public access requirement
 
 For the in-game live updater to pull release assets without authentication, the GitHub repository itself must be public in GitHub settings.
+
+The required repository URL is:
+
+`https://github.com/0x208u16/SheepFarmMinigamePlugin`

@@ -86,7 +86,7 @@ dependencies {
 
 // Set up global variables.
 project.ext {
-  repository = pluginOwner + '/' + pluginName
+  repository = pluginOwner + '/' + (project.hasProperty('githubRepoName') ? githubRepoName : pluginName)
 }
 // Project version MUST be manually set *before* applying the auto-version plugin
 project.version = getPluginYml().version  
