@@ -14690,22 +14690,99 @@ public final class SheepMergeManager {
             }
         }
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            if (savedInventories.containsKey(player.getUniqueId())) {
+            UUID playerId = player.getUniqueId();
+            boolean wasInSheepWorld = isSheepFarmWorld(player.getWorld());
+            boolean hadSavedInventory = savedInventories.containsKey(playerId);
+            boolean hadSavedScoreboard = savedScoreboards.containsKey(playerId);
+
+            if (hadSavedInventory) {
                 restorePlayerInventory(player);
             }
-            if (savedScoreboards.containsKey(player.getUniqueId())) {
+            if (hadSavedScoreboard) {
                 restorePlayerScoreboard(player);
             }
             clearEggTimer(player);
             clearPickedUpSheep(player);
             clearComboRuntime(player);
-            if (fallbackWorld != null && isSheepFarmWorld(player.getWorld())) {
+            if (fallbackWorld != null && wasInSheepWorld) {
                 Location fallbackSpawn = fallbackWorld.getSpawnLocation().clone().add(0.5D, 0.0D, 0.5D);
                 player.teleport(fallbackSpawn);
             }
+            if (wasInSheepWorld && !hadSavedInventory) {
+                clearForcedFarmLoadoutWithoutSnapshot(player);
+            }
+            if (wasInSheepWorld && !hadSavedScoreboard) {
+                clearSheepMergeSidebarWithoutSnapshot(player);
+            }
+            player.setPlayerListName(null);
         }
         savedScoreboards.clear();
         EGG_MODULE.clearSavedExperienceCache();
+    }
+
+    private static void clearForcedFarmLoadoutWithoutSnapshot(Player player) {
+        if (player == null) {
+            return;
+        }
+        var inventory = player.getInventory();
+        ItemStack[] storage = inventory.getStorageContents();
+        boolean changed = false;
+
+        if (FARM_UPGRADE_COMMAND_SLOT >= 0
+                && FARM_UPGRADE_COMMAND_SLOT < storage.length
+                && isSheepMergeUpgradeCommandItem(storage[FARM_UPGRADE_COMMAND_SLOT])) {
+            storage[FARM_UPGRADE_COMMAND_SLOT] = null;
+            changed = true;
+        }
+        if (FARM_EGG_ITEM_SLOT >= 0
+                && FARM_EGG_ITEM_SLOT < storage.length
+                && isSheepMergeEggItem(storage[FARM_EGG_ITEM_SLOT])) {
+            storage[FARM_EGG_ITEM_SLOT] = null;
+            changed = true;
+        }
+
+        int quickStart = Math.max(0, INVENTORY_QUICK_ACCESS_FIRST_SLOT);
+        int quickEnd = Math.min(storage.length - 1, INVENTORY_QUICK_ACCESS_LAST_SLOT);
+        for (int slot = quickStart; slot <= quickEnd; slot++) {
+            if (isQuickAccessCommandItem(storage[slot])) {
+                storage[slot] = null;
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            inventory.setStorageContents(storage);
+        }
+
+        ItemStack offHand = inventory.getItemInOffHand();
+        if (isSheepMergeShearsItem(offHand)) {
+            inventory.setItemInOffHand(null);
+        }
+    }
+
+    private static void clearSheepMergeSidebarWithoutSnapshot(Player player) {
+        if (player == null) {
+            return;
+        }
+        Scoreboard current = player.getScoreboard();
+        Objective objective = current == null ? null : current.getObjective("sheepmerge_points");
+        if (objective == null) {
+            return;
+        }
+        if (Bukkit.getScoreboardManager() != null) {
+            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        }
+    }
+
+    private static boolean isSheepMergeShearsItem(ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType() != Material.SHEARS) {
+            return false;
+        }
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null || !meta.isUnbreakable()) {
+            return false;
+        }
+        return "Sheep Merge Shears".equals(meta.getDisplayName());
     }
 
     public static ItemStack getSheepMergeShears() {
