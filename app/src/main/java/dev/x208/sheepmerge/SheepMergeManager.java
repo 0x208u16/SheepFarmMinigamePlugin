@@ -12443,7 +12443,6 @@ public final class SheepMergeManager {
                 Material.RED_BANNER,
                 "Achievements",
                 List.of(
-                        "Framework: active",
                         "Track milestones and claim bonuses",
                         "Click to open"));
     }
