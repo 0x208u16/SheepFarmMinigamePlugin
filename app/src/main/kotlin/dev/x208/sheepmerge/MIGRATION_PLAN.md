@@ -10,35 +10,60 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
 - Preserve serialized config/data keys exactly (`scores.yml`, layout data, unlock maps).
 - Keep Bukkit/Paper API usage semantics unchanged in behavior-critical paths.
 
-## Migration Phases
+## Migration Status
 
-1. Build Enablement (done)
-- Add Kotlin Gradle plugin and stdlib.
-- Ensure Kotlin compiles to JVM 17.
+- Done:
+  - Kotlin build enablement and runtime packaging in `app/build.gradle`
+  - Utility conversion to Kotlin:
+    - `InventoryDataUtils`
+    - `SacrificeUnlockState`
+    - `MenuItemFactory`
+  - Command module layer converted to Kotlin:
+    - `commands/SheepMergeCommandModule`
+    - `commands/BaseRootCommandModule`
+    - all root wrapper modules in `commands/RootCommandModules.kt`
+  - Domain/listener conversion:
+    - `SheepTier`
+    - `SheepEggModule`
+    - `SheepFarmWorldProtectionListener`
+    - `SheepFarmWorldCleanupListener`
+- Remaining Java footprint:
+  - ~22.5k LOC total
+  - Main blockers by size:
+    - `SheepMergeManager.java` (~16.6k)
+    - `SheepFarmWorldCommand.java` (~2.5k)
+    - `bstats/Metrics.java` (~848)
 
-2. Safe Utility Conversion
-- Convert low-risk utility classes first:
-  - `InventoryDataUtils`
-  - `SacrificeUnlockState`
-  - `MenuItemFactory`
-- Preserve method signatures used by Java callers.
+## Migration Phases (Updated)
 
-3. Domain Enums and Small Models
-- Convert `SheepTier` and lightweight state holders.
-- Keep static-like access with Kotlin `companion object` and `@JvmStatic` where needed.
+1. Command Module Layer (in progress)
+- Convert `commands/*` classes first (low-risk wrappers + interface/core module base).
+- Preserve class names and constructor signatures for Java caller compatibility.
 
-4. Listener and Command Layer
-- Convert listeners one by one:
+2. Domain + Mid-size Components
+- Convert:
+  - `SheepTier`
+  - `SheepEggModule`
+  - `SheepMergeConfiguration`
+
+3. Listener Layer
+- Convert listeners one by one while preserving event priorities and cancellation behavior:
   - `SheepMergeWorldListener`
   - `SheepFarmGameListener`
   - `SheepFarmWorldProtectionListener`
   - `SheepFarmWorldCleanupListener`
-- Then convert `SheepFarmWorldCommand`.
 
-5. Core Manager + Plugin
-- Convert `SheepMergeManager` in slices by feature blocks.
+4. Command Engine
+- Convert `SheepFarmWorldCommand` after module conversion is complete.
+
+5. Core Manager Split + Convert
+- Split `SheepMergeManager` into Kotlin feature files before full conversion:
+  - economy, automation, achievements, world lifecycle, menus/UI, persistence.
+- Keep static API compatibility by exposing `@JvmStatic` members where Java callers remain.
+
+6. Plugin Entry + Final Cutover
 - Convert `SheepMergePlugin` last.
-- Update `plugin.yml` main class only after the Kotlin plugin class is final.
+- Keep `plugin.yml` main class stable until final class cutover is validated.
 
 ## Optimization Targets During Rewrite
 
@@ -52,6 +77,7 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
 ## Validation Checklist per Phase
 
 - `./gradlew :app:compileJava`
+- `./gradlew :app:build`
 - Run plugin in test server and smoke test:
   - join/leave
   - `/sheepmerge` core flow
@@ -59,6 +85,12 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
   - quick access actions
   - automation toggles
   - data save/load across restart
+
+## Execution Notes
+
+- Every migration batch should end with a compile check.
+- Any file with gameplay-state persistence must preserve existing YAML keys exactly.
+- Avoid behavior changes during migration; optimization changes are isolated to post-parity passes.
 
 ## Notes
 
