@@ -394,7 +394,6 @@ public final class SheepMergeManager {
     private static final double COMBO_BASE_MAX_SCORE = 100.0D;
     private static final double COMBO_MAX_SCORE_PER_LEVEL = 50.0D;
     private static final int COMBO_DECAY_MAX_LEVEL = 20;
-    private static final int COMBO_MAX_MAX_LEVEL = 20;
     private static final int COMBO_GAIN_MAX_LEVEL = 20;
     private static int COMBO_DECAY_BASE_COST = 75;
     private static int COMBO_GAIN_BASE_COST = 90;
@@ -5663,9 +5662,6 @@ public final class SheepMergeManager {
             return false;
         }
         int currentLevel = getComboMaxUpgradeLevel(player);
-        if (currentLevel >= COMBO_MAX_MAX_LEVEL) {
-            return false;
-        }
         int cost = getComboMaxUpgradePrestigeCost(player);
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
@@ -11238,11 +11234,9 @@ public final class SheepMergeManager {
                 Material.NETHER_STAR,
                 "Maximum Combo",
                 List.of(
-                        "Level: " + maxLevel + " / " + COMBO_MAX_MAX_LEVEL,
+                        "Level: " + maxLevel,
                         "Max score: " + (int) Math.floor(getComboMaxScore(player)),
-                        maxLevel >= COMBO_MAX_MAX_LEVEL
-                                ? "MAXED"
-                                : "Cost: " + formatPoints(getComboMaxUpgradePrestigeCost(player)) + " prestige points",
+                        "Cost: " + formatPoints(getComboMaxUpgradePrestigeCost(player)) + " prestige points",
                         "Click to purchase")));
 
         setMenuItemIfChanged(inventory, COMBO_GAIN_SLOT, MenuItemFactory.create(
@@ -12966,11 +12960,9 @@ public final class SheepMergeManager {
                 Material.NETHER_STAR,
                 "Maximum Combo",
                 List.of(
-                        "Level: " + maxLevel + " / " + COMBO_MAX_MAX_LEVEL,
+                        "Level: " + maxLevel,
                         "Max score: " + (int) Math.floor(getComboMaxScore(player)),
-                        maxLevel >= COMBO_MAX_MAX_LEVEL
-                                ? "MAXED"
-                                : "Cost: " + formatPoints(getComboMaxUpgradePrestigeCost(player)) + " prestige points",
+                        "Cost: " + formatPoints(getComboMaxUpgradePrestigeCost(player)) + " prestige points",
                         "Click to purchase")));
 
         inventory.setItem(COMBO_GAIN_SLOT, MenuItemFactory.create(
@@ -16095,7 +16087,7 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     comboMaxUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(COMBO_MAX_MAX_LEVEL, dataConfig.getInt("comboMaxUpgrade." + key, 0))));
+                            Math.max(0, dataConfig.getInt("comboMaxUpgrade." + key, 0)));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
