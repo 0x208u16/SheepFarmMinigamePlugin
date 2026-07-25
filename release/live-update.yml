@@ -1,0 +1,7 @@
+tagName: __TAG_NAME__
+dataSchemaVersion: __SCHEMA_VERSION__
+requiresBinarySwap: true
+liveSafeMigration: false
+binaryAssetName: __BINARY_ASSET_NAME__
+summary: __SUMMARY__
+reloadConfiguration: false

@@ -1,0 +1,74 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build plugin
+        run: ./gradlew --no-daemon :app:build
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          VERSION=$(grep '^version:' app/src/main/resources/plugin.yml | awk '{print $2}')
+          TAG_NAME="${GITHUB_REF_NAME:-v$VERSION}"
+          JAR_NAME="SheepMerge-${VERSION}.jar"
+          SCHEMA_VERSION=$(grep 'CURRENT_DATA_SCHEMA_VERSION' app/src/main/java/dev/x208/sheepmerge/SheepMergeManager.java | sed -E 's/.*= ([0-9]+).*/\1/' | head -n 1)
+          if [[ -z "$SCHEMA_VERSION" ]]; then
+            SCHEMA_VERSION=1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "jar_name=$JAR_NAME" >> "$GITHUB_OUTPUT"
+          echo "schema_version=$SCHEMA_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate live update manifest
+        shell: bash
+        run: |
+          mkdir -p build/release-assets
+          cp release/live-update.yml build/release-assets/live-update.yml
+          sed -i "s/__TAG_NAME__/${{ steps.meta.outputs.tag_name }}/g" build/release-assets/live-update.yml
+          sed -i "s/__SCHEMA_VERSION__/${{ steps.meta.outputs.schema_version }}/g" build/release-assets/live-update.yml
+          sed -i "s/__BINARY_ASSET_NAME__/${{ steps.meta.outputs.jar_name }}/g" build/release-assets/live-update.yml
+          sed -i "s/__SUMMARY__/Release ${{ steps.meta.outputs.tag_name }}/g" build/release-assets/live-update.yml
+
+      - name: Generate changelog asset
+        run: ./gradlew --no-daemon :app:cleanupChangelog
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: SheepMerge ${{ steps.meta.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            app/build/libs/${{ steps.meta.outputs.jar_name }}
+            build/release-assets/live-update.yml
+            app/build/changelog-clean.md
