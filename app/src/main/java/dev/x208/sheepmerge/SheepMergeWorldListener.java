@@ -365,6 +365,9 @@ public class SheepMergeWorldListener implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) {
+            return;
+        }
         if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_AIR
                 && event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
             return;

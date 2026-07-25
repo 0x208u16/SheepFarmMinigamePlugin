@@ -2918,17 +2918,19 @@ public final class SheepMergeManager {
             case "quest_lucky_burst" -> handleQuestMenuClick(player, QUEST_ABILITY_LUCKY_BURST_SLOT);
             case "quest_merge_assist" -> handleQuestMenuClick(player, QUEST_ABILITY_AUTO_MERGE_SLOT);
             case "quest_shear_all" -> handleQuestMenuClick(player, QUEST_ABILITY_AUTO_SHEAR_SLOT);
-            case "automation_toggle_auto_buy" -> handleAutomationMenuClick(player, AUTOMATION_AUTO_BUY_TOGGLE_SLOT);
+            case "automation_toggle_auto_buy" ->
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_BUY_TOGGLE_SLOT, false);
             case "automation_toggle_auto_ability" ->
-                handleAutomationMenuClick(player, AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT);
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT, false);
             case "automation_toggle_auto_merge" ->
-                handleAutomationMenuClick(player, AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT);
+                handleAutomationMenuClick(player, AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT, false);
             case "automation_toggle_auto_spawn" ->
-                handleAutomationMenuClick(player, AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT);
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT, false);
             case "automation_toggle_auto_prestige" ->
-                handleAutomationMenuClick(player, AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT);
-            case "automation_enable_all" -> handleAutomationMenuClick(player, AUTOMATION_ENABLE_ALL_SLOT);
-            case "automation_disable_all" -> handleAutomationMenuClick(player, AUTOMATION_DISABLE_ALL_SLOT);
+                handleAutomationMenuClick(player, AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT, false);
+            case "automation_enable_all" -> handleAutomationMenuClick(player, AUTOMATION_ENABLE_ALL_SLOT, false);
+            case "automation_disable_all" ->
+                handleAutomationMenuClick(player, AUTOMATION_DISABLE_ALL_SLOT, false);
             default -> {
                 return false;
             }
@@ -13106,6 +13108,10 @@ public final class SheepMergeManager {
     }
 
     public static void handleAutomationMenuClick(Player player, int slot) {
+        handleAutomationMenuClick(player, slot, true);
+    }
+
+    private static void handleAutomationMenuClick(Player player, int slot, boolean reopenMenu) {
         if (player == null) {
             return;
         }
@@ -13257,7 +13263,9 @@ public final class SheepMergeManager {
             }
         }
         updatePointsScoreboard(player);
-        openAutomationMenu(player);
+        if (reopenMenu) {
+            openAutomationMenu(player);
+        }
     }
 
     public static void openSacrificeMenu(Player player) {
