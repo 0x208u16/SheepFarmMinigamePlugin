@@ -58,6 +58,16 @@ release_exists() {
   [[ "$GITHUB_HTTP_STATUS" == "200" ]]
 }
 
+release_page_exists() {
+  local owner="$1"
+  local repo="$2"
+  local tag="$3"
+  local page_status
+
+  page_status="$(curl -sS -L -o /dev/null -w "%{http_code}" "https://github.com/${owner}/${repo}/releases/tag/${tag}" 2>/dev/null || true)"
+  [[ "$page_status" == "200" ]]
+}
+
 github_api_get() {
   local url="$1"
   local body_file
@@ -185,8 +195,19 @@ wait_for_release() {
           reset_at="$(date -u -d "@$reset" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo "$reset")"
         fi
         echo "GitHub API rate limit reached while checking release $tag (remaining=$remaining, reset=$reset_at)." >&2
+
+        if release_page_exists "$owner" "$repo" "$tag"; then
+          echo "GitHub Release $tag is visible on the web release page."
+          return 0
+        fi
+
+        if [[ -z "$github_token" ]]; then
+          echo "Cannot continue reliable polling without API quota. Stopping early so release workflow can finish in the background." >&2
+          return 3
+        fi
       else
         echo "GitHub API returned 403 while checking release $tag. This usually means missing/insufficient API auth for a private repository." >&2
+        return 2
       fi
       if [[ -z "$github_token" ]]; then
         echo "Set GITHUB_TOKEN (or GH_TOKEN) and rerun publish to avoid unauthenticated API limits." >&2
@@ -396,6 +417,12 @@ if [[ $do_push -eq 1 ]]; then
   tag_sha="$(git rev-parse "v$version")"
   if ! wait_for_release "$github_owner" "$github_repo" "v$version" "$tag_sha"; then
     wait_status=$?
+    if [[ $wait_status -eq 3 ]]; then
+      echo "Release verification paused because GitHub API limit was exhausted. Tag and commit were pushed successfully." >&2
+      echo "Set GITHUB_TOKEN (or GH_TOKEN) and rerun the same publish command to resume verification." >&2
+      exit 0
+    fi
+
     cleanup_on_failure "$version"
     if [[ $wait_status -eq 2 ]]; then
       echo "GitHub Actions release workflow failed for v$version. Cleaned up failed publish tag and local state." >&2
