@@ -14470,8 +14470,17 @@ public final class SheepMergeManager {
         }
 
         Scoreboard current = player.getScoreboard();
+        if (current == null) {
+            restorePlayerScoreboard(player);
+            return;
+        }
         Objective objective = current == null ? null : current.getObjective("sheepmerge_points");
         if (objective != null) {
+            restorePlayerScoreboard(player);
+            return;
+        }
+
+        if (current.getObjectives().isEmpty()) {
             restorePlayerScoreboard(player);
             return;
         }
