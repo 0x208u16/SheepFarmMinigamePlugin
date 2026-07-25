@@ -23,12 +23,20 @@ buildscript {
 plugins {
   id 'java-library'
   id 'jacoco'
+  id 'org.jetbrains.kotlin.jvm' version '2.2.0'
 }
 
 tasks.withType(JavaCompile).configureEach {
   // Paper 1.20.1's bytecode converter cannot process class version 66,
   // so compile to Java 17 bytecode even when running the server on Java 22+.
   options.release = 17
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+  kotlinOptions {
+    jvmTarget = '17'
+    freeCompilerArgs += ['-Xjvm-default=all']
+  }
 }
 
 def paperJarName = 'paper-' + paperVersion + '-' + paperBuild + '.jar'
@@ -63,6 +71,8 @@ repositories {
   mavenLocal() // This is needed for CraftBukkit and Spigot.
 }
 dependencies {
+
+  implementation 'org.jetbrains.kotlin:kotlin-stdlib'
 
   // Required for the Minecraft Plugin
   compileOnly 'io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT'

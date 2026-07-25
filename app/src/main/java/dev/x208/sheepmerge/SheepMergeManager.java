@@ -13989,13 +13989,6 @@ public final class SheepMergeManager {
         }
         markTutorialQuestUpgradesOpened(player);
         Inventory inventory = Bukkit.createInventory(null, 27, QUEST_UPGRADES_MENU_TITLE);
-        inventory.setItem(4, MenuItemFactory.create(
-                Material.BOOK,
-                "Tutorial Tip",
-                List.of(
-                        "This menu is optional",
-                        "for tutorial completion.",
-                        "Buy here any time.")));
         inventory.setItem(QUEST_UPGRADE_DURATION_SLOT, MenuItemFactory.create(
                 Material.CLOCK,
                 "Extended Buff Duration",
