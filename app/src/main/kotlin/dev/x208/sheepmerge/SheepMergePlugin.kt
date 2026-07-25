@@ -57,6 +57,7 @@ class SheepMergePlugin : JavaPlugin {
         scheduleRandomFarmEvents()
         scheduleGameplayTips()
         scheduleAutomaticBackups()
+        LiveUpdateCoordinator.scheduleAutomaticChecks(this)
         server.pluginManager.registerEvents(SheepMergeWorldListener(), this)
         log.info("Ready!")
     }

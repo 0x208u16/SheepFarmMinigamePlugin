@@ -4,6 +4,14 @@ scheduling:
   reminderTickInterval: 20
   tipIntervalTicks: 1200
 
+liveUpdates:
+  checkIntervalTicks: 72000
+  github:
+    owner: x208
+    repo: SheepMerge
+    manifestAssetName: live-update.yml
+    apiTimeoutMs: 10000
+
 farm:
   teleport:
     x: 0.5

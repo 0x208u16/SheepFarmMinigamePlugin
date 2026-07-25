@@ -82,6 +82,12 @@ class SheepMergeConfiguration private constructor(configuration: FileConfigurati
     val tutorialMenuSectionTarget: Int = getInt(configuration, "gameplay.tutorial.targets.menuSections", 8, 1)
     val prestigeLevelBaseCost: Int = getInt(configuration, "gameplay.prestige.levelBaseCost", 500, 1)
 
+    val liveUpdateCheckIntervalTicks: Long = getLong(configuration, "liveUpdates.checkIntervalTicks", 72000L, 1200L)
+    val liveUpdateGitHubOwner: String = getString(configuration, "liveUpdates.github.owner", "x208")
+    val liveUpdateGitHubRepo: String = getString(configuration, "liveUpdates.github.repo", "SheepMerge")
+    val liveUpdateManifestAssetName: String = getString(configuration, "liveUpdates.github.manifestAssetName", "live-update.yml")
+    val liveUpdateApiTimeoutMs: Long = getLong(configuration, "liveUpdates.github.apiTimeoutMs", 10000L, 1000L)
+
     companion object {
         private var instance: SheepMergeConfiguration? = null
 
@@ -117,6 +123,13 @@ class SheepMergeConfiguration private constructor(configuration: FileConfigurati
                 return defaultValue
             }
             return configuration.getDouble(path, defaultValue)
+        }
+
+        private fun getString(configuration: FileConfiguration?, path: String, defaultValue: String): String {
+            if (configuration == null) {
+                return defaultValue
+            }
+            return configuration.getString(path, defaultValue) ?: defaultValue
         }
     }
 }

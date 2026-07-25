@@ -39,6 +39,9 @@ class ComboFrenzyCommandModule(executor: RootCommandExecutor, tabCompleter: Root
 class ReloadCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabCompleter) :
     BaseRootCommandModule("reload", executor, tabCompleter)
 
+class LiveUpdateCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabCompleter) :
+    BaseRootCommandModule("liveupdate", executor, tabCompleter)
+
 class LeaderboardCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabCompleter) :
     BaseRootCommandModule("leaderboard", executor, tabCompleter)
 

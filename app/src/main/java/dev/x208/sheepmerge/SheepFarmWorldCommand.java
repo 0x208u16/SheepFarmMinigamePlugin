@@ -15,6 +15,7 @@ import dev.x208.sheepmerge.commands.GiveSacrificePointsCommandModule;
 import dev.x208.sheepmerge.commands.HelpCommandModule;
 import dev.x208.sheepmerge.commands.KickCommandModule;
 import dev.x208.sheepmerge.commands.LeaderboardCommandModule;
+import dev.x208.sheepmerge.commands.LiveUpdateCommandModule;
 import dev.x208.sheepmerge.commands.PrestigeCommandModule;
 import dev.x208.sheepmerge.commands.ReloadCommandModule;
 import dev.x208.sheepmerge.commands.ResetDataCommandModule;
@@ -89,6 +90,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "summon",
             "combofrenzy",
             "reload",
+            "liveupdate",
             "leaderboard",
             "resetdata",
             "stats",
@@ -122,6 +124,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             "move",
             "remove",
             "clear");
+    private static final List<String> LIVE_UPDATE_SUBCOMMANDS = List.of(
+            "help",
+            "-help",
+            "status",
+            "check",
+            "apply",
+            "on",
+            "off",
+            "enable",
+            "disable");
     private static final List<String> HELP_FLAGS = List.of("help", "-help");
     private static final List<String> LEADERBOARD_COORDINATE_HINTS = List.of("<x>", "<y>", "<z>", "[world]");
     private static final List<String> AMOUNT_HINTS = List.of("<amount>", "0", "100");
@@ -158,6 +170,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new SummonCommandModule(this::handleSummonCommand, this::tabCompleteSummon),
             new ComboFrenzyCommandModule(this::handleComboFrenzyCommand, this::tabCompleteNone),
             new ReloadCommandModule(this::handleReloadCommand, this::tabCompleteNone),
+            new LiveUpdateCommandModule(this::handleLiveUpdateCommand, this::tabCompleteLiveUpdate),
             new LeaderboardCommandModule(this::handleLeaderboardCommand, this::tabCompleteLeaderboard),
             new ResetDataCommandModule(this::handleResetDataCommand, this::tabCompleteAdminPlayerTarget),
             new StatsCommandModule(this::handleStatsCommand, this::tabCompleteAdminStatCheck),
@@ -219,6 +232,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge combofrenzy") + ": trigger combo frenzy");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge reload")
                 + ": reload plugin configuration values live");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge liveupdate")
+                + ": check staged update status and live-update controls");
         player.sendMessage(
                 ChatColor.GRAY + "- " + label("/sheepmerge world") + ": travel to the shared farm build world");
         player.sendMessage(
@@ -315,6 +330,19 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                     + ": cancel deferred deletion mark");
             player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge backup load <file>")
                     + ": restore one backup archive");
+            return;
+        }
+
+        if (topic.equalsIgnoreCase("liveupdate")) {
+            player.sendMessage(ChatColor.DARK_AQUA + "Live update hints:");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge liveupdate status")
+                    + ": show current live-update toggle and staged release status");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge liveupdate check")
+                    + ": query GitHub Releases and stage the latest update");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge liveupdate apply")
+                    + ": apply a staged live-safe migration manifest now");
+            player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge liveupdate on|off")
+                    + ": enable or disable automatic live update checks");
             return;
         }
 
@@ -934,6 +962,50 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return false;
     }
 
+    private boolean handleLiveUpdateCommand(Player player, String[] args) {
+        if (!(args.length >= 1 && args[0].equalsIgnoreCase("liveupdate"))) {
+            return false;
+        }
+        if (!player.isOp()) {
+            player.sendMessage(error("Only operators can use live update controls."));
+            return true;
+        }
+
+        if (args.length == 1 || isHelpFlag(args[1]) || args[1].equalsIgnoreCase("status")) {
+            player.sendMessage(adminHeader("Live Update Status"));
+            for (String line : SheepMergeManager.getLiveUpdateStatusLines()) {
+                player.sendMessage(line);
+            }
+            return true;
+        }
+
+        String action = args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "on":
+            case "enable":
+                SheepMergeManager.setLiveUpdateEnabled(true);
+                player.sendMessage(SheepMergeManager.action("Live updates enabled."));
+                return true;
+            case "off":
+            case "disable":
+                SheepMergeManager.setLiveUpdateEnabled(false);
+                player.sendMessage(SheepMergeManager.action("Live updates disabled."));
+                return true;
+            case "check":
+                player.sendMessage(SheepMergeManager.action("Checking GitHub Releases for an update..."));
+                LiveUpdateCoordinator.checkForUpdatesNow(player);
+                return true;
+            case "apply":
+                LiveUpdateCoordinator.applyStagedUpdateNow(player);
+                return true;
+            default:
+                player.sendMessage(
+                        error("Invalid liveupdate command. Use /sheepmerge liveupdate status|check|apply|on|off."));
+                sendCommandHelp(player, "liveupdate");
+                return true;
+        }
+    }
+
     private boolean handleWorldCommand(Player player, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("world")) {
             if (!player.isOp()) {
@@ -1419,6 +1491,16 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         return List.of();
     }
 
+    private List<String> tabCompleteLiveUpdate(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            return List.of();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("liveupdate")) {
+            return filterSuggestions(LIVE_UPDATE_SUBCOMMANDS, args[1]);
+        }
+        return List.of();
+    }
+
     private List<String> tabCompleteWorld(CommandSender sender, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("world")) {
             return filterSuggestions(WORLD_SUBCOMMANDS, args[1]);
@@ -1675,6 +1757,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
                 || root.equals("setpoints") || root.equals("givequestpoints") || root.equals("setquestpoints")
                 || root.equals("givesacrificepoints")
                 || root.equals("reload")
+                || root.equals("liveupdate")
                 || root.equals("setprestige")
                 || root.equals("summon")
                 || matchesSubcommand(ADMIN_ACHIEVEMENT_SUBCOMMANDS, root)) {

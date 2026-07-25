@@ -198,6 +198,11 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> sheepRescueNextCorrectionAtByEntity = new HashMap<>();
     private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
     private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
+    private static boolean liveUpdateEnabled = true;
+    private static int dataSchemaVersion = 0;
+    private static String stagedLiveUpdateVersion = "";
+    private static String lastLiveUpdateStatus = "Not checked yet.";
+    private static long lastLiveUpdateCheckAt = 0L;
     private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
     private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
     private static final Map<UUID, Set<UUID>> farmVisitBlockedUsersByPlayer = new HashMap<>();
@@ -459,6 +464,7 @@ public final class SheepMergeManager {
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
     public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
+    public static final int CURRENT_DATA_SCHEMA_VERSION = 1;
     public static final String SETTINGS_MENU_TITLE = "Settings";
     public static final String UNIVERSAL_LAYOUT_MENU_TITLE = SETTINGS_MENU_TITLE;
     public static final String SCOREBOARD_LAYOUT_MENU_TITLE = "Scoreboard Layout";
@@ -1144,6 +1150,7 @@ public final class SheepMergeManager {
         farmLayoutFile = new File(plugin.getDataFolder(), "farm-layout.yml");
         farmStructureCacheDirectory = new File(plugin.getDataFolder(), "farm-structure-cache");
         loadData();
+        applyLiveDataSchemaVersion(CURRENT_DATA_SCHEMA_VERSION, "startup");
         loadFarmLayout();
     }
 
@@ -1210,6 +1217,96 @@ public final class SheepMergeManager {
         TUTORIAL_STATUS_FEED_REPEAT_MS = configuration.getTutorialStatusFeedRepeatMs();
         TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS = configuration.getTutorialFocusNotificationCooldownMs();
         TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS = configuration.getTutorialMergePointsReminderRepeatMs();
+    }
+
+    public static boolean isLiveUpdateEnabled() {
+        return liveUpdateEnabled;
+    }
+
+    public static void setLiveUpdateEnabled(boolean enabled) {
+        liveUpdateEnabled = enabled;
+        saveData();
+    }
+
+    public static int getCurrentDataSchemaVersion() {
+        return CURRENT_DATA_SCHEMA_VERSION;
+    }
+
+    public static int getDataSchemaVersion() {
+        return dataSchemaVersion;
+    }
+
+    public static synchronized boolean applyLiveDataSchemaVersion(int targetVersion, String reason) {
+        int clampedTarget = Math.max(0, targetVersion);
+        if (clampedTarget > CURRENT_DATA_SCHEMA_VERSION) {
+            return false;
+        }
+        boolean changed = false;
+        while (dataSchemaVersion < clampedTarget) {
+            int nextVersion = dataSchemaVersion + 1;
+            if (!applyDataSchemaMigrationStep(nextVersion, reason)) {
+                return false;
+            }
+            dataSchemaVersion = nextVersion;
+            changed = true;
+        }
+        if (changed) {
+            saveData();
+        }
+        return true;
+    }
+
+    private static boolean applyDataSchemaMigrationStep(int targetVersion, String reason) {
+        switch (targetVersion) {
+            case 1:
+                if (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank()) {
+                    lastLiveUpdateStatus = "Schema v1 initialized via " + (reason == null ? "migration" : reason) + ".";
+                }
+                if (stagedLiveUpdateVersion == null) {
+                    stagedLiveUpdateVersion = "";
+                }
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static void recordLiveUpdateCheck(String status) {
+        lastLiveUpdateCheckAt = System.currentTimeMillis();
+        lastLiveUpdateStatus = status == null || status.isBlank() ? "Checked." : status;
+        saveData();
+    }
+
+    public static void recordStagedLiveUpdate(String version, String status) {
+        stagedLiveUpdateVersion = version == null ? "" : version;
+        recordLiveUpdateCheck(status);
+    }
+
+    public static void recordLiveUpdateApply(String status) {
+        lastLiveUpdateCheckAt = System.currentTimeMillis();
+        lastLiveUpdateStatus = status == null || status.isBlank() ? "Applied staged live update." : status;
+        if (dataSchemaVersion >= CURRENT_DATA_SCHEMA_VERSION) {
+            stagedLiveUpdateVersion = "";
+        }
+        saveData();
+    }
+
+    public static List<String> getLiveUpdateStatusLines() {
+        List<String> lines = new ArrayList<>();
+        lines.add(ChatColor.GRAY + "Enabled: " + (liveUpdateEnabled ? ChatColor.GREEN + "YES" : ChatColor.RED + "NO"));
+        lines.add(ChatColor.GRAY + "Schema: " + ChatColor.AQUA + dataSchemaVersion + ChatColor.DARK_GRAY + " / "
+                + ChatColor.AQUA + CURRENT_DATA_SCHEMA_VERSION);
+        lines.add(ChatColor.GRAY + "Staged Release: " + ChatColor.YELLOW
+                + (stagedLiveUpdateVersion == null || stagedLiveUpdateVersion.isBlank() ? "none"
+                        : stagedLiveUpdateVersion));
+        String checkedAt = lastLiveUpdateCheckAt <= 0L
+                ? "never"
+                : DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochMilli(lastLiveUpdateCheckAt));
+        lines.add(ChatColor.GRAY + "Last Check: " + ChatColor.AQUA + checkedAt);
+        lines.add(ChatColor.GRAY + "Status: " + ChatColor.WHITE
+                + (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank() ? "Not checked yet."
+                        : lastLiveUpdateStatus));
+        return lines;
     }
 
     public static int getFarmRadius() {
@@ -8335,6 +8432,11 @@ public final class SheepMergeManager {
         rebirthSkillUnlockMaskByPlayer.clear();
         rebirthSkillPendingMaskByPlayer.clear();
         nextRebirthRespecTimestampByPlayer.clear();
+        liveUpdateEnabled = true;
+        dataSchemaVersion = 0;
+        stagedLiveUpdateVersion = "";
+        lastLiveUpdateStatus = "Not checked yet.";
+        lastLiveUpdateCheckAt = 0L;
         for (BossBar bar : visitFarmBossBarByPlayer.values()) {
             if (bar != null) {
                 bar.removeAll();
@@ -14880,6 +14982,8 @@ public final class SheepMergeManager {
             dataConfig.set("scoreboardShowPrestigeStats", null);
             dataConfig.set("scoreboardShowQuestProgress", null);
             dataConfig.set("scoreboardShowAbilityStatus", null);
+            dataConfig.set("liveUpdate", null);
+            dataConfig.set("dataSchemaVersion", null);
             dataConfig.set("inventoryQuickAccess", null);
             dataConfig.set("sacrificePoints", null);
             dataConfig.set("sacrificeUnlocksBought", null);
@@ -15243,6 +15347,12 @@ public final class SheepMergeManager {
                 }
                 dataConfig.set("achievementMilestonesUnlocked." + entry.getKey(), new ArrayList<>(entry.getValue()));
             }
+            dataConfig.set("liveUpdate.enabled", liveUpdateEnabled);
+            dataConfig.set("liveUpdate.stagedVersion", stagedLiveUpdateVersion == null ? "" : stagedLiveUpdateVersion);
+            dataConfig.set("liveUpdate.lastStatus",
+                    lastLiveUpdateStatus == null ? "Not checked yet." : lastLiveUpdateStatus);
+            dataConfig.set("liveUpdate.lastCheckAt", Math.max(0L, lastLiveUpdateCheckAt));
+            dataConfig.set("dataSchemaVersion", Math.max(0, dataSchemaVersion));
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
             for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : savedInventories.entrySet()) {
@@ -16461,6 +16571,12 @@ public final class SheepMergeManager {
         }
         rebirthSkillPendingMaskByPlayer
                 .replaceAll((uuid, pendingMask) -> pendingMask & getRebirthSkillUnlockMask(uuid));
+        liveUpdateEnabled = !dataConfig.contains("liveUpdate.enabled")
+                || dataConfig.getBoolean("liveUpdate.enabled", true);
+        stagedLiveUpdateVersion = dataConfig.getString("liveUpdate.stagedVersion", "");
+        lastLiveUpdateStatus = dataConfig.getString("liveUpdate.lastStatus", "Not checked yet.");
+        lastLiveUpdateCheckAt = Math.max(0L, dataConfig.getLong("liveUpdate.lastCheckAt", 0L));
+        dataSchemaVersion = Math.max(0, dataConfig.getInt("dataSchemaVersion", 0));
         Set<UUID> playersToClamp = new HashSet<>();
         playersToClamp.addAll(extraLimitByPlayer.keySet());
         playersToClamp.addAll(eggSpeedLevelByPlayer.keySet());
