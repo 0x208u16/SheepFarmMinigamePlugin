@@ -60,16 +60,58 @@ verify_remote_access() {
   fi
 }
 
+get_release_workflow_state() {
+  local owner="$1"
+  local repo="$2"
+  local sha="$3"
+  local response
+
+  response="$(curl -fsS "https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${sha}&per_page=20")" || return 1
+
+  RELEASE_WORKFLOW_RESPONSE="$response" python - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ['RELEASE_WORKFLOW_RESPONSE'])
+for run in payload.get('workflow_runs', []):
+    if run.get('name') == 'Publish Release' or run.get('path') == '.github/workflows/release.yml':
+        status = run.get('status') or 'unknown'
+        conclusion = run.get('conclusion') or ''
+        print(f"{status}:{conclusion}")
+        break
+else:
+    print('missing:')
+PY
+}
+
 wait_for_release() {
   local owner="$1"
   local repo="$2"
   local tag="$3"
+  local sha="$4"
 
   for (( attempt=1; attempt<=RELEASE_POLL_RETRIES; attempt++ )); do
     if release_exists "$owner" "$repo" "$tag"; then
       echo "GitHub Release $tag is live."
       return 0
     fi
+    local workflow_state
+    workflow_state="$(get_release_workflow_state "$owner" "$repo" "$sha" || true)"
+    case "$workflow_state" in
+      completed:success)
+        echo "Release workflow completed successfully but release $tag is not visible yet; continuing to poll."
+        ;;
+      completed:failure|completed:cancelled|completed:timed_out|completed:action_required)
+        echo "Release workflow failed for $tag ($workflow_state)." >&2
+        return 2
+        ;;
+      in_progress:*|queued:*|requested:*|waiting:*|pending:*)
+        echo "Release workflow status for $tag: $workflow_state"
+        ;;
+      missing:*)
+        echo "Release workflow for $tag has not appeared yet."
+        ;;
+    esac
     echo "Waiting for GitHub Release $tag to appear (${attempt}/${RELEASE_POLL_RETRIES})..."
     sleep "$RELEASE_POLL_SECONDS"
   done
@@ -248,9 +290,15 @@ if [[ $do_push -eq 1 ]]; then
     exit 1
   fi
 
-  if ! wait_for_release "$github_owner" "$github_repo" "v$version"; then
+  tag_sha="$(git rev-parse "v$version")"
+  if ! wait_for_release "$github_owner" "$github_repo" "v$version" "$tag_sha"; then
+    wait_status=$?
     cleanup_on_failure "$version"
-    echo "GitHub Release v$version did not publish successfully in time. Cleaned up failed publish tag and local state." >&2
+    if [[ $wait_status -eq 2 ]]; then
+      echo "GitHub Actions release workflow failed for v$version. Cleaned up failed publish tag and local state." >&2
+    else
+      echo "GitHub Release v$version did not publish successfully in time. Cleaned up failed publish tag and local state." >&2
+    fi
     echo "Check the GitHub Actions workflow for release failures." >&2
     exit 1
   fi

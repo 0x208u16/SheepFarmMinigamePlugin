@@ -28,8 +28,8 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Build plugin
-        run: ./gradlew --no-daemon :app:build
+      - name: Build release jar
+        run: ./gradlew --no-daemon :app:jar
 
       - name: Resolve release metadata
         id: meta
@@ -58,6 +58,8 @@ jobs:
           sed -i "s/__SUMMARY__/Release ${{ steps.meta.outputs.tag_name }}/g" build/release-assets/live-update.yml
 
       - name: Generate changelog asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew --no-daemon :app:cleanupChangelog
 
       - name: Publish GitHub release
