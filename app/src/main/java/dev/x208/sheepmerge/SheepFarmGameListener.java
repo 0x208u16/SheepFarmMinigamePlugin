@@ -268,6 +268,14 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
+        ItemStack item = player.getInventory().getItemInMainHand();
+        boolean attemptingShearOnly = item != null
+                && item.getType() == Material.SHEARS
+                && !SheepMergeManager.hasPickedUpSheep(player);
+        if (attemptingShearOnly) {
+            return;
+        }
+
         if (!SheepMergeManager.isFarmOwner(player, targetSheep.getWorld())) {
             event.setCancelled(true);
             player.sendMessage(SheepMergeManager.warning("Visitors cannot merge sheep here."));
@@ -282,7 +290,6 @@ public class SheepFarmGameListener implements Listener {
             return;
         }
 
-        ItemStack item = player.getInventory().getItemInMainHand();
         if (SheepMergeManager.isSheepMergeEggItem(item)) {
             event.setCancelled(true);
             return;
