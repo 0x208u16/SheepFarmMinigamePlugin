@@ -10,6 +10,11 @@ RELEASE_POLL_SECONDS=10
 publish_remote=""
 pre_release_head=""
 ssh_command=()
+github_token=""
+
+GITHUB_HTTP_STATUS=""
+GITHUB_RESPONSE_BODY=""
+GITHUB_RESPONSE_HEADERS=""
 
 cleanup_on_failure() {
   local version="$1"
@@ -49,7 +54,76 @@ release_exists() {
   local owner="$1"
   local repo="$2"
   local tag="$3"
-  curl -fsS "https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}" >/dev/null 2>&1
+  github_api_get "https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}" || true
+  [[ "$GITHUB_HTTP_STATUS" == "200" ]]
+}
+
+github_api_get() {
+  local url="$1"
+  local body_file
+  local header_file
+  local http_status
+  local curl_args
+
+  body_file="$(mktemp)"
+  header_file="$(mktemp)"
+
+  curl_args=(
+    -sS
+    -L
+    -H "Accept: application/vnd.github+json"
+    -H "X-GitHub-Api-Version: 2022-11-28"
+    -H "User-Agent: SheepMergePublishScript/1.0"
+  )
+
+  if [[ -n "$github_token" ]]; then
+    curl_args+=( -H "Authorization: Bearer ${github_token}" )
+  fi
+
+  http_status="$(curl "${curl_args[@]}" -D "$header_file" -o "$body_file" -w "%{http_code}" "$url" 2>/dev/null || true)"
+
+  GITHUB_HTTP_STATUS="$http_status"
+  GITHUB_RESPONSE_BODY="$(cat "$body_file")"
+  GITHUB_RESPONSE_HEADERS="$(cat "$header_file")"
+
+  rm -f "$body_file" "$header_file"
+
+  [[ "$http_status" =~ ^[0-9]{3}$ ]]
+}
+
+get_header_value() {
+  local headers="$1"
+  local key="$2"
+
+  awk -v key="$key" '
+    BEGIN { IGNORECASE = 1 }
+    {
+      line = $0
+      gsub("\r", "", line)
+      split(line, parts, ":")
+      if (tolower(parts[1]) == tolower(key)) {
+        sub("^[^:]*:[[:space:]]*", "", line)
+        print line
+        exit
+      }
+    }
+  ' <<< "$headers"
+}
+
+load_github_token() {
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    github_token="$GITHUB_TOKEN"
+    return
+  fi
+
+  if [[ -n "${GH_TOKEN:-}" ]]; then
+    github_token="$GH_TOKEN"
+    return
+  fi
+
+  if command -v gh >/dev/null 2>&1; then
+    github_token="$(gh auth token 2>/dev/null || true)"
+  fi
 }
 
 verify_remote_access() {
@@ -66,7 +140,11 @@ get_release_workflow_state() {
   local sha="$3"
   local response
 
-  response="$(curl -fsS "https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${sha}&per_page=20")" || return 1
+  github_api_get "https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${sha}&per_page=20" || true
+  if [[ "$GITHUB_HTTP_STATUS" != "200" ]]; then
+    return 1
+  fi
+  response="$GITHUB_RESPONSE_BODY"
 
   RELEASE_WORKFLOW_RESPONSE="$response" python - <<'PY'
 import json
@@ -95,6 +173,26 @@ wait_for_release() {
       echo "GitHub Release $tag is live."
       return 0
     fi
+
+    if [[ "$GITHUB_HTTP_STATUS" == "403" ]]; then
+      local remaining reset
+      remaining="$(get_header_value "$GITHUB_RESPONSE_HEADERS" "x-ratelimit-remaining")"
+      reset="$(get_header_value "$GITHUB_RESPONSE_HEADERS" "x-ratelimit-reset")"
+      if [[ "$remaining" == "0" ]]; then
+        local reset_at
+        reset_at="unknown"
+        if [[ -n "$reset" && "$reset" =~ ^[0-9]+$ ]]; then
+          reset_at="$(date -u -d "@$reset" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo "$reset")"
+        fi
+        echo "GitHub API rate limit reached while checking release $tag (remaining=$remaining, reset=$reset_at)." >&2
+      else
+        echo "GitHub API returned 403 while checking release $tag. This usually means missing/insufficient API auth for a private repository." >&2
+      fi
+      if [[ -z "$github_token" ]]; then
+        echo "Set GITHUB_TOKEN (or GH_TOKEN) and rerun publish to avoid unauthenticated API limits." >&2
+      fi
+    fi
+
     local workflow_state
     workflow_state="$(get_release_workflow_state "$owner" "$repo" "$sha" || true)"
     case "$workflow_state" in
@@ -207,6 +305,11 @@ fi
 if [[ ! -f "$KEY_PATH" || ! -f "$PUB_KEY_PATH" ]]; then
   echo "Missing publish key files. Expected: $KEY_PATH and $PUB_KEY_PATH" >&2
   exit 1
+fi
+
+load_github_token
+if [[ -z "$github_token" ]]; then
+  echo "No GitHub API token detected; release polling will be limited by anonymous GitHub API rate limits." >&2
 fi
 
 chmod 600 "$KEY_PATH"

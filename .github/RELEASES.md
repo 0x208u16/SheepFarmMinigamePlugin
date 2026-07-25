@@ -7,11 +7,15 @@ This repository is configured to publish release assets for SheepMerge live upda
 Preferred path:
 
 ```bash
+export GITHUB_TOKEN=<github_token_with_repo_access>
 scripts/publish-release.sh 1.0.1
 ```
 
+If you use GitHub CLI auth locally, the script will also auto-detect `gh auth token`.
+
 This script:
 - uses the local SSH key pair `sheep_merge_key` / `sheep_merge_key.pub` for GitHub pushes
+- uses authenticated GitHub API polling when `GITHUB_TOKEN`/`GH_TOKEN`/`gh auth token` is available
 - updates `app/src/main/resources/plugin.yml`
 - builds the plugin
 - commits the version bump
