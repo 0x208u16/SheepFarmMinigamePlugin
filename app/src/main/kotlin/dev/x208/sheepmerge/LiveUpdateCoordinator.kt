@@ -158,33 +158,40 @@ object LiveUpdateCoordinator {
 
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
         val client = HttpClient.newBuilder().connectTimeout(timeout).build()
-        val requestBuilder = HttpRequest.newBuilder()
+        val latestRequestBuilder = HttpRequest.newBuilder()
             .uri(URI.create("$GITHUB_API_BASE/repos/$owner/$repo/releases/latest"))
             .timeout(timeout)
             .GET()
-        applyGitHubHeaders(requestBuilder, configuration)
-        val request = requestBuilder.build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        applyGitHubHeaders(latestRequestBuilder, configuration)
+        val latestResponse = client.send(latestRequestBuilder.build(), HttpResponse.BodyHandlers.ofString())
 
-        if (response.statusCode() !in 200..299) {
-            val status = response.statusCode()
-            val rateRemaining = response.headers().firstValue("x-ratelimit-remaining").orElse("")
-            val statusMessage = when (status) {
-                401, 403 -> if (rateRemaining == "0") {
-                    "GitHub API rate limit reached while checking releases (HTTP $status)."
-                } else {
-                    "GitHub API denied release lookup (HTTP $status)."
-                }
-                404 -> "No published GitHub release found for $owner/$repo yet."
-                else -> "GitHub API returned HTTP $status while checking latest release."
-            }
-            return ReleaseFetchResult(errorMessage = statusMessage)
+        if (latestResponse.statusCode() in 200..299) {
+            val parsed = parseReleaseResponseBody(latestResponse.body())
+            return parsed ?: ReleaseFetchResult(errorMessage = "GitHub API response did not include a release tag.")
         }
 
-        val body = response.body()
+        // Fallback for repos where "latest" cannot be resolved reliably.
+        if (latestResponse.statusCode() == 404) {
+            val listRequestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create("$GITHUB_API_BASE/repos/$owner/$repo/releases?per_page=1"))
+                .timeout(timeout)
+                .GET()
+            applyGitHubHeaders(listRequestBuilder, configuration)
+            val listResponse = client.send(listRequestBuilder.build(), HttpResponse.BodyHandlers.ofString())
+            if (listResponse.statusCode() in 200..299) {
+                val parsed = parseReleaseResponseBody(listResponse.body())
+                return parsed ?: ReleaseFetchResult(errorMessage = "No published GitHub release found for $owner/$repo yet.")
+            }
+            return httpFailure(owner, repo, listResponse)
+        }
+
+        return httpFailure(owner, repo, latestResponse)
+    }
+
+    private fun parseReleaseResponseBody(body: String): ReleaseFetchResult? {
         val tagMatcher = tagPattern.matcher(body)
         if (!tagMatcher.find()) {
-            return ReleaseFetchResult(errorMessage = "GitHub API response did not include a release tag.")
+            return null
         }
 
         val tagName = unescape(tagMatcher.group(1))
@@ -196,6 +203,25 @@ object LiveUpdateCoordinator {
             assets.add(ReleaseAsset(name, url))
         }
         return ReleaseFetchResult(release = tagName to assets)
+    }
+
+    private fun httpFailure(
+        owner: String,
+        repo: String,
+        response: HttpResponse<String>
+    ): ReleaseFetchResult {
+        val status = response.statusCode()
+        val rateRemaining = response.headers().firstValue("x-ratelimit-remaining").orElse("")
+        val statusMessage = when (status) {
+            401, 403 -> if (rateRemaining == "0") {
+                "GitHub API rate limit reached while checking releases (HTTP $status)."
+            } else {
+                "GitHub API denied release lookup (HTTP $status)."
+            }
+            404 -> "No published GitHub release found for $owner/$repo yet."
+            else -> "GitHub API returned HTTP $status while checking latest release."
+        }
+        return ReleaseFetchResult(errorMessage = statusMessage)
     }
 
     private fun stageLatestRelease(
