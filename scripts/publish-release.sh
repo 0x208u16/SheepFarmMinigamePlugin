@@ -144,6 +144,30 @@ verify_remote_access() {
   fi
 }
 
+ensure_branch_can_push() {
+  local branch="$1"
+  local remote_sha
+
+  if ! GIT_SSH_COMMAND="${ssh_command[*]}" git fetch --quiet "$publish_remote" "$branch"; then
+    echo "Failed to fetch remote branch state for $branch from $publish_remote." >&2
+    echo "Resolve connectivity/auth issues and try again." >&2
+    exit 1
+  fi
+
+  remote_sha="$(git rev-parse -q --verify FETCH_HEAD || true)"
+  if [[ -z "$remote_sha" ]]; then
+    echo "Could not resolve remote branch state for $branch." >&2
+    exit 1
+  fi
+
+  if ! git merge-base --is-ancestor "$remote_sha" HEAD; then
+    echo "Local branch $branch is behind or diverged from remote." >&2
+    echo "Run: git pull --rebase origin $branch" >&2
+    echo "Then rerun: scripts/publish-release.sh $version" >&2
+    exit 1
+  fi
+}
+
 get_release_workflow_state() {
   local owner="$1"
   local repo="$2"
@@ -352,6 +376,16 @@ if git_has_relevant_changes; then
   exit 1
 fi
 
+branch="$(git branch --show-current)"
+if [[ -z "$branch" ]]; then
+  echo "Could not determine current branch." >&2
+  exit 1
+fi
+
+if [[ $do_push -eq 1 ]]; then
+  ensure_branch_can_push "$branch"
+fi
+
 current_version="$(grep '^version:' "$PLUGIN_YML" | awk '{print $2}')"
 if [[ -z "$current_version" ]]; then
   echo "Could not read current version from $PLUGIN_YML" >&2
@@ -393,12 +427,6 @@ else
   if [[ $do_build -eq 1 ]]; then
     GRADLE_USER_HOME=.gradle-home ./gradlew --no-daemon :app:build
   fi
-fi
-
-branch="$(git branch --show-current)"
-if [[ -z "$branch" ]]; then
-  echo "Could not determine current branch." >&2
-  exit 1
 fi
 
 if [[ $do_push -eq 1 ]]; then
