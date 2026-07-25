@@ -74,6 +74,9 @@ public class SheepMergeWorldListener implements Listener {
         if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
             return;
         }
+        if (!SheepMergeManager.hasSavedInventory(player)) {
+            SheepMergeManager.savePlayerInventory(player);
+        }
         SheepMergeManager.upgradeSheepBelowMinimumSpawnTier(player.getWorld());
         SheepMergeManager.enforceFarmLoadout(player);
         SheepMergeManager.applyFarmSaturation(player);

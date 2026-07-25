@@ -2406,6 +2406,7 @@ public final class SheepMergeManager {
                 continue;
             }
             online.teleport(fallbackSpawn);
+            restoreSavedStateOutsideFarm(online);
             online.sendMessage(hint("Your farm is being refreshed. Use /sheepmerge to return once it finishes."));
         }
     }
