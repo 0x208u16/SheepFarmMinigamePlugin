@@ -87,6 +87,7 @@ class SheepMergeConfiguration private constructor(configuration: FileConfigurati
     val liveUpdateGitHubRepo: String = getString(configuration, "liveUpdates.github.repo", "SheepMerge")
     val liveUpdateManifestAssetName: String = getString(configuration, "liveUpdates.github.manifestAssetName", "live-update.yml")
     val liveUpdateApiTimeoutMs: Long = getLong(configuration, "liveUpdates.github.apiTimeoutMs", 10000L, 1000L)
+    val liveUpdateGitHubToken: String = getString(configuration, "liveUpdates.github.token", "")
 
     companion object {
         private var instance: SheepMergeConfiguration? = null

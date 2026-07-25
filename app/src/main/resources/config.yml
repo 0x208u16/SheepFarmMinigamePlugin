@@ -11,6 +11,7 @@ liveUpdates:
     repo: SheepFarmMinigamePlugin
     manifestAssetName: live-update.yml
     apiTimeoutMs: 10000
+    token: ""
 
 farm:
   teleport:

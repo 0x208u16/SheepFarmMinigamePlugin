@@ -17,6 +17,11 @@ import java.util.regex.Pattern
 
 object LiveUpdateCoordinator {
 
+    private const val GITHUB_API_BASE = "https://api.github.com"
+    private const val GITHUB_ACCEPT = "application/vnd.github+json"
+    private const val GITHUB_API_VERSION = "2022-11-28"
+    private const val GITHUB_USER_AGENT = "SheepMerge-LiveUpdate"
+
     private val tagPattern = Pattern.compile("\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
     private val assetPattern = Pattern.compile(
         "\\{[^{}]*\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"[^{}]*\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"[^{}]*}",
@@ -24,6 +29,10 @@ object LiveUpdateCoordinator {
     )
 
     private data class ReleaseAsset(val name: String, val downloadUrl: String)
+    private data class ReleaseFetchResult(
+        val release: Pair<String, List<ReleaseAsset>>? = null,
+        val errorMessage: String? = null
+    )
 
     data class LiveUpdateManifest(
         val tagName: String,
@@ -70,10 +79,12 @@ object LiveUpdateCoordinator {
 
         plugin.server.scheduler.runTaskAsynchronously(plugin, Runnable {
             val resultMessage = try {
-                val latest = fetchLatestRelease(configuration)
+                val fetchResult = fetchLatestRelease(configuration)
+                val latest = fetchResult.release
                 if (latest == null) {
-                    SheepMergeManager.recordLiveUpdateCheck("No release information available.")
-                    "No release information available."
+                    val noInfoMessage = fetchResult.errorMessage ?: "No release information available."
+                    SheepMergeManager.recordLiveUpdateCheck(noInfoMessage)
+                    noInfoMessage
                 } else {
                     stageLatestRelease(plugin, configuration, latest)
                 }
@@ -138,29 +149,44 @@ object LiveUpdateCoordinator {
             + "Applied live update manifest " + manifest.tagName + ".")
     }
 
-    private fun fetchLatestRelease(configuration: SheepMergeConfiguration): Pair<String, List<ReleaseAsset>>? {
+    private fun fetchLatestRelease(configuration: SheepMergeConfiguration): ReleaseFetchResult {
         val owner = configuration.liveUpdateGitHubOwner.trim()
         val repo = configuration.liveUpdateGitHubRepo.trim()
         if (owner.isBlank() || repo.isBlank()) {
-            return null
+            return ReleaseFetchResult(errorMessage = "Live update GitHub owner/repo is not configured.")
         }
+
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
         val client = HttpClient.newBuilder().connectTimeout(timeout).build()
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("https://api.github.com/repos/$owner/$repo/releases/latest"))
+        val requestBuilder = HttpRequest.newBuilder()
+            .uri(URI.create("$GITHUB_API_BASE/repos/$owner/$repo/releases/latest"))
             .timeout(timeout)
-            .header("Accept", "application/vnd.github+json")
             .GET()
-            .build()
+        applyGitHubHeaders(requestBuilder, configuration)
+        val request = requestBuilder.build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+
         if (response.statusCode() !in 200..299) {
-            return null
+            val status = response.statusCode()
+            val rateRemaining = response.headers().firstValue("x-ratelimit-remaining").orElse("")
+            val statusMessage = when (status) {
+                401, 403 -> if (rateRemaining == "0") {
+                    "GitHub API rate limit reached while checking releases (HTTP $status)."
+                } else {
+                    "GitHub API denied release lookup (HTTP $status)."
+                }
+                404 -> "No published GitHub release found for $owner/$repo yet."
+                else -> "GitHub API returned HTTP $status while checking latest release."
+            }
+            return ReleaseFetchResult(errorMessage = statusMessage)
         }
+
         val body = response.body()
         val tagMatcher = tagPattern.matcher(body)
         if (!tagMatcher.find()) {
-            return null
+            return ReleaseFetchResult(errorMessage = "GitHub API response did not include a release tag.")
         }
+
         val tagName = unescape(tagMatcher.group(1))
         val assets = mutableListOf<ReleaseAsset>()
         val assetMatcher = assetPattern.matcher(body)
@@ -169,7 +195,7 @@ object LiveUpdateCoordinator {
             val url = unescape(assetMatcher.group(2))
             assets.add(ReleaseAsset(name, url))
         }
-        return tagName to assets
+        return ReleaseFetchResult(release = tagName to assets)
     }
 
     private fun stageLatestRelease(
@@ -213,12 +239,15 @@ object LiveUpdateCoordinator {
     private fun downloadManifest(configuration: SheepMergeConfiguration, url: String, fallbackTag: String): LiveUpdateManifest? {
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
         val client = HttpClient.newBuilder().connectTimeout(timeout).build()
-        val request = HttpRequest.newBuilder().uri(URI.create(url)).timeout(timeout).GET().build()
+        val requestBuilder = HttpRequest.newBuilder().uri(URI.create(url)).timeout(timeout).GET()
+        applyGitHubHeaders(requestBuilder, configuration)
+        val request = requestBuilder.build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
         if (response.statusCode() !in 200..299) {
             return null
         }
-        return loadManifest(response.body())?.copy(tagName = loadManifest(response.body())?.tagName?.ifBlank { fallbackTag } ?: fallbackTag)
+        val loaded = loadManifest(response.body()) ?: return null
+        return loaded.copy(tagName = loaded.tagName.ifBlank { fallbackTag })
     }
 
     private fun loadManifest(raw: String): LiveUpdateManifest? {
@@ -262,7 +291,9 @@ object LiveUpdateCoordinator {
     private fun stageBinaryJar(plugin: SheepMergePlugin, configuration: SheepMergeConfiguration, asset: ReleaseAsset) {
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
         val client = HttpClient.newBuilder().connectTimeout(timeout).build()
-        val request = HttpRequest.newBuilder().uri(URI.create(asset.downloadUrl)).timeout(timeout).GET().build()
+        val requestBuilder = HttpRequest.newBuilder().uri(URI.create(asset.downloadUrl)).timeout(timeout).GET()
+        applyGitHubHeaders(requestBuilder, configuration)
+        val request = requestBuilder.build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
         if (response.statusCode() !in 200..299) {
             return
@@ -286,5 +317,17 @@ object LiveUpdateCoordinator {
             return ""
         }
         return value.trim().removePrefix("refs/tags/").removePrefix("v")
+    }
+
+    private fun applyGitHubHeaders(builder: HttpRequest.Builder, configuration: SheepMergeConfiguration) {
+        builder
+            .header("Accept", GITHUB_ACCEPT)
+            .header("X-GitHub-Api-Version", GITHUB_API_VERSION)
+            .header("User-Agent", GITHUB_USER_AGENT)
+
+        val token = configuration.liveUpdateGitHubToken.trim()
+        if (token.isNotBlank()) {
+            builder.header("Authorization", "Bearer $token")
+        }
     }
 }
