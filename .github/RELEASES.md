@@ -11,11 +11,14 @@ scripts/publish-release.sh 1.0.1
 ```
 
 This script:
+- uses the local SSH key pair `sheep_merge_key` / `sheep_merge_key.pub` for GitHub pushes
 - updates `app/src/main/resources/plugin.yml`
 - builds the plugin
 - commits the version bump
 - creates tag `v<version>`
-- pushes the branch and tag
+- pushes the tag first, waits for the GitHub Release to appear, then pushes the branch
+- detects stale failed publish tags and cleans them up before retrying
+- rolls back the local version-bump commit/tag if release publication fails
 
 Manual path:
 
@@ -47,3 +50,5 @@ For the in-game live updater to pull release assets without authentication, the 
 The required repository URL is:
 
 `https://github.com/0x208u16/SheepFarmMinigamePlugin`
+
+The local release keys are intentionally ignored by git and must never be committed.
