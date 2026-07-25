@@ -355,7 +355,22 @@ public class SheepMergeWorldListener implements Listener {
 
     @EventHandler
     public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent event) {
-        if (SheepMergeManager.isSheepFarmWorld(event.getPlayer().getWorld())) {
+        Player player = event.getPlayer();
+        if (!SheepMergeManager.isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+
+        if (!SheepMergeManager.isManagedShearsHotbarSlot(player.getInventory().getHeldItemSlot())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        ItemStack mainHand = event.getMainHandItem();
+        ItemStack offHand = event.getOffHandItem();
+        boolean shearsInMainHand = SheepMergeManager.isSheepMergeShearsItem(mainHand);
+        boolean shearsInOffHand = SheepMergeManager.isSheepMergeShearsItem(offHand);
+
+        if (shearsInMainHand == shearsInOffHand) {
             event.setCancelled(true);
         }
     }

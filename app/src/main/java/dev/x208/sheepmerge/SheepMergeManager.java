@@ -604,6 +604,7 @@ public final class SheepMergeManager {
     private static final int REBIRTH_SKILL_KEEP_SHEEP_AFTER_PRESTIGE = 7;
     private static final int REBIRTH_SKILL_WOOL_REGEN_X10 = 8;
     private static final int REBIRTH_SKILL_QUEST_MASTER = 9;
+    private static final int FARM_SHEARS_ITEM_SLOT = 6;
     private static final int FARM_EGG_ITEM_SLOT = 7;
     private static final int INVENTORY_QUICK_ACCESS_MAX_ITEMS = 6;
     private static final int INVENTORY_QUICK_ACCESS_FIRST_SLOT = 0;
@@ -9192,6 +9193,8 @@ public final class SheepMergeManager {
 
         var inventory = player.getInventory();
         ItemStack[] storageContents = inventory.getStorageContents();
+        ItemStack offHand = inventory.getItemInOffHand();
+        boolean shearsInOffHand = isSheepMergeShearsItem(offHand);
         boolean storageChanged = false;
 
         for (int slot = 0; slot < storageContents.length; slot++) {
@@ -9235,6 +9238,19 @@ public final class SheepMergeManager {
                 continue;
             }
 
+            if (slot == FARM_SHEARS_ITEM_SLOT) {
+                if (shearsInOffHand) {
+                    if (isSheepMergeShearsItem(itemStack)) {
+                        storageContents[slot] = null;
+                        storageChanged = true;
+                    }
+                } else if (itemStack == null || !isSheepMergeShearsItem(itemStack) || itemStack.getAmount() != 1) {
+                    storageContents[slot] = getSheepMergeShears();
+                    storageChanged = true;
+                }
+                continue;
+            }
+
             if (itemStack == null) {
                 continue;
             }
@@ -9270,8 +9286,7 @@ public final class SheepMergeManager {
             }
         }
 
-        ItemStack offHand = inventory.getItemInOffHand();
-        if (offHand == null || offHand.getType() != Material.SHEARS || offHand.getAmount() != 1) {
+        if (shearsInOffHand && (offHand == null || !isSheepMergeShearsItem(offHand) || offHand.getAmount() != 1)) {
             inventory.setItemInOffHand(getSheepMergeShears());
         }
     }
@@ -14832,6 +14847,12 @@ public final class SheepMergeManager {
             storage[FARM_EGG_ITEM_SLOT] = null;
             changed = true;
         }
+        if (FARM_SHEARS_ITEM_SLOT >= 0
+                && FARM_SHEARS_ITEM_SLOT < storage.length
+                && isSheepMergeShearsItem(storage[FARM_SHEARS_ITEM_SLOT])) {
+            storage[FARM_SHEARS_ITEM_SLOT] = null;
+            changed = true;
+        }
 
         int quickStart = Math.max(0, INVENTORY_QUICK_ACCESS_FIRST_SLOT);
         int quickEnd = Math.min(storage.length - 1, INVENTORY_QUICK_ACCESS_LAST_SLOT);
@@ -14866,7 +14887,7 @@ public final class SheepMergeManager {
         }
     }
 
-    private static boolean isSheepMergeShearsItem(ItemStack itemStack) {
+    public static boolean isSheepMergeShearsItem(ItemStack itemStack) {
         if (itemStack == null || itemStack.getType() != Material.SHEARS) {
             return false;
         }
@@ -14875,6 +14896,10 @@ public final class SheepMergeManager {
             return false;
         }
         return "Sheep Merge Shears".equals(meta.getDisplayName());
+    }
+
+    public static boolean isManagedShearsHotbarSlot(int slot) {
+        return slot == FARM_SHEARS_ITEM_SLOT;
     }
 
     public static ItemStack getSheepMergeShears() {
