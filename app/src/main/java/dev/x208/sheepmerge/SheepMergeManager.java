@@ -14421,16 +14421,6 @@ public final class SheepMergeManager {
         return player != null && savedInventories.containsKey(player.getUniqueId());
     }
 
-    public static void restoreSavedInventoryOutsideFarm(Player player) {
-        if (player == null || isSheepFarmWorld(player.getWorld())) {
-            return;
-        }
-        if (!hasSavedInventory(player)) {
-            return;
-        }
-        restorePlayerInventory(player);
-    }
-
     public static void restoreSavedStateOutsideFarm(Player player) {
         if (player == null || isSheepFarmWorld(player.getWorld())) {
             return;

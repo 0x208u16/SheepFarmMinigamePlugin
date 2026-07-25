@@ -43,11 +43,12 @@ class SheepFarmWorldCleanupListener : Listener {
 
         @JvmStatic
         fun scheduleDeleteWorldForPlayer(playerId: UUID?) {
-            if (playerId == null || SheepMergePlugin.instance == null) {
+            val plugin = SheepMergePlugin.instance
+            if (playerId == null || plugin == null) {
                 return
             }
 
-            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance, Runnable {
+            Bukkit.getScheduler().runTaskLater(plugin, Runnable {
                 val stillOnline: Player? = Bukkit.getPlayer(playerId)
                 if (stillOnline != null && stillOnline.isOnline) {
                     return@Runnable
@@ -131,13 +132,14 @@ class SheepFarmWorldCleanupListener : Listener {
             unloadWorld(worldName)
 
             val worldFolder = File(Bukkit.getWorldContainer(), worldName)
-            if (!asyncDelete || SheepMergePlugin.instance == null) {
+            val plugin = SheepMergePlugin.instance
+            if (!asyncDelete || plugin == null) {
                 deleteWorldFolder(worldName, worldFolder)
                 return
             }
 
             Bukkit.getScheduler().runTaskAsynchronously(
-                SheepMergePlugin.instance,
+                plugin,
                 Runnable { deleteWorldFolder(worldName, worldFolder) }
             )
         }
@@ -149,26 +151,6 @@ class SheepFarmWorldCleanupListener : Listener {
             return worldName.startsWith("sheepfarm_") || worldName.startsWith("sheeptutorial_")
         }
 
-        private fun getTutorialOwnerId(worldName: String?): UUID? {
-            if (worldName == null || !worldName.startsWith("sheeptutorial_")) {
-                return null
-            }
-            val rawId = worldName.substring("sheeptutorial_".length)
-            if (rawId.length != 32) {
-                return null
-            }
-            val builder = StringBuilder(rawId)
-            builder.insert(8, '-')
-            builder.insert(13, '-')
-            builder.insert(18, '-')
-            builder.insert(23, '-')
-            return try {
-                UUID.fromString(builder.toString())
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-        }
-
         private fun unloadWorld(worldName: String) {
             SheepFarmWorldCommand.invalidateManagedWorldInitialization(worldName)
             val world = Bukkit.getWorld(worldName)
@@ -178,10 +160,11 @@ class SheepFarmWorldCleanupListener : Listener {
         }
 
         private fun scheduleBuildWorldSaveCheck() {
-            if (SheepMergePlugin.instance == null) {
+            val plugin = SheepMergePlugin.instance
+            if (plugin == null) {
                 return
             }
-            Bukkit.getScheduler().runTaskLater(SheepMergePlugin.instance, SheepMergeManager::saveBuildWorldIfIdle, 1L)
+            Bukkit.getScheduler().runTaskLater(plugin, SheepMergeManager::saveBuildWorldIfIdle, 1L)
         }
 
         private fun deleteWorldFolder(worldName: String, worldFolder: File) {
