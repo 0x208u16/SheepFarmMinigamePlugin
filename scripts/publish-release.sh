@@ -5,24 +5,33 @@ KEY_PATH="/home/dev/Projects/Paper/Plugins/SheepMerge/sheep_merge_key"
 PUB_KEY_PATH="/home/dev/Projects/Paper/Plugins/SheepMerge/sheep_merge_key.pub"
 GRADLE_PROPERTIES="gradle.properties"
 PLUGIN_YML="app/src/main/resources/plugin.yml"
-RELEASE_POLL_RETRIES=18
+RELEASE_POLL_RETRIES=30
 RELEASE_POLL_SECONDS=10
+publish_remote=""
+pre_release_head=""
+ssh_command=()
 
 cleanup_on_failure() {
   local version="$1"
   local tag="v$version"
 
-  if git ls-remote --tags "$publish_remote" "refs/tags/$tag" | grep -q "$tag"; then
-    git push "$publish_remote" ":refs/tags/$tag" >/dev/null 2>&1 || true
+  if [[ -n "$publish_remote" ]] && GIT_SSH_COMMAND="${ssh_command[*]}" git ls-remote --tags "$publish_remote" "refs/tags/$tag" | grep -q "$tag"; then
+    GIT_SSH_COMMAND="${ssh_command[*]}" git push "$publish_remote" ":refs/tags/$tag" >/dev/null 2>&1 || true
   fi
 
   if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
     git tag -d "$tag" >/dev/null 2>&1 || true
   fi
 
-  if [[ "$(git rev-parse --short HEAD^)" == "$pre_release_head" ]]; then
+  if [[ -n "$pre_release_head" ]] && git rev-parse --verify HEAD^ >/dev/null 2>&1 && [[ "$(git rev-parse --short HEAD^)" == "$pre_release_head" ]]; then
     git reset --hard "$pre_release_head" >/dev/null 2>&1 || true
   fi
+}
+
+git_has_relevant_changes() {
+  local status
+  status="$(git status --porcelain -- . ':(exclude).gradle-home' ':(exclude).gradle' ':(exclude)build' ':(exclude)app/build')"
+  [[ -n "$status" ]]
 }
 
 read_property() {
@@ -43,6 +52,14 @@ release_exists() {
   curl -fsS "https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}" >/dev/null 2>&1
 }
 
+verify_remote_access() {
+  if ! GIT_SSH_COMMAND="${ssh_command[*]}" git ls-remote --heads "$publish_remote" >/dev/null 2>&1; then
+    echo "Unable to access $publish_remote using $KEY_PATH" >&2
+    echo "Check that the private key is authorized for the repository and that the repo exists." >&2
+    exit 1
+  fi
+}
+
 wait_for_release() {
   local owner="$1"
   local repo="$2"
@@ -50,8 +67,10 @@ wait_for_release() {
 
   for (( attempt=1; attempt<=RELEASE_POLL_RETRIES; attempt++ )); do
     if release_exists "$owner" "$repo" "$tag"; then
+      echo "GitHub Release $tag is live."
       return 0
     fi
+    echo "Waiting for GitHub Release $tag to appear (${attempt}/${RELEASE_POLL_RETRIES})..."
     sleep "$RELEASE_POLL_SECONDS"
   done
   return 1
@@ -63,10 +82,10 @@ cleanup_stale_failed_release() {
   local version="$3"
   local tag="v$version"
 
-  if git ls-remote --tags "$publish_remote" "refs/tags/$tag" | grep -q "$tag"; then
+  if GIT_SSH_COMMAND="${ssh_command[*]}" git ls-remote --tags "$publish_remote" "refs/tags/$tag" | grep -q "$tag"; then
     if ! release_exists "$owner" "$repo" "$tag"; then
       echo "Found stale tag $tag without a published release. Cleaning it up first."
-      git push "$publish_remote" ":refs/tags/$tag"
+      GIT_SSH_COMMAND="${ssh_command[*]}" git push "$publish_remote" ":refs/tags/$tag"
     fi
   fi
 
@@ -81,8 +100,8 @@ Usage: scripts/publish-release.sh <version> [--no-build] [--no-push]
 
 Bumps app/src/main/resources/plugin.yml to the given version,
 builds the plugin, commits the version change, creates tag v<version>,
-pushes the tag using the SheepMerge repository SSH key, waits for GitHub Releases
-to publish successfully, then pushes the branch commit.
+pushes the branch and tag using the SheepMerge repository SSH key, waits for GitHub Releases
+to publish successfully, and cleans up failed publish attempts.
 
 Examples:
   scripts/publish-release.sh 1.0.1
@@ -98,6 +117,7 @@ fi
 version=""
 do_build=1
 do_push=1
+resume_publish=0
 
 for arg in "$@"; do
   case "$arg" in
@@ -159,7 +179,9 @@ fi
 publish_remote="$(normalize_repo_url "$github_owner" "$github_repo")"
 ssh_command=(ssh -i "$KEY_PATH" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new)
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
+verify_remote_access
+
+if git_has_relevant_changes; then
   echo "Working tree is not clean. Commit or stash changes before publishing." >&2
   exit 1
 fi
@@ -171,30 +193,41 @@ if [[ -z "$current_version" ]]; then
 fi
 
 if [[ "$current_version" == "$version" ]]; then
-  echo "Version is already $version" >&2
-  exit 1
+  if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+    resume_publish=1
+    echo "Version is already $version and local tag v$version exists. Resuming incomplete publish."
+  else
+    echo "Version is already $version" >&2
+    exit 1
+  fi
 fi
 
 pre_release_head="$(git rev-parse --short HEAD)"
 
 cleanup_stale_failed_release "$github_owner" "$github_repo" "$version"
 
-if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+if [[ $resume_publish -eq 0 ]] && git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
   echo "Tag v$version already exists locally." >&2
   exit 1
 fi
 
-sed -i -E "s/^version: .*/version: $version/" "$PLUGIN_YML"
+if [[ $resume_publish -eq 0 ]]; then
+  sed -i -E "s/^version: .*/version: $version/" "$PLUGIN_YML"
 
-echo "Updated version: $current_version -> $version"
+  echo "Updated version: $current_version -> $version"
 
-if [[ $do_build -eq 1 ]]; then
-  GRADLE_USER_HOME=.gradle-home ./gradlew --no-daemon :app:build
+  if [[ $do_build -eq 1 ]]; then
+    GRADLE_USER_HOME=.gradle-home ./gradlew --no-daemon :app:build
+  fi
+
+  git add "$PLUGIN_YML"
+  git commit -m "Release v$version"
+  git tag "v$version"
+else
+  if [[ $do_build -eq 1 ]]; then
+    GRADLE_USER_HOME=.gradle-home ./gradlew --no-daemon :app:build
+  fi
 fi
-
-git add "$PLUGIN_YML"
-git commit -m "Release v$version"
-git tag "v$version"
 
 branch="$(git branch --show-current)"
 if [[ -z "$branch" ]]; then
@@ -203,6 +236,12 @@ if [[ -z "$branch" ]]; then
 fi
 
 if [[ $do_push -eq 1 ]]; then
+  if ! GIT_SSH_COMMAND="${ssh_command[*]}" git push "$publish_remote" "$branch"; then
+    cleanup_on_failure "$version"
+    echo "Failed to push branch $branch. Cleaned up local tag/commit state." >&2
+    exit 1
+  fi
+
   if ! GIT_SSH_COMMAND="${ssh_command[*]}" git push "$publish_remote" "v$version"; then
     cleanup_on_failure "$version"
     echo "Failed to push tag v$version. Cleaned up local tag/commit state." >&2
@@ -212,13 +251,13 @@ if [[ $do_push -eq 1 ]]; then
   if ! wait_for_release "$github_owner" "$github_repo" "v$version"; then
     cleanup_on_failure "$version"
     echo "GitHub Release v$version did not publish successfully in time. Cleaned up failed publish tag and local state." >&2
+    echo "Check the GitHub Actions workflow for release failures." >&2
     exit 1
   fi
 
-  GIT_SSH_COMMAND="${ssh_command[*]}" git push "$publish_remote" "$branch"
   echo "Published release v$version and pushed branch commit successfully."
 else
   echo "Created commit and tag locally. Push when ready:"
-  echo "  GIT_SSH_COMMAND='${ssh_command[*]}' git push $publish_remote v$version"
   echo "  GIT_SSH_COMMAND='${ssh_command[*]}' git push $publish_remote $branch"
+  echo "  GIT_SSH_COMMAND='${ssh_command[*]}' git push $publish_remote v$version"
 fi
