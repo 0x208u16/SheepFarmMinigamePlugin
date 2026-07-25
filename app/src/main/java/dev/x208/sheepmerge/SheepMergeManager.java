@@ -2835,7 +2835,7 @@ public final class SheepMergeManager {
             }
             ItemStack item = MenuItemFactory.create(
                     definition.material,
-                    "Quick: " + definition.name,
+                    definition.name,
                     List.of(
                             definition.description,
                             "Right-click: cast"));
