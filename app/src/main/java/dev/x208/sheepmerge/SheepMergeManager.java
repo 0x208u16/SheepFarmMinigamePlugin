@@ -14435,14 +14435,82 @@ public final class SheepMergeManager {
         if (player == null || isSheepFarmWorld(player.getWorld())) {
             return;
         }
-        if (savedInventories.containsKey(player.getUniqueId())) {
-            restorePlayerInventory(player);
-        }
-        if (savedScoreboards.containsKey(player.getUniqueId())) {
-            restorePlayerScoreboard(player);
-        }
+        maybeRestorePlayerInventoryOutsideFarm(player);
+        maybeRestorePlayerScoreboardOutsideFarm(player);
         player.setPlayerListName(null);
         clearEggTimer(player);
+    }
+
+    private static void maybeRestorePlayerInventoryOutsideFarm(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (!savedInventories.containsKey(playerId)) {
+            return;
+        }
+
+        if (hasAnyForcedFarmLoadoutItem(player) || isInventoryCompletelyEmpty(player)) {
+            restorePlayerInventory(player);
+            return;
+        }
+
+        // The player already has non-farm items; discard stale pending snapshot.
+        savedInventories.remove(playerId);
+        saveData();
+    }
+
+    private static void maybeRestorePlayerScoreboardOutsideFarm(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (!savedScoreboards.containsKey(playerId)) {
+            return;
+        }
+
+        Scoreboard current = player.getScoreboard();
+        Objective objective = current == null ? null : current.getObjective("sheepmerge_points");
+        if (objective != null) {
+            restorePlayerScoreboard(player);
+            return;
+        }
+
+        // Current scoreboard is not the SheepMerge sidebar; keep it and discard stale
+        // pending snapshot.
+        savedScoreboards.remove(playerId);
+    }
+
+    private static boolean hasAnyForcedFarmLoadoutItem(Player player) {
+        if (player == null) {
+            return false;
+        }
+        var inventory = player.getInventory();
+        for (ItemStack itemStack : inventory.getContents()) {
+            if (isForcedFarmLoadoutItem(itemStack)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isInventoryCompletelyEmpty(Player player) {
+        if (player == null) {
+            return true;
+        }
+        var inventory = player.getInventory();
+        for (ItemStack itemStack : inventory.getContents()) {
+            if (itemStack != null && itemStack.getType() != Material.AIR) {
+                return false;
+            }
+        }
+        for (ItemStack itemStack : inventory.getArmorContents()) {
+            if (itemStack != null && itemStack.getType() != Material.AIR) {
+                return false;
+            }
+        }
+        ItemStack offHand = inventory.getItemInOffHand();
+        return offHand == null || offHand.getType() == Material.AIR;
     }
 
     public static void showPointsScoreboard(Player player) {
