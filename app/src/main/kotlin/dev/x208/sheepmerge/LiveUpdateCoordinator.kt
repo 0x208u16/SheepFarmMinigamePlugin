@@ -91,7 +91,11 @@ object LiveUpdateCoordinator {
                 val label = manifest.tagName.ifBlank { plugin.description.version ?: "unknown" }
                 SheepMergeManager.clearStagedLiveUpdate("Activated staged update $label after restart.")
                 deleteStagedManifest(manifestFile)
+                deleteStagedBinary(plugin)
+                return
             }
+
+            restageBinarySwapForNextRestart(plugin, manifest)
             return
         }
 
@@ -139,6 +143,7 @@ object LiveUpdateCoordinator {
 
         try {
             Files.copy(stagedBinary.toPath(), pluginBinary.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            stageBinaryForServerUpdateFolder(plugin, stagedBinary)
             val label = SheepMergeManager.getStagedLiveUpdateVersion().ifBlank { "next release" }
             SheepMergeManager.recordLiveUpdateCheck(
                 "Copied staged plugin binary ($label) over active jar during shutdown. Restart to run the updated plugin."
@@ -563,8 +568,66 @@ object LiveUpdateCoordinator {
             }
             val target = File(updateFolder, asset.name)
             Files.write(target.toPath(), jarBytes)
+
+            // Mirror to active plugin jar filename so startup replacement logic can always resolve it.
+            val activePluginJarName = resolveActivePluginJar(plugin)?.name
+            if (!activePluginJarName.isNullOrBlank()) {
+                val activeNameTarget = File(updateFolder, activePluginJarName)
+                Files.write(activeNameTarget.toPath(), jarBytes)
+            }
         }
         return true
+    }
+
+    private fun restageBinarySwapForNextRestart(plugin: SheepMergePlugin, manifest: LiveUpdateManifest) {
+        val stagedBinary = File(File(plugin.dataFolder, "live-update"), STAGED_PLUGIN_BINARY_NAME)
+        if (!stagedBinary.exists() || !stagedBinary.isFile) {
+            SheepMergeManager.recordLiveUpdateCheck(
+                "Staged update ${manifest.tagName} is pending restart, but no staged plugin binary exists to install."
+            )
+            return
+        }
+
+        val pluginBinary = resolveActivePluginJar(plugin)
+        if (pluginBinary != null && pluginBinary.exists()) {
+            try {
+                Files.copy(stagedBinary.toPath(), pluginBinary.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } catch (exception: Exception) {
+                SheepMergeManager.recordLiveUpdateCheck(
+                    "Failed to install staged update ${manifest.tagName} over active plugin jar on startup: ${exception.message ?: exception.javaClass.simpleName}"
+                )
+                stageBinaryForServerUpdateFolder(plugin, stagedBinary)
+                return
+            }
+        }
+
+        stageBinaryForServerUpdateFolder(plugin, stagedBinary)
+        SheepMergeManager.recordLiveUpdateCheck(
+            "Installed staged update ${manifest.tagName} onto the plugin jar during startup. Restart once more to activate."
+        )
+    }
+
+    private fun stageBinaryForServerUpdateFolder(plugin: SheepMergePlugin, sourceBinary: File) {
+        val updateFolder = plugin.server.updateFolderFile
+        if (!updateFolder.exists()) {
+            updateFolder.mkdirs()
+        }
+
+        val activePluginJarName = resolveActivePluginJar(plugin)?.name ?: return
+        val updateTarget = File(updateFolder, activePluginJarName)
+        Files.copy(sourceBinary.toPath(), updateTarget.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    }
+
+    private fun deleteStagedBinary(plugin: SheepMergePlugin) {
+        val stagedBinary = File(File(plugin.dataFolder, "live-update"), STAGED_PLUGIN_BINARY_NAME)
+        if (!stagedBinary.exists()) {
+            return
+        }
+        try {
+            stagedBinary.delete()
+        } catch (_: Exception) {
+            // Keep startup resilient; stale binary can be overwritten by the next staged update.
+        }
     }
 
     private fun resolveActivePluginJar(plugin: SheepMergePlugin): File? {
