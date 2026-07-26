@@ -104,7 +104,7 @@ internal object SheepAchievementMenus {
                 listOf(
                     "Target: ${milestone.requiredPoints()} achievement points",
                     milestone.reward(),
-                    "Status: ${if (unlockedMilestone) "UNLOCKED" else "LOCKED"}"
+                    "${if (unlockedMilestone) "&a" else "&c"}Status: ${if (unlockedMilestone) "UNLOCKED" else "LOCKED"}"
                 ),
                 unlockedMilestone
             ))
@@ -143,7 +143,7 @@ internal object SheepAchievementMenus {
             "Objective: ${achievement.objective()}",
             achievement.reward(),
             "Achievement points: +${achievement.achievementPoints()}",
-            "Status: ${if (unlocked) "UNLOCKED" else "LOCKED"}",
+            "${if (unlocked) "&a" else "&c"}Status: ${if (unlocked) "UNLOCKED" else "LOCKED"}",
             "Key: ${achievement.id()}"
         )
         return if (achievement.id() == "wool_guardian") {
