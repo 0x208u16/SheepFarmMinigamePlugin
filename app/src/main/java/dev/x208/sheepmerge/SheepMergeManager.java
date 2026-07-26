@@ -610,6 +610,8 @@ public final class SheepMergeManager {
     private static final int INVENTORY_QUICK_ACCESS_LAST_SLOT = INVENTORY_QUICK_ACCESS_FIRST_SLOT
             + INVENTORY_QUICK_ACCESS_MAX_ITEMS - 1;
     private static final UUID SOCIALS_AUTHOR_UUID = UUID.fromString("27268675-a9b7-4abd-9628-e6c4515a5cf6");
+    private static final int SECRET_AUTHOR_ONLINE_SLOT = 2;
+    private static final int SECRET_OWNER_FARM_SLOT = 6;
     private static final int SOCIALS_VISIT_PAGE_SIZE = 31;
 
     public static boolean isAuthor(Player player) {
@@ -967,6 +969,11 @@ public final class SheepMergeManager {
         }
         int target = (int) Math.ceil(total * (index / (double) count));
         return Math.max(index, Math.min(total, target));
+    }
+
+    private static boolean isSecretAchievementId(String achievementId) {
+        return "secret_author_online".equals(achievementId)
+                || "secret_owner_farm".equals(achievementId);
     }
 
     private static List<Integer> getAchievementGridSlots() {
@@ -4007,6 +4014,9 @@ public final class SheepMergeManager {
             case "sheep_limit_master" -> getPlayerLimit(player) >= getMaxSheepLimit(playerId);
             case "wool_guardian" -> getWoolRegenLevel(player) >= getWoolRegenMaxLevel(player);
             case "secret_author_online" -> {
+                if (SOCIALS_AUTHOR_UUID.equals(playerId)) {
+                    yield true;
+                }
                 Player author = Bukkit.getPlayer(SOCIALS_AUTHOR_UUID);
                 yield author != null
                         && author.isOnline()
@@ -4014,7 +4024,8 @@ public final class SheepMergeManager {
                         && isSheepFarmWorld(player.getWorld())
                         && isSheepFarmWorld(author.getWorld());
             }
-            case "secret_owner_farm" -> visitedOwnerFarmByPlayer.getOrDefault(playerId, false);
+            case "secret_owner_farm" -> SOCIALS_AUTHOR_UUID.equals(playerId)
+                    || visitedOwnerFarmByPlayer.getOrDefault(playerId, false);
             default -> false;
         };
     }
@@ -12235,11 +12246,15 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         Set<String> unlocked = getUnlockedAchievementIds(playerId);
         List<Integer> slots = getAchievementGridSlots();
+        int slotIndex = 0;
         for (int index = 0; index < ACHIEVEMENT_DEFINITIONS.size(); index++) {
-            if (index >= slots.size()) {
+            AchievementDefinition achievement = ACHIEVEMENT_DEFINITIONS.get(index);
+            if (isSecretAchievementId(achievement.id)) {
+                continue;
+            }
+            if (slotIndex >= slots.size()) {
                 break;
             }
-            AchievementDefinition achievement = ACHIEVEMENT_DEFINITIONS.get(index);
             boolean unlockedAchievement = unlocked.contains(achievement.id);
             ItemStack item = "wool_guardian".equals(achievement.id)
                     ? MenuItemFactory.createShieldWithWhiteBanner(achievement.name,
@@ -12267,7 +12282,35 @@ public final class SheepMergeManager {
                     item.setItemMeta(skullMeta);
                 }
             }
-            inventory.setItem(slots.get(index), item);
+            inventory.setItem(slots.get(slotIndex), item);
+            slotIndex++;
+        }
+
+        for (AchievementDefinition achievement : ACHIEVEMENT_DEFINITIONS) {
+            if (!isSecretAchievementId(achievement.id) || !unlocked.contains(achievement.id)) {
+                continue;
+            }
+            ItemStack secretItem = MenuItemFactory.create(
+                    achievement.material,
+                    achievement.name,
+                    List.of(
+                            "Objective: " + achievement.objective,
+                            achievement.reward,
+                            "Achievement points: +" + achievement.achievementPoints,
+                            "Status: UNLOCKED",
+                            "Key: " + achievement.id),
+                    true);
+            if ("secret_owner_farm".equals(achievement.id)) {
+                ItemMeta itemMeta = secretItem.getItemMeta();
+                if (itemMeta instanceof SkullMeta skullMeta) {
+                    skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(SOCIALS_AUTHOR_UUID));
+                    secretItem.setItemMeta(skullMeta);
+                }
+            }
+            int secretSlot = "secret_author_online".equals(achievement.id)
+                    ? SECRET_AUTHOR_ONLINE_SLOT
+                    : SECRET_OWNER_FARM_SLOT;
+            inventory.setItem(secretSlot, secretItem);
         }
 
         inventory.setItem(ACHIEVEMENTS_VIEW_BACK_SLOT, MenuItemFactory.create(
