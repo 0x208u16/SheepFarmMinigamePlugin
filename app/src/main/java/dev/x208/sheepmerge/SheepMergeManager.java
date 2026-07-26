@@ -502,7 +502,13 @@ public final class SheepMergeManager {
     }
 
     public static List<String> getLiveUpdateStatusLines() {
-        return SheepLiveUpdateState.getLiveUpdateStatusLines(CURRENT_DATA_SCHEMA_VERSION);
+        return SheepLiveUpdateState.getLiveUpdateStatusLines(
+                CURRENT_DATA_SCHEMA_VERSION,
+                getCurrentPluginVersion());
+    }
+
+    public static String getCurrentPluginVersion() {
+        return plugin == null ? "unknown" : plugin.getDescription().getVersion();
     }
 
     public static int getFarmRadius() {

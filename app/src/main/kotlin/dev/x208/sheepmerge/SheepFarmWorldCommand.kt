@@ -30,6 +30,7 @@ import dev.x208.sheepmerge.commands.StormCommandModule
 import dev.x208.sheepmerge.commands.SummonCommandModule
 import dev.x208.sheepmerge.commands.TopCommandModule
 import dev.x208.sheepmerge.commands.UpgradeCommandModule
+import dev.x208.sheepmerge.commands.VersionCommandModule
 import dev.x208.sheepmerge.commands.VisitCommandModule
 import dev.x208.sheepmerge.commands.WorldCommandModule
 import org.bukkit.ChatColor
@@ -54,6 +55,7 @@ class SheepFarmWorldCommand : CommandExecutor, TabCompleter {
         VisitCommandModule(SheepGameplayCommandHandlers::handleVisitCommand, SheepCommandTabCompletion::tabCompleteVisit),
         KickCommandModule(SheepGameplayCommandHandlers::handleKickCommand, SheepCommandTabCompletion::tabCompleteKick),
         StatusCommandModule(SheepGameplayCommandHandlers::handleStatusCommand, ::tabCompleteNone),
+        VersionCommandModule(::handleVersionCommand, ::tabCompleteNone),
         StormCommandModule(SheepGameplayCommandHandlers::handleStormCommand, ::tabCompleteNone),
         SummonCommandModule(SheepGameplayCommandHandlers::handleSummonCommand, SheepCommandTabCompletion::tabCompleteSummon),
         ComboFrenzyCommandModule(SheepGameplayCommandHandlers::handleComboFrenzyCommand, ::tabCompleteNone),
@@ -188,6 +190,15 @@ class SheepFarmWorldCommand : CommandExecutor, TabCompleter {
         }
     }
 
+    private fun handleVersionCommand(player: Player, args: Array<String>): Boolean {
+        if (args.size != 1 || !args[0].equals("version", ignoreCase = true)) {
+            return false
+        }
+        player.sendMessage(SheepCommandPresentation.adminHeader("Version") + " " +
+            SheepCommandPresentation.value(SheepMergeManager.getCurrentPluginVersion()))
+        return true
+    }
+
     private fun tabCompleteNone(sender: CommandSender, args: Array<String>): List<String> {
         return SheepCommandTabCompletion.tabCompleteNone(sender, args)
     }
@@ -201,6 +212,7 @@ class SheepFarmWorldCommand : CommandExecutor, TabCompleter {
         sendHelpLine(player, "/sheepmerge shop", "open shop menu")
         sendHelpLine(player, "/sheepmerge top [page]", "show top players by Coins (10 per page)")
         sendHelpLine(player, "/sheepmerge status", "view your current stats")
+        sendHelpLine(player, "/sheepmerge version", "view the current plugin version")
         sendHelpLine(player, "/sheepmerge visit <player>", "visit another open farm")
         sendHelpLine(player, "/sheepmerge visit -toggle [player]", "toggle farm visit access")
         sendHelpLine(player, "/sheepmerge kick <player>", "remove a visitor from your farm")
@@ -352,6 +364,7 @@ class SheepFarmWorldCommand : CommandExecutor, TabCompleter {
             return false
         }
         return when (args.firstOrNull()?.lowercase(Locale.ROOT)) {
+            "version" -> false
             "upgrade" -> SheepMergeManager.blockTutorialAction(player, SheepMergeManager.TutorialAction.OPEN_UPGRADE_COMMAND, "open upgrades now")
             "shop" -> SheepMergeManager.blockTutorialAction(player, SheepMergeManager.TutorialAction.OPEN_SHOP_COMMAND, "open the shear shop now")
             "prestige" -> SheepMergeManager.blockTutorialAction(player, SheepMergeManager.TutorialAction.OPEN_PRESTIGE_COMMAND, "open prestige now")

@@ -116,13 +116,14 @@ object SheepLiveUpdateState {
     }
 
     @JvmStatic
-    fun getLiveUpdateStatusLines(currentDataSchemaVersion: Int): List<String> {
+    fun getLiveUpdateStatusLines(currentDataSchemaVersion: Int, currentPluginVersion: String): List<String> {
         val checkedAt = if (lastLiveUpdateCheckAt <= 0L) {
             "never"
         } else {
             DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochMilli(lastLiveUpdateCheckAt))
         }
         return listOf(
+            ChatColor.GRAY.toString() + "Current Version: " + ChatColor.AQUA + currentPluginVersion,
             ChatColor.GRAY.toString() + "Enabled: " +
                 if (liveUpdateEnabled) ChatColor.GREEN.toString() + "YES" else ChatColor.RED.toString() + "NO",
             ChatColor.GRAY.toString() + "Schema: " + ChatColor.AQUA + dataSchemaVersion + ChatColor.DARK_GRAY + " / " +

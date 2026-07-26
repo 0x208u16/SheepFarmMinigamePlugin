@@ -16,6 +16,7 @@ internal object SheepCommandTabCompletion {
         "visit",
         "kick",
         "status",
+        "version",
         "storm",
         "summon",
         "combofrenzy",

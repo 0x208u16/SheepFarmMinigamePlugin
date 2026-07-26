@@ -27,6 +27,9 @@ class KickCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabComp
 class StatusCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabCompleter) :
     BaseRootCommandModule("status", executor, tabCompleter)
 
+class VersionCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabCompleter) :
+    BaseRootCommandModule("version", executor, tabCompleter)
+
 class StormCommandModule(executor: RootCommandExecutor, tabCompleter: RootTabCompleter) :
     BaseRootCommandModule("storm", executor, tabCompleter)
 
