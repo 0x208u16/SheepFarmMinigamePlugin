@@ -21,6 +21,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerKickEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.event.player.PlayerShearEntityEvent
 import org.bukkit.event.weather.ThunderChangeEvent
 import org.bukkit.event.weather.WeatherChangeEvent
@@ -476,10 +477,20 @@ class SheepFarmGameListener : Listener {
         if (!SheepMergeManager.isSheepFarmWorld(event.entity.world)) {
             return
         }
+        SheepMergeManager.preserveEggCountForDeath(event.entity)
         event.keepInventory = true
         event.keepLevel = true
         event.drops.clear()
         event.droppedExp = 0
+    }
+
+    @EventHandler
+    fun onPlayerRespawn(event: PlayerRespawnEvent) {
+        val plugin = SheepMergePlugin.instance ?: return
+        plugin.server.scheduler.runTask(
+            plugin,
+            Runnable { SheepMergeManager.restoreEggCountAfterDeath(event.player) }
+        )
     }
 
     @EventHandler

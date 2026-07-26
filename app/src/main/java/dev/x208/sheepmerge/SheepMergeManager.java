@@ -9560,6 +9560,14 @@ public final class SheepMergeManager {
         EGG_MODULE.clearEggTimer(player);
     }
 
+    public static void preserveEggCountForDeath(Player player) {
+        EGG_MODULE.preserveEggCountForDeath(player);
+    }
+
+    public static void restoreEggCountAfterDeath(Player player) {
+        EGG_MODULE.restoreEggCountAfterDeath(player);
+    }
+
     public static void openUpgradeMenu(Player player) {
         if (player == null) {
             return;

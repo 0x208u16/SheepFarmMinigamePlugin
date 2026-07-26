@@ -7,6 +7,7 @@ internal class SheepEggModule {
 
     private val nextEggTimestampByPlayer: MutableMap<UUID, Long> = HashMap()
     private val eggCountByPlayer: MutableMap<UUID, Int> = HashMap()
+    private val deathPreservedEggCountByPlayer: MutableMap<UUID, Int> = HashMap()
     private val savedLevels: MutableMap<UUID, Int> = HashMap()
     private val savedExpProgress: MutableMap<UUID, Float> = HashMap()
 
@@ -62,12 +63,31 @@ internal class SheepEggModule {
         restoreSavedExperience(player)
     }
 
+    fun preserveEggCountForDeath(player: Player?) {
+        if (player == null) {
+            return
+        }
+        ensureEggCountInitialized(player)
+        deathPreservedEggCountByPlayer[player.uniqueId] = getEggCount(player)
+    }
+
+    fun restoreEggCountAfterDeath(player: Player?) {
+        if (player == null) {
+            return
+        }
+        val playerId = player.uniqueId
+        val preservedEggCount = deathPreservedEggCountByPlayer.remove(playerId) ?: return
+        eggCountByPlayer[playerId] = preservedEggCount.coerceIn(0, SheepMergeManager.getEggCap(player))
+        resetEggTimer(player)
+    }
+
     fun clearRuntimeState(playerId: UUID?) {
         if (playerId == null) {
             return
         }
         nextEggTimestampByPlayer.remove(playerId)
         eggCountByPlayer.remove(playerId)
+        deathPreservedEggCountByPlayer.remove(playerId)
     }
 
     fun clearSavedExperienceCache() {
