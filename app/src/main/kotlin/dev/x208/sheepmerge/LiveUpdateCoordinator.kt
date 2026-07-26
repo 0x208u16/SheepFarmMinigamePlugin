@@ -21,12 +21,14 @@ object LiveUpdateCoordinator {
     private const val GITHUB_ACCEPT = "application/vnd.github+json"
     private const val GITHUB_API_VERSION = "2022-11-28"
     private const val GITHUB_USER_AGENT = "SheepMerge-LiveUpdate"
+    private const val GITHUB_WEB_BASE = "https://github.com"
 
     private val tagPattern = Pattern.compile("\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
     private val assetPattern = Pattern.compile(
         "\\{[^{}]*\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"[^{}]*\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"[^{}]*}",
         Pattern.DOTALL
     )
+    private val releaseTagHrefPattern = Pattern.compile("/[^/]+/[^/]+/releases/tag/([^\"?#]+)")
 
     private data class ReleaseAsset(val name: String, val downloadUrl: String)
     private data class ReleaseFetchResult(
@@ -185,7 +187,62 @@ object LiveUpdateCoordinator {
             return httpFailure(owner, repo, listResponse)
         }
 
+        val webFallback = fetchLatestReleaseFromWeb(configuration, owner, repo, timeout, client)
+        if (webFallback != null) {
+            return webFallback
+        }
+
         return httpFailure(owner, repo, latestResponse)
+    }
+
+    private fun fetchLatestReleaseFromWeb(
+        configuration: SheepMergeConfiguration,
+        owner: String,
+        repo: String,
+        timeout: Duration,
+        client: HttpClient
+    ): ReleaseFetchResult? {
+        val webRequestBuilder = HttpRequest.newBuilder()
+            .uri(URI.create("$GITHUB_WEB_BASE/$owner/$repo/releases"))
+            .timeout(timeout)
+            .GET()
+            .header("User-Agent", GITHUB_USER_AGENT)
+            .header("Accept", "text/html")
+        val webResponse = client.send(webRequestBuilder.build(), HttpResponse.BodyHandlers.ofString())
+        if (webResponse.statusCode() !in 200..299) {
+            return null
+        }
+
+        val html = webResponse.body()
+        val matcher = releaseTagHrefPattern.matcher(html)
+        if (!matcher.find()) {
+            return null
+        }
+
+        val tagName = matcher.group(1) ?: return null
+        val assets = mutableListOf<ReleaseAsset>()
+        val manifestName = configuration.liveUpdateManifestAssetName.trim()
+        if (manifestName.isNotBlank()) {
+            assets.add(
+                ReleaseAsset(
+                    manifestName,
+                    "$GITHUB_WEB_BASE/$owner/$repo/releases/download/$tagName/$manifestName"
+                )
+            )
+        }
+
+        val normalizedVersion = normalizeReleaseVersion(tagName)
+        if (normalizedVersion.isNotBlank()) {
+            val jarName = "SheepMerge-$normalizedVersion.jar"
+            assets.add(
+                ReleaseAsset(
+                    jarName,
+                    "$GITHUB_WEB_BASE/$owner/$repo/releases/download/$tagName/$jarName"
+                )
+            )
+        }
+
+        return ReleaseFetchResult(release = tagName to assets)
     }
 
     private fun parseReleaseResponseBody(body: String): ReleaseFetchResult? {
