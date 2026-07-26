@@ -168,6 +168,7 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> comboMaxUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> comboGainUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> automationPointsByPlayer = new HashMap<>();
+    private static final Map<UUID, Integer> achievementAutomationPointsGrantedByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> automationAutoBuyUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> automationAutoAbilityUpgradeByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> automationSlowAutoMergeUpgradeByPlayer = new HashMap<>();
@@ -462,7 +463,7 @@ public final class SheepMergeManager {
     public static final String REBIRTH_MENU_TITLE = "Rebirth Upgrades";
     public static final String REBIRTH_TREE_MENU_TITLE = "Rebirth Skill Tree";
     public static final String SCOREBOARD_MENU_TITLE = "Scoreboard Settings";
-    public static final int CURRENT_DATA_SCHEMA_VERSION = 1;
+    public static final int CURRENT_DATA_SCHEMA_VERSION = 2;
     public static final String SETTINGS_MENU_TITLE = "Settings";
     public static final String UNIVERSAL_LAYOUT_MENU_TITLE = SETTINGS_MENU_TITLE;
     public static final String SCOREBOARD_LAYOUT_MENU_TITLE = "Scoreboard Layout";
@@ -1270,6 +1271,12 @@ public final class SheepMergeManager {
                 }
                 if (stagedLiveUpdateVersion == null) {
                     stagedLiveUpdateVersion = "";
+                }
+                return true;
+            case 2:
+                reconcileAchievementAutomationPointGrants();
+                if (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank()) {
+                    lastLiveUpdateStatus = "Schema v2 initialized via " + (reason == null ? "migration" : reason) + ".";
                 }
                 return true;
             default:
@@ -3803,6 +3810,8 @@ public final class SheepMergeManager {
             return true;
         }
 
+        grantAchievementAutomationPoints(playerId, definition.achievementPoints);
+
         if (notify) {
             notifyAchievementUnlocked(player, definition, getAchievementPoints(playerId));
         }
@@ -3824,6 +3833,7 @@ public final class SheepMergeManager {
                 continue;
             }
             unlockedCount++;
+            grantAchievementAutomationPoints(playerId, definition.achievementPoints);
             if (notify) {
                 notifyAchievementUnlocked(player, definition, getAchievementPoints(playerId));
             }
@@ -3936,6 +3946,43 @@ public final class SheepMergeManager {
             }
         }
         return (int) multiplier;
+    }
+
+    private static void grantAchievementAutomationPoints(UUID playerId, int amount) {
+        if (playerId == null || amount <= 0) {
+            return;
+        }
+        automationPointsByPlayer.put(playerId,
+                addSaturated(automationPointsByPlayer.getOrDefault(playerId, 0), amount));
+        achievementAutomationPointsGrantedByPlayer.put(playerId,
+                addSaturated(achievementAutomationPointsGrantedByPlayer.getOrDefault(playerId, 0), amount));
+    }
+
+    private static void reconcileAchievementAutomationPointGrants() {
+        Set<UUID> playerIds = new HashSet<>();
+        playerIds.addAll(unlockedAchievementIdsByPlayer.keySet());
+        playerIds.addAll(achievementAutomationPointsGrantedByPlayer.keySet());
+
+        for (UUID playerId : playerIds) {
+            if (playerId == null) {
+                continue;
+            }
+            int unlockedPoints = getAchievementPoints(playerId);
+            int grantedPoints = achievementAutomationPointsGrantedByPlayer.getOrDefault(playerId, 0);
+
+            if (unlockedPoints <= 0) {
+                achievementAutomationPointsGrantedByPlayer.remove(playerId);
+                continue;
+            }
+
+            if (grantedPoints < unlockedPoints) {
+                int missingPoints = unlockedPoints - grantedPoints;
+                automationPointsByPlayer.put(playerId,
+                        addSaturated(automationPointsByPlayer.getOrDefault(playerId, 0), missingPoints));
+            }
+
+            achievementAutomationPointsGrantedByPlayer.put(playerId, unlockedPoints);
+        }
     }
 
     private static void applyAchievementWoolRegenBonusToActiveCooldowns(Player player, double oldMultiplier,
@@ -4099,6 +4146,7 @@ public final class SheepMergeManager {
                 continue;
             }
             unlockedAchievements.add(definition.id);
+            grantAchievementAutomationPoints(playerId, definition.achievementPoints);
             changed = true;
             if (notify) {
                 notifyAchievementUnlocked(player, definition, getAchievementPoints(playerId));
@@ -6703,6 +6751,7 @@ public final class SheepMergeManager {
         comboMaxUpgradeByPlayer.remove(id);
         comboGainUpgradeByPlayer.remove(id);
         automationPointsByPlayer.remove(id);
+        achievementAutomationPointsGrantedByPlayer.remove(id);
         automationAutoBuyUpgradeByPlayer.remove(id);
         automationAutoAbilityUpgradeByPlayer.remove(id);
         automationSlowAutoMergeUpgradeByPlayer.remove(id);
@@ -8490,6 +8539,7 @@ public final class SheepMergeManager {
         comboMaxUpgradeByPlayer.clear();
         comboGainUpgradeByPlayer.clear();
         automationPointsByPlayer.clear();
+        achievementAutomationPointsGrantedByPlayer.clear();
         automationAutoBuyUpgradeByPlayer.clear();
         automationAutoAbilityUpgradeByPlayer.clear();
         automationSlowAutoMergeUpgradeByPlayer.clear();
@@ -15091,6 +15141,7 @@ public final class SheepMergeManager {
             dataConfig.set("comboMaxUpgrade", null);
             dataConfig.set("comboGainUpgrade", null);
             dataConfig.set("automationPoints", null);
+            dataConfig.set("achievementAutomationPointsGranted", null);
             dataConfig.set("automationAutoBuy", null);
             dataConfig.set("automationAutoAbility", null);
             dataConfig.set("automationSlowAutoMerge", null);
@@ -15339,6 +15390,9 @@ public final class SheepMergeManager {
             }
             for (Map.Entry<UUID, Integer> entry : automationPointsByPlayer.entrySet()) {
                 dataConfig.set("automationPoints." + entry.getKey().toString(), entry.getValue());
+            }
+            for (Map.Entry<UUID, Integer> entry : achievementAutomationPointsGrantedByPlayer.entrySet()) {
+                dataConfig.set("achievementAutomationPointsGranted." + entry.getKey().toString(), entry.getValue());
             }
             for (Map.Entry<UUID, Integer> entry : automationAutoBuyUpgradeByPlayer.entrySet()) {
                 dataConfig.set("automationAutoBuy." + entry.getKey().toString(), entry.getValue());
@@ -16222,6 +16276,17 @@ public final class SheepMergeManager {
                 try {
                     UUID uuid = UUID.fromString(key);
                     automationPointsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("automationPoints." + key, 0)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore invalid UUIDs.
+                }
+            });
+        }
+        if (dataConfig.isConfigurationSection("achievementAutomationPointsGranted")) {
+            dataConfig.getConfigurationSection("achievementAutomationPointsGranted").getKeys(false).forEach(key -> {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    achievementAutomationPointsGrantedByPlayer.put(uuid,
+                            Math.max(0, dataConfig.getInt("achievementAutomationPointsGranted." + key, 0)));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
                 }
