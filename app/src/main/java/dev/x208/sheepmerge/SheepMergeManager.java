@@ -5083,7 +5083,7 @@ public final class SheepMergeManager {
             playSound(player, Sound.BLOCK_BEACON_DEACTIVATE, 0.6f, 1.6f);
             return;
         }
-        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 5, 0.25, 0.35, 0.25, 0.01);
+        spawnParticle(player, particle, player.getLocation().add(0, 2.0, 0), 5, 0.25, 0.35, 0.25, 0.01);
     }
 
     private static void emitAbilityAura(Player player, UUID playerId, long now) {
@@ -5092,7 +5092,7 @@ public final class SheepMergeManager {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.TOTEM,
-                    player.getLocation().add(0.0D, 1.1D, 0.0D),
+                    player.getLocation().add(0.0D, 2.1D, 0.0D),
                     2,
                     0.18D,
                     0.28D,
@@ -5104,7 +5104,7 @@ public final class SheepMergeManager {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.SPORE_BLOSSOM_AIR,
-                    player.getLocation().add(0.0D, 0.9D, 0.0D),
+                    player.getLocation().add(0.0D, 1.9D, 0.0D),
                     4,
                     0.22D,
                     0.26D,
@@ -5116,7 +5116,7 @@ public final class SheepMergeManager {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.FIREWORKS_SPARK,
-                    player.getLocation().add(0.0D, 1.25D, 0.0D),
+                    player.getLocation().add(0.0D, 2.25D, 0.0D),
                     3,
                     0.25D,
                     0.35D,
@@ -5128,7 +5128,7 @@ public final class SheepMergeManager {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.WAX_ON,
-                    player.getLocation().add(0.0D, 1.0D, 0.0D),
+                    player.getLocation().add(0.0D, 2.0D, 0.0D),
                     5,
                     0.22D,
                     0.28D,
@@ -5140,7 +5140,7 @@ public final class SheepMergeManager {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.WAX_OFF,
-                    player.getLocation().add(0.0D, 1.0D, 0.0D),
+                    player.getLocation().add(0.0D, 2.0D, 0.0D),
                     5,
                     0.22D,
                     0.28D,
@@ -10000,7 +10000,7 @@ public final class SheepMergeManager {
         } else {
             playSound(player, sound, 1.0f, 1.2f);
         }
-        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        spawnParticle(player, particle, player.getLocation().add(0, 2.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         return true;
     }
 
@@ -10022,7 +10022,7 @@ public final class SheepMergeManager {
         } else {
             playSound(player, sound, 1.0f, 1.2f);
         }
-        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        spawnParticle(player, particle, player.getLocation().add(0, 2.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         saveData();
         return true;
     }
@@ -10048,7 +10048,7 @@ public final class SheepMergeManager {
         } else {
             playSound(player, sound, 1.0f, 1.2f);
         }
-        spawnParticle(player, particle, player.getLocation().add(0, 1.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
+        spawnParticle(player, particle, player.getLocation().add(0, 2.0, 0), 25, 0.35, 0.5, 0.35, 0.02);
         saveData();
         return true;
     }
@@ -13918,7 +13918,7 @@ public final class SheepMergeManager {
                     markTutorialAbilityUsed(player);
                     spawnParticle(player,
                             org.bukkit.Particle.TOTEM,
-                            player.getLocation().add(0, 1.1, 0),
+                            player.getLocation().add(0, 2.1, 0),
                             18,
                             0.45,
                             0.45,
@@ -13956,7 +13956,7 @@ public final class SheepMergeManager {
                     applyWoolRushToShearedSheep(player);
                     spawnParticle(player,
                             org.bukkit.Particle.SPORE_BLOSSOM_AIR,
-                            player.getLocation().add(0, 1.0, 0),
+                            player.getLocation().add(0, 2.0, 0),
                             28,
                             0.5,
                             0.35,
@@ -13993,7 +13993,7 @@ public final class SheepMergeManager {
                     markTutorialAbilityUsed(player);
                     spawnParticle(player,
                             org.bukkit.Particle.FIREWORKS_SPARK,
-                            player.getLocation().add(0, 1.1, 0),
+                            player.getLocation().add(0, 2.1, 0),
                             22,
                             0.45,
                             0.45,
@@ -14028,7 +14028,7 @@ public final class SheepMergeManager {
                     nextAutoMergeAtByPlayer.put(player.getUniqueId(), 0L);
                     spawnParticle(player,
                             org.bukkit.Particle.WAX_ON,
-                            player.getLocation().add(0, 1.0, 0),
+                            player.getLocation().add(0, 2.0, 0),
                             26,
                             0.5,
                             0.4,
@@ -14063,7 +14063,7 @@ public final class SheepMergeManager {
                     nextAutoShearAtByPlayer.put(player.getUniqueId(), 0L);
                     spawnParticle(player,
                             org.bukkit.Particle.WAX_OFF,
-                            player.getLocation().add(0, 1.0, 0),
+                            player.getLocation().add(0, 2.0, 0),
                             26,
                             0.5,
                             0.4,
