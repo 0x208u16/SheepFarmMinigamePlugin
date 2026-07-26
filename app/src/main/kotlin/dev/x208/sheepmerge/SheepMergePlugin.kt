@@ -48,6 +48,7 @@ class SheepMergePlugin : JavaPlugin {
         SheepMergeManager.warmFarmWorldStructureCacheOnStartup()
         SheepMergeManager.maybeCreateAutomaticBackup("restart")
         SheepMergeManager.restoreTopPointsDisplayAfterRestart(null)
+        LiveUpdateCoordinator.reconcileStagedUpdateOnStartup(this)
         scheduleSheepEggDistribution()
         scheduleSheepNameUpdates()
         scheduleAutomationAutoSpawnEveryTick()

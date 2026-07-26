@@ -51,6 +51,75 @@ object LiveUpdateCoordinator {
     )
 
     @JvmStatic
+    fun reconcileStagedUpdateOnStartup(plugin: SheepMergePlugin?) {
+        if (plugin == null) {
+            return
+        }
+        val configuration = SheepMergeConfiguration.get() ?: return
+        val updateDir = File(plugin.dataFolder, "live-update")
+        val manifestFile = File(updateDir, "staged-manifest.yml")
+
+        val currentVersion = normalizeReleaseVersion(plugin.description.version)
+        val stagedVersion = normalizeReleaseVersion(SheepMergeManager.getStagedLiveUpdateVersion())
+
+        if (!manifestFile.exists()) {
+            if (stagedVersion.isNotBlank() && stagedVersion.equals(currentVersion, ignoreCase = true)) {
+                SheepMergeManager.clearStagedLiveUpdate(
+                    "Activated staged update v$currentVersion after restart."
+                )
+            }
+            return
+        }
+
+        val manifest = try {
+            loadManifest(manifestFile.readText())
+        } catch (_: Exception) {
+            null
+        }
+
+        if (manifest == null) {
+            SheepMergeManager.recordLiveUpdateCheck("Staged live update manifest is invalid and could not be applied on startup.")
+            return
+        }
+
+        val manifestVersion = normalizeReleaseVersion(manifest.tagName)
+        if (manifest.requiresBinarySwap) {
+            val versionMatchesCurrent = manifestVersion.isNotBlank() && manifestVersion.equals(currentVersion, ignoreCase = true)
+            val stagedMatchesCurrent = stagedVersion.isNotBlank() && stagedVersion.equals(currentVersion, ignoreCase = true)
+            if (versionMatchesCurrent || stagedMatchesCurrent) {
+                val label = manifest.tagName.ifBlank { plugin.description.version ?: "unknown" }
+                SheepMergeManager.clearStagedLiveUpdate("Activated staged update $label after restart.")
+                deleteStagedManifest(manifestFile)
+            }
+            return
+        }
+
+        if (!manifest.liveSafeMigration) {
+            SheepMergeManager.recordLiveUpdateCheck(
+                "Staged update ${manifest.tagName} is not marked live-safe and cannot auto-apply on startup."
+            )
+            return
+        }
+
+        val applied = SheepMergeManager.applyLiveDataSchemaVersion(manifest.dataSchemaVersion, manifest.summary)
+        if (!applied) {
+            SheepMergeManager.recordLiveUpdateCheck(
+                "Unable to apply staged live migration for ${manifest.tagName} on startup."
+            )
+            return
+        }
+
+        if (manifest.reloadConfiguration) {
+            plugin.reloadConfig()
+            SheepMergeConfiguration.initialize(plugin)
+            SheepMergeManager.applyConfiguration(SheepMergeConfiguration.get())
+        }
+
+        SheepMergeManager.clearStagedLiveUpdate("Applied staged live update manifest ${manifest.tagName} on startup.")
+        deleteStagedManifest(manifestFile)
+    }
+
+    @JvmStatic
     fun scheduleAutomaticChecks(plugin: SheepMergePlugin?) {
         if (plugin == null) {
             return
@@ -425,6 +494,17 @@ object LiveUpdateCoordinator {
         val token = configuration.liveUpdateGitHubToken.trim()
         if (token.isNotBlank()) {
             builder.header("Authorization", "Bearer $token")
+        }
+    }
+
+    private fun deleteStagedManifest(manifestFile: File) {
+        if (!manifestFile.exists()) {
+            return
+        }
+        try {
+            manifestFile.delete()
+        } catch (_: Exception) {
+            // Keep startup resilient; stale file can be retried later.
         }
     }
 }

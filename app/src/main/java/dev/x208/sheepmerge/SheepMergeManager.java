@@ -1282,6 +1282,17 @@ public final class SheepMergeManager {
         recordLiveUpdateCheck(status);
     }
 
+    public static String getStagedLiveUpdateVersion() {
+        return stagedLiveUpdateVersion == null ? "" : stagedLiveUpdateVersion;
+    }
+
+    public static void clearStagedLiveUpdate(String status) {
+        stagedLiveUpdateVersion = "";
+        recordLiveUpdateCheck(status == null || status.isBlank()
+                ? "Cleared staged live update state."
+                : status);
+    }
+
     public static void recordLiveUpdateApply(String status) {
         lastLiveUpdateCheckAt = System.currentTimeMillis();
         lastLiveUpdateStatus = normalizeLiveUpdateStatus(
