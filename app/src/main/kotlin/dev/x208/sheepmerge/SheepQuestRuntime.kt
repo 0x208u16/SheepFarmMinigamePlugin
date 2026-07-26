@@ -15,6 +15,7 @@ object SheepQuestRuntime {
     private const val QUEST_RESET_REDUCTION_PER_PRESTIGE_MS = 60L * 1000L
     private const val ABILITY_AURA_SOUND_INTERVAL_MS = 15_000L
     private const val LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT = 50
+    private const val QUEST_CYCLE_AUTOMATION_REWARD = 5
 
     private var shearsTarget = 20
     private var spawnsTarget = 12
@@ -233,15 +234,30 @@ object SheepQuestRuntime {
         )
         if (areAllCompleted(playerId)) {
             SheepLifetimeProgressState.incrementCompletedQuestCycles(playerId)
+            val automationReward = if (SheepMergeManager.questHasQuestMaster(player)) {
+                QUEST_CYCLE_AUTOMATION_REWARD * 2
+            } else {
+                QUEST_CYCLE_AUTOMATION_REWARD
+            }
+            val currentAutomationPoints = SheepAutomationState.getPoints(playerId)
+            SheepAutomationState.setPoints(
+                playerId,
+                (currentAutomationPoints.toLong() + automationReward).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            )
+            SheepMergeManager.questSaveData()
             player.sendTitle(
                 SheepMergeManager.questColor("&aAll Quests Complete"),
-                SheepMergeManager.questColor("&7Nice cycle. New quests on reset."),
+                SheepMergeManager.questColor("&7+$automationReward automation points"),
                 10,
                 45,
                 10,
             )
             SheepMergeManager.questPlaySound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.2f)
-            player.sendMessage(SheepMergeManager.questAction("All current quests are completed."))
+            player.sendMessage(
+                SheepMergeManager.questAction(
+                    "All current quests are completed: +$automationReward automation points.",
+                ),
+            )
         }
     }
 
