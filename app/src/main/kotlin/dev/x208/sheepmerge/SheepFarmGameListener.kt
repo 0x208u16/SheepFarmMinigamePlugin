@@ -477,6 +477,7 @@ class SheepFarmGameListener : Listener {
             return
         }
         event.keepInventory = true
+        event.keepLevel = true
         event.drops.clear()
         event.droppedExp = 0
     }

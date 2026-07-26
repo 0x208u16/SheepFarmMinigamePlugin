@@ -31,10 +31,14 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
     - `SheepFarmWorldCleanupListener`
   - bStats layer converted to Kotlin:
     - `bstats/Metrics`
+  - Command engine converted to Kotlin:
+    - `SheepFarmWorldCommand`
+  - Core manager state extracted to Kotlin:
+    - persisted progression/economy state objects
+    - `SheepRuntimeUiState`
+    - `SheepEntityRuntimeState`
 - Remaining Java footprint:
-  - Main blockers by size:
-    - `SheepMergeManager.java`
-    - `SheepFarmWorldCommand.java`
+  - `SheepMergeManager.java`
 
 ## Migration Phases (Updated)
 
@@ -55,8 +59,8 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
   - `SheepFarmWorldProtectionListener`
   - `SheepFarmWorldCleanupListener`
 
-4. Command Engine
-- Convert `SheepFarmWorldCommand` after module conversion is complete.
+4. Command Engine (done)
+- `SheepFarmWorldCommand` now owns module dispatch, help, tab completion, and lifecycle delegation in Kotlin.
 
 5. Core Manager Split + Convert
 - Split `SheepMergeManager` into Kotlin feature files before full conversion:

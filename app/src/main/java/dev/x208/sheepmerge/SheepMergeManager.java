@@ -1,27 +1,17 @@
 package dev.x208.sheepmerge;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -31,12 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
-import java.util.zip.Deflater;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -76,173 +61,10 @@ import net.md_5.bungee.api.chat.TextComponent;
 
 public final class SheepMergeManager {
 
-    private static final Map<UUID, BigInteger> pointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> extraLimitByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> eggSpeedLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> woolRegenLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> higherTierChanceLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigePointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeDoublePointsChanceByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeHigherMaxLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeStartEggsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeEggCapByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeBaseSpawnTierByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> prestigeQuestRewardByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> highestAnnouncedTierByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> highestAnnouncedRainbowTierByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> shearShopLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> shearWoolSaveLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> shearTierBoostLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialCompletedByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> tutorialShearsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> tutorialSpawnsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> tutorialMergesByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialUpgradeOpenedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialQuestOpenedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialQuestUpgradesOpenedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialPrestigeOpenedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialAbilityUsedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialShearUpgradedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialRegularUpgradesBoughtByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialShearTaskRewardGrantedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialPrestigePrepRewardGrantedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialPrestigedOnceByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialShearShopOpenedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> tutorialBypassedByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> soundEffectsEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> sheepSoundsEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> particleEffectsEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> tutorialStartedAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastTutorialTaskTitleTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, String> lastTutorialTaskTitleStepByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastRebirthReminderTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> rebirthTitleReminderShownByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastTutorialStatusFeedTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, String> lastTutorialProgressFeedLineByPlayer = new HashMap<>();
-    private static final Map<UUID, String> lastTutorialStepFeedLineByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastTutorialFocusNotificationTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastTutorialMergePointsReminderTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> questPointsByPlayer = new HashMap<>();
     private static final Object TOP_POINTS_REFRESH_LOCK = new Object();
     private static long topPointsRefreshVersion = 0L;
     private static final Map<UUID, List<SheepSnapshot>> savedFarmSheepByPlayer = new HashMap<>();
     private static final Map<UUID, List<SheepSnapshot>> savedTutorialSheepByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextQuestResetTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> questSpawnsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> questMergesByPlayer = new HashMap<>();
-
-    private static final Map<UUID, Boolean> questShearsCompleteByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> questSpawnsCompleteByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> questMergesCompleteByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> questUpgradeDurationByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> questUpgradePowerByPlayer = new HashMap<>();
-
-    private static final Map<UUID, Long> activeLuckyBurstUntilByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> activeLuckyBurstUsesByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> luckyBurstEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> activeWoolRushUntilByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> activeJackpotShearsUntilByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> activeAutoMergeUntilByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> activeAutoMergeUsesByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> autoMergeEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> pausedLuckyBurstRemainingMsByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> pausedWoolRushRemainingMsByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> pausedJackpotShearsRemainingMsByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> pausedAutoMergeRemainingMsByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutoMergeAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> activeAutoShearUntilByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> activeAutoShearUsesByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> autoShearEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> pausedAutoShearRemainingMsByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutoShearAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastTierBoostSoundTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastAbilityAuraSoundTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastPrestigeReminderTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> prestigeTitleReminderShownByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextPrestigeRefundTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastMergeTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastMergeReminderTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> mergeTitleReminderShownByPlayer = new HashMap<>();
-    private static final Map<UUID, Double> comboScoreByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> comboLastUpdateTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> comboDecayUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> comboMaxUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> comboGainUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationPointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> achievementAutomationPointsGrantedByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationAutoBuyUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationAutoAbilityUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationSlowAutoMergeUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationSlowAutoShearUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationAutoSpawnUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> automationAutoPrestigeUpgradeByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> automationAutoBuyEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> automationAutoAbilityEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> automationSlowAutoMergeEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> automationSlowAutoShearEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> automationAutoSpawnEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> automationAutoPrestigeEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationPointAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationAutoBuyAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationAutoAbilityAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationSlowMergeAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationSlowShearAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationAutoSpawnAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextAutomationAutoPrestigeAtByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> pointsOverlayExpiresAtByPlayer = new HashMap<>();
-    private static final Map<UUID, BigInteger> lastPointsOverlayByPlayer = new HashMap<>();
-    private static final Map<UUID, BossBar> comboBossBarByPlayer = new HashMap<>();
-    private static final Map<UUID, BossBar> visitFarmBossBarByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> socialsPageByPlayer = new HashMap<>();
-    private static final Map<UUID, Sheep> carriedSheepByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> sheepRescueStartByEntity = new HashMap<>();
-    private static final Map<UUID, org.bukkit.Location> sheepRescueOriginByEntity = new HashMap<>();
-    private static final Map<UUID, Long> sheepRescueNextCorrectionAtByEntity = new HashMap<>();
-    private static final Map<UUID, InventoryDataUtils.Snapshot> savedInventories = new HashMap<>();
-    private static final Map<UUID, Scoreboard> savedScoreboards = new HashMap<>();
-    private static boolean liveUpdateEnabled = true;
-    private static int dataSchemaVersion = 0;
-    private static String stagedLiveUpdateVersion = "";
-    private static String lastLiveUpdateStatus = "Not checked yet.";
-    private static long lastLiveUpdateCheckAt = 0L;
-    private static final Map<UUID, Integer> liveSheepCountByWorld = new HashMap<>();
-    private static final Map<UUID, Boolean> farmVisitEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, Set<UUID>> farmVisitBlockedUsersByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> visitAccessPageByPlayer = new HashMap<>();
-    private static final Map<UUID, BigInteger> sacrificePointsByPlayer = new HashMap<>();
-    private static final SacrificeUnlockState sacrificeUnlockState = new SacrificeUnlockState();
-    private static final Map<UUID, Integer> rebirthLevelByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> rebirthPointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> rebirthSkillUnlockMaskByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> rebirthSkillPendingMaskByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> nextRebirthRespecTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> scoreboardLayoutModeByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowAchievementPointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowQuestPointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowAutomationPointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowSacrificePointsByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowPrestigeStatsByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowQuestProgressByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> scoreboardShowAbilityStatusByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastPointsScoreboardUpdateAtByPlayer = new HashMap<>();
-    private static final Map<UUID, List<String>> inventoryQuickAccessByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> inventoryQuickAccessCastingEnabledByPlayer = new HashMap<>();
-    private static final Map<UUID, BukkitTask> activeShearAllTaskByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastSpawnLimitWarningTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Long> lastOutOfEggWarningTimestampByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> lifetimeShearsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> lifetimeSpawnsByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> lifetimeMergesByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> lifetimeOtherFarmVisitsByPlayer = new HashMap<>();
-    private static final Map<UUID, Boolean> visitedOwnerFarmByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> completedQuestCyclesByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> totalPrestigeLevelsEarnedByPlayer = new HashMap<>();
-    private static final Map<UUID, Integer> totalSacrificeUnlocksPurchasedByPlayer = new HashMap<>();
-    private static final Map<UUID, Set<String>> unlockedAchievementIdsByPlayer = new HashMap<>();
-    private static final Map<UUID, Set<String>> unlockedAchievementMilestoneIdsByPlayer = new HashMap<>();
     private static final String TOP_POINTS_DISPLAY_WORLD_KEY = "topPointsDisplay.world";
     private static final String TOP_POINTS_DISPLAY_X_KEY = "topPointsDisplay.x";
     private static final String TOP_POINTS_DISPLAY_Y_KEY = "topPointsDisplay.y";
@@ -432,21 +254,6 @@ public final class SheepMergeManager {
     private static final double COMBO_GAIN_PERCENT_PER_LEVEL = 10.0D;
     private static final double COMBO_POINT_MULTIPLIER_PER_SCORE = 0.015D;
     private static final long TIER_BOOST_SOUND_COOLDOWN_MS = 175L;
-    private static final long BACKUP_AUTOMATIC_PERMANENT_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L;
-    private static final long BACKUP_AUTOMATIC_BUFFER_INTERVAL_MS = 24L * 60L * 60L * 1000L;
-    private static final int BACKUP_AUTOMATIC_BUFFER_MAX_FILES = 7;
-    private static final long BACKUP_AUTOMATIC_ROLLING_INTERVAL_TICKS = 20L * 60L * 60L;
-    private static final String BACKUP_DIR_NAME = "backups";
-    private static final String BACKUP_INDEX_FILE_NAME = "backup-index.yml";
-    private static final String BACKUP_ROLLING_FILE_NAME = "rolling-auto-latest.zip";
-    private static final String BACKUP_INDEX_LAST_PERMANENT_AT_KEY = "lastPermanentAt";
-    private static final String BACKUP_INDEX_LAST_BUFFER_AT_KEY = "lastBufferAt";
-    private static final String BACKUP_INDEX_MARKED_FOR_DELETION_KEY = "markedForDeletion";
-    private static final String BACKUP_BUFFER_FILE_PREFIX = "buffer-24h-";
-    private static final long BACKUP_SOFT_DELETE_GRACE_MS = 24L * 60L * 60L * 1000L;
-    private static final DateTimeFormatter BACKUP_TIMESTAMP_FORMATTER = DateTimeFormatter
-            .ofPattern("yyyyMMdd-HHmmss")
-            .withZone(ZoneOffset.UTC);
     private static long STARTING_PLAYER_POINTS = 1_000L;
     private static int TUTORIAL_SHEAR_TARGET = 3;
     private static int TUTORIAL_SPAWN_TARGET = 3;
@@ -595,7 +402,6 @@ public final class SheepMergeManager {
     private static final int SACRIFICE_UNLOCK_EGG_COOLDOWN_TO_1S = 4;
     private static final int SACRIFICE_UNLOCK_MAX_SHEEP_100 = 5;
     static final int SACRIFICE_UNLOCK_MAX = SACRIFICE_UNLOCK_MAX_SHEEP_100;
-    private static final BigInteger SACRIFICE_UNLOCK_COST_MULTIPLIER = BigInteger.valueOf(1000L);
     private static final int REBIRTH_PRESTIGE_LEVEL_COST_STEP = 10;
     private static final int REBIRTH_SKILL_ROOT_COST = 1;
     private static final int REBIRTH_SKILL_POINTS_X10_ROOT = 1;
@@ -1231,12 +1037,11 @@ public final class SheepMergeManager {
     }
 
     public static boolean isLiveUpdateEnabled() {
-        return liveUpdateEnabled;
+        return SheepLiveUpdateState.isLiveUpdateEnabled();
     }
 
     public static void setLiveUpdateEnabled(boolean enabled) {
-        liveUpdateEnabled = enabled;
-        saveData();
+        SheepLiveUpdateState.setLiveUpdateEnabled(enabled, SheepMergeManager::saveData);
     }
 
     public static int getCurrentDataSchemaVersion() {
@@ -1244,105 +1049,43 @@ public final class SheepMergeManager {
     }
 
     public static int getDataSchemaVersion() {
-        return dataSchemaVersion;
+        return SheepLiveUpdateState.getDataSchemaVersion();
     }
 
     public static synchronized boolean applyLiveDataSchemaVersion(int targetVersion, String reason) {
-        int clampedTarget = Math.max(0, targetVersion);
-        if (clampedTarget > CURRENT_DATA_SCHEMA_VERSION) {
-            return false;
-        }
-        boolean changed = false;
-        while (dataSchemaVersion < clampedTarget) {
-            int nextVersion = dataSchemaVersion + 1;
-            if (!applyDataSchemaMigrationStep(nextVersion, reason)) {
-                return false;
-            }
-            dataSchemaVersion = nextVersion;
-            changed = true;
-        }
-        if (changed) {
-            saveData();
-        }
-        return true;
-    }
-
-    private static boolean applyDataSchemaMigrationStep(int targetVersion, String reason) {
-        switch (targetVersion) {
-            case 1:
-                if (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank()) {
-                    lastLiveUpdateStatus = "Schema v1 initialized via " + (reason == null ? "migration" : reason) + ".";
-                }
-                if (stagedLiveUpdateVersion == null) {
-                    stagedLiveUpdateVersion = "";
-                }
-                return true;
-            case 2:
-                reconcileAchievementAutomationPointGrants();
-                if (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank()) {
-                    lastLiveUpdateStatus = "Schema v2 initialized via " + (reason == null ? "migration" : reason) + ".";
-                }
-                return true;
-            default:
-                return false;
-        }
+        return SheepLiveUpdateState.applyDataSchemaVersion(
+                targetVersion,
+                CURRENT_DATA_SCHEMA_VERSION,
+                reason,
+                SheepMergeManager::reconcileAchievementAutomationPointGrants,
+                SheepMergeManager::saveData);
     }
 
     public static void recordLiveUpdateCheck(String status) {
-        lastLiveUpdateCheckAt = System.currentTimeMillis();
-        lastLiveUpdateStatus = normalizeLiveUpdateStatus(status == null || status.isBlank() ? "Checked." : status);
-        saveData();
+        SheepLiveUpdateState.recordLiveUpdateCheck(status, SheepMergeManager::saveData);
     }
 
     public static void recordStagedLiveUpdate(String version, String status) {
-        stagedLiveUpdateVersion = version == null ? "" : version;
-        recordLiveUpdateCheck(status);
+        SheepLiveUpdateState.recordStagedLiveUpdate(version, status, SheepMergeManager::saveData);
     }
 
     public static String getStagedLiveUpdateVersion() {
-        return stagedLiveUpdateVersion == null ? "" : stagedLiveUpdateVersion;
+        return SheepLiveUpdateState.getStagedLiveUpdateVersion();
     }
 
     public static void clearStagedLiveUpdate(String status) {
-        stagedLiveUpdateVersion = "";
-        recordLiveUpdateCheck(status == null || status.isBlank()
-                ? "Cleared staged live update state."
-                : status);
+        SheepLiveUpdateState.clearStagedLiveUpdate(status, SheepMergeManager::saveData);
     }
 
     public static void recordLiveUpdateApply(String status) {
-        lastLiveUpdateCheckAt = System.currentTimeMillis();
-        lastLiveUpdateStatus = normalizeLiveUpdateStatus(
-                status == null || status.isBlank() ? "Applied staged live update." : status);
-        if (dataSchemaVersion >= CURRENT_DATA_SCHEMA_VERSION) {
-            stagedLiveUpdateVersion = "";
-        }
-        saveData();
+        SheepLiveUpdateState.recordLiveUpdateApply(
+                status,
+                CURRENT_DATA_SCHEMA_VERSION,
+                SheepMergeManager::saveData);
     }
 
     public static List<String> getLiveUpdateStatusLines() {
-        List<String> lines = new ArrayList<>();
-        lines.add(ChatColor.GRAY + "Enabled: " + (liveUpdateEnabled ? ChatColor.GREEN + "YES" : ChatColor.RED + "NO"));
-        lines.add(ChatColor.GRAY + "Schema: " + ChatColor.AQUA + dataSchemaVersion + ChatColor.DARK_GRAY + " / "
-                + ChatColor.AQUA + CURRENT_DATA_SCHEMA_VERSION);
-        lines.add(ChatColor.GRAY + "Staged Release: " + ChatColor.YELLOW
-                + (stagedLiveUpdateVersion == null || stagedLiveUpdateVersion.isBlank() ? "none"
-                        : stagedLiveUpdateVersion));
-        String checkedAt = lastLiveUpdateCheckAt <= 0L
-                ? "never"
-                : DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochMilli(lastLiveUpdateCheckAt));
-        lines.add(ChatColor.GRAY + "Last Check: " + ChatColor.AQUA + checkedAt);
-        lines.add(ChatColor.GRAY + "Status: " + ChatColor.WHITE
-                + (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank() ? "Not checked yet."
-                        : normalizeLiveUpdateStatus(lastLiveUpdateStatus)));
-        return lines;
-    }
-
-    private static String normalizeLiveUpdateStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return status;
-        }
-        return status.replace("x208/SheepMerge", "0x208u16/SheepFarmMinigamePlugin");
+        return SheepLiveUpdateState.getLiveUpdateStatusLines(CURRENT_DATA_SCHEMA_VERSION);
     }
 
     public static int getFarmRadius() {
@@ -2448,9 +2191,9 @@ public final class SheepMergeManager {
 
     private static Set<UUID> collectKnownFarmOwnerIds() {
         Set<UUID> ownerIds = new HashSet<>();
-        addKnownFarmOwners(ownerIds, pointsByPlayer.keySet());
-        addKnownFarmOwners(ownerIds, tutorialCompletedByPlayer.keySet());
-        addKnownFarmOwners(ownerIds, tutorialBypassedByPlayer.keySet());
+        addKnownFarmOwners(ownerIds, SheepEconomyState.getPointsTrackedPlayerIds());
+        addKnownFarmOwners(ownerIds, SheepTutorialState.completedPlayerIds());
+        addKnownFarmOwners(ownerIds, SheepTutorialState.bypassedPlayerIds());
         addKnownFarmOwners(ownerIds, savedFarmSheepByPlayer.keySet());
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (online == null || !online.isOnline()) {
@@ -2876,32 +2619,12 @@ public final class SheepMergeManager {
     }
 
     private static List<String> getInventoryQuickAccessActions(UUID playerId) {
-        if (playerId == null) {
-            return List.of();
-        }
-        List<String> loaded = inventoryQuickAccessByPlayer.get(playerId);
-        if (loaded == null || loaded.isEmpty()) {
-            return List.of();
-        }
-
-        List<String> normalized = new ArrayList<>();
-        for (String id : loaded) {
-            if (id == null || id.isBlank() || getQuickAccessDefinition(id) == null || normalized.contains(id)) {
-                continue;
-            }
-            normalized.add(id);
-            if (normalized.size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS) {
-                break;
-            }
-        }
-        return normalized;
+        return SheepUiPreferences.getInventoryQuickAccessActions(playerId,
+                INVENTORY_QUICK_ACCESS_MAX_ITEMS, id -> getQuickAccessDefinition(id) != null);
     }
 
     private static boolean isInventoryQuickAccessCastingEnabled(UUID playerId) {
-        if (playerId == null) {
-            return true;
-        }
-        return inventoryQuickAccessCastingEnabledByPlayer.getOrDefault(playerId, true);
+        return SheepUiPreferences.isInventoryQuickAccessCastingEnabled(playerId);
     }
 
     private static boolean isInventoryQuickAccessCastingEnabled(Player player) {
@@ -2914,21 +2637,14 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         boolean enabled = !isInventoryQuickAccessCastingEnabled(playerId);
-        inventoryQuickAccessCastingEnabledByPlayer.put(playerId, enabled);
+        SheepUiPreferences.setInventoryQuickAccessCastingEnabled(playerId, enabled);
         saveData();
         return enabled;
     }
 
     private static void setInventoryQuickAccessActions(UUID playerId, List<String> actions) {
-        if (playerId == null) {
-            return;
-        }
-        List<String> normalized = actions == null ? List.of() : actions;
-        if (normalized.isEmpty()) {
-            inventoryQuickAccessByPlayer.remove(playerId);
-            return;
-        }
-        inventoryQuickAccessByPlayer.put(playerId, new ArrayList<>(normalized));
+        SheepUiPreferences.setInventoryQuickAccessActions(playerId, actions,
+                INVENTORY_QUICK_ACCESS_MAX_ITEMS, id -> getQuickAccessDefinition(id) != null);
     }
 
     private static boolean toggleInventoryQuickAccessAction(Player player, String actionId) {
@@ -3117,10 +2833,10 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        BossBar bar = visitFarmBossBarByPlayer.get(playerId);
+        BossBar bar = SheepRuntimeUiState.visitFarmBossBars().get(playerId);
         if (bar == null) {
             bar = Bukkit.createBossBar("Visiting Farm", BarColor.BLUE, BarStyle.SOLID);
-            visitFarmBossBarByPlayer.put(playerId, bar);
+            SheepRuntimeUiState.visitFarmBossBars().put(playerId, bar);
         }
 
         UUID ownerId = getFarmOwnerId(world);
@@ -3143,7 +2859,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        BossBar bar = visitFarmBossBarByPlayer.remove(player.getUniqueId());
+        BossBar bar = SheepRuntimeUiState.visitFarmBossBars().remove(player.getUniqueId());
         if (bar == null) {
             return;
         }
@@ -3152,111 +2868,80 @@ public final class SheepMergeManager {
     }
 
     public static boolean isFarmVisitable(UUID ownerId) {
-        if (ownerId == null) {
-            return false;
-        }
-        return farmVisitEnabledByPlayer.getOrDefault(ownerId, true);
+        return SheepVisitAccessState.isFarmVisitable(ownerId);
     }
 
     public static boolean toggleFarmVisitable(Player owner) {
+        boolean next = SheepVisitAccessState.toggleFarmVisitable(owner);
         if (owner == null) {
             return false;
         }
-        UUID ownerId = owner.getUniqueId();
-        boolean next = !farmVisitEnabledByPlayer.getOrDefault(ownerId, true);
-        farmVisitEnabledByPlayer.put(ownerId, next);
         saveData();
         return next;
     }
 
     public static boolean areSoundEffectsEnabled(Player player) {
-        return player != null && soundEffectsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+        return SheepEffectPreferences.areSoundEffectsEnabled(player);
     }
 
     public static boolean toggleSoundEffects(Player player) {
+        boolean next = SheepEffectPreferences.toggleSoundEffects(player);
         if (player == null) {
             return false;
         }
-        UUID playerId = player.getUniqueId();
-        boolean next = !soundEffectsEnabledByPlayer.getOrDefault(playerId, true);
-        soundEffectsEnabledByPlayer.put(playerId, next);
         saveData();
         return next;
     }
 
     public static boolean areSheepSoundsEnabled(Player player) {
-        return player != null && sheepSoundsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+        return SheepEffectPreferences.areSheepSoundsEnabled(player);
     }
 
     public static boolean toggleSheepSounds(Player player) {
+        boolean next = SheepEffectPreferences.toggleSheepSounds(player);
         if (player == null) {
             return false;
         }
-        UUID playerId = player.getUniqueId();
-        boolean next = !sheepSoundsEnabledByPlayer.getOrDefault(playerId, true);
-        sheepSoundsEnabledByPlayer.put(playerId, next);
         saveData();
         return next;
     }
 
     public static boolean areParticleEffectsEnabled(Player player) {
-        return player != null && particleEffectsEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+        return SheepEffectPreferences.areParticleEffectsEnabled(player);
     }
 
     public static boolean toggleParticleEffects(Player player) {
+        boolean next = SheepEffectPreferences.toggleParticleEffects(player);
         if (player == null) {
             return false;
         }
-        UUID playerId = player.getUniqueId();
-        boolean next = !particleEffectsEnabledByPlayer.getOrDefault(playerId, true);
-        particleEffectsEnabledByPlayer.put(playerId, next);
         saveData();
         return next;
     }
 
     public static Set<UUID> getBlockedFarmVisitors(UUID ownerId) {
-        if (ownerId == null) {
-            return Set.of();
-        }
-        return farmVisitBlockedUsersByPlayer.computeIfAbsent(ownerId, ignored -> new LinkedHashSet<>());
+        return SheepVisitAccessState.getBlockedFarmVisitors(ownerId);
     }
 
     public static boolean isFarmVisitorBlocked(UUID ownerId, UUID visitorId) {
-        if (ownerId == null || visitorId == null) {
-            return false;
-        }
-        return getBlockedFarmVisitors(ownerId).contains(visitorId);
+        return SheepVisitAccessState.isFarmVisitorBlocked(ownerId, visitorId);
     }
 
     public static boolean isFarmVisitorBlocked(Player owner, Player visitor) {
-        if (owner == null || visitor == null) {
-            return false;
-        }
-        return isFarmVisitorBlocked(owner.getUniqueId(), visitor.getUniqueId());
+        return SheepVisitAccessState.isFarmVisitorBlocked(owner, visitor);
     }
 
     public static boolean toggleFarmVisitorBlocked(Player owner, UUID visitorId) {
         if (owner == null || visitorId == null || visitorId.equals(owner.getUniqueId())) {
             return false;
         }
-        Set<UUID> blockedVisitors = getBlockedFarmVisitors(owner.getUniqueId());
-        boolean nextBlocked;
-        if (blockedVisitors.contains(visitorId)) {
-            blockedVisitors.remove(visitorId);
-            nextBlocked = false;
-        } else {
-            blockedVisitors.add(visitorId);
-            nextBlocked = true;
-        }
+        boolean nextBlocked = SheepVisitAccessState.toggleFarmVisitorBlocked(owner, visitorId);
         saveData();
         return nextBlocked;
     }
 
     public static int getBlockedFarmVisitorCount(UUID ownerId) {
-        if (ownerId == null) {
-            return 0;
-        }
-        return getBlockedFarmVisitors(ownerId).size();
+        return SheepVisitAccessState.getBlockedFarmVisitorCount(ownerId);
     }
 
     public static boolean shouldNotifySpawnLimit(Player player) {
@@ -3265,11 +2950,11 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long last = lastSpawnLimitWarningTimestampByPlayer.getOrDefault(playerId, 0L);
+        long last = SheepRuntimeUiState.lastSpawnLimitWarnings().getOrDefault(playerId, 0L);
         if (now - last < SPAWN_LIMIT_WARNING_COOLDOWN_MS) {
             return false;
         }
-        lastSpawnLimitWarningTimestampByPlayer.put(playerId, now);
+        SheepRuntimeUiState.lastSpawnLimitWarnings().put(playerId, now);
         return true;
     }
 
@@ -3279,11 +2964,11 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long last = lastOutOfEggWarningTimestampByPlayer.getOrDefault(playerId, 0L);
+        long last = SheepRuntimeUiState.lastOutOfEggWarnings().getOrDefault(playerId, 0L);
         if (now - last < OUT_OF_EGGS_WARNING_COOLDOWN_MS) {
             return false;
         }
-        lastOutOfEggWarningTimestampByPlayer.put(playerId, now);
+        SheepRuntimeUiState.lastOutOfEggWarnings().put(playerId, now);
         return true;
     }
 
@@ -3300,7 +2985,7 @@ public final class SheepMergeManager {
     }
 
     public static boolean isTutorialCompleted(Player player) {
-        return player != null && tutorialCompletedByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepTutorialState.isCompleted(player.getUniqueId());
     }
 
     public static boolean hasUnlockedFarm(Player player) {
@@ -3315,23 +3000,14 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return false;
         }
-        return tutorialCompletedByPlayer.getOrDefault(playerId, false)
-                || tutorialBypassedByPlayer.getOrDefault(playerId, false);
+        return SheepTutorialState.isCompleted(playerId) || SheepTutorialState.isBypassed(playerId);
     }
 
     private static void clearTutorialRuntimeState(UUID playerId) {
         if (playerId == null) {
             return;
         }
-        tutorialStartedAtByPlayer.remove(playerId);
-        lastTutorialReminderTimestampByPlayer.remove(playerId);
-        lastTutorialTaskTitleTimestampByPlayer.remove(playerId);
-        lastTutorialTaskTitleStepByPlayer.remove(playerId);
-        lastTutorialStatusFeedTimestampByPlayer.remove(playerId);
-        lastTutorialProgressFeedLineByPlayer.remove(playerId);
-        lastTutorialStepFeedLineByPlayer.remove(playerId);
-        lastTutorialFocusNotificationTimestampByPlayer.remove(playerId);
-        lastTutorialMergePointsReminderTimestampByPlayer.remove(playerId);
+        SheepTutorialState.clearRuntimeState(playerId);
     }
 
     private static void resetTutorialProgress(UUID playerId) {
@@ -3339,29 +3015,15 @@ public final class SheepMergeManager {
             return;
         }
         savedTutorialSheepByPlayer.remove(playerId);
-        tutorialCompletedByPlayer.remove(playerId);
-        tutorialBypassedByPlayer.remove(playerId);
-        tutorialShearsByPlayer.remove(playerId);
-        tutorialSpawnsByPlayer.remove(playerId);
-        tutorialMergesByPlayer.remove(playerId);
-        tutorialUpgradeOpenedByPlayer.remove(playerId);
-        tutorialQuestOpenedByPlayer.remove(playerId);
-        tutorialQuestUpgradesOpenedByPlayer.remove(playerId);
-        tutorialPrestigeOpenedByPlayer.remove(playerId);
-        tutorialAbilityUsedByPlayer.remove(playerId);
-        tutorialShearUpgradedByPlayer.remove(playerId);
-        tutorialRegularUpgradesBoughtByPlayer.remove(playerId);
-        tutorialPrestigedOnceByPlayer.remove(playerId);
-        tutorialShearShopOpenedByPlayer.remove(playerId);
-        clearTutorialRuntimeState(playerId);
+        SheepTutorialState.resetPlayer(playerId);
     }
 
     public static int getPrestigeLevel(Player player) {
-        return player == null ? 0 : prestigeLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepPrestigeState.getLevel(player.getUniqueId());
     }
 
     public static int getPrestigePoints(Player player) {
-        return player == null ? 0 : prestigePointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepPrestigeState.getPoints(player.getUniqueId());
     }
 
     public static int getPrestigeMaxLevel() {
@@ -3369,32 +3031,23 @@ public final class SheepMergeManager {
     }
 
     public static String formatPoints(long points) {
-        return formatPoints(BigInteger.valueOf(points));
+        return SheepFormatting.formatPoints(points);
     }
 
     public static String formatPoints(BigInteger points) {
-        BigInteger safe = points == null ? BigInteger.ZERO : points;
-        boolean negative = safe.signum() < 0;
-        BigInteger value = negative ? safe.negate() : safe;
-        String[] suffixes = { "", "K", "M", "B", "T", "Q", "Qi", "Sx", "Sp", "Oc", "No", "Dc" };
-        int suffixIndex = 0;
-        while (value.compareTo(BigInteger.valueOf(10_000L)) >= 0 && suffixIndex < suffixes.length - 1) {
-            value = value.divide(BigInteger.valueOf(1000L));
-            suffixIndex++;
-        }
-        return (negative ? "-" : "") + value + suffixes[suffixIndex];
+        return SheepFormatting.formatPoints(points);
     }
 
     public static int getQuestPoints(Player player) {
-        return player == null ? 0 : questPointsByPlayer.getOrDefault(player.getUniqueId(), 10);
+        return player == null ? 0 : SheepQuestState.questPoints().getOrDefault(player.getUniqueId(), 10);
     }
 
     public static int getRebirthLevel(Player player) {
-        return player == null ? 0 : rebirthLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepRebirthState.getLevel(player.getUniqueId());
     }
 
     public static int getRebirthPoints(Player player) {
-        return player == null ? 0 : rebirthPointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepRebirthState.getPoints(player.getUniqueId());
     }
 
     public static int getUnspentRebirthPointsDisplay(Player player) {
@@ -3413,14 +3066,14 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return 0;
         }
-        return rebirthSkillUnlockMaskByPlayer.getOrDefault(playerId, 0);
+        return SheepRebirthState.getSkillUnlockMask(playerId);
     }
 
     private static int getRebirthSkillPendingMask(UUID playerId) {
         if (playerId == null) {
             return 0;
         }
-        return rebirthSkillPendingMaskByPlayer.getOrDefault(playerId, 0);
+        return SheepRebirthState.getSkillPendingMask(playerId);
     }
 
     private static int getRebirthSkillBit(int skillId) {
@@ -3481,7 +3134,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0L;
         }
-        long nextRespec = nextRebirthRespecTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        long nextRespec = SheepRebirthState.getNextRespecTimestamp(player.getUniqueId());
         return Math.max(0L, nextRespec - System.currentTimeMillis());
     }
 
@@ -3561,7 +3214,7 @@ public final class SheepMergeManager {
         }
         int boosted = Math.max(1, amount) * getQuestPointsGainMultiplierFromRebirthSkills(player);
         UUID playerId = player.getUniqueId();
-        questPointsByPlayer.put(playerId, addSaturated(getQuestPoints(player), boosted));
+        SheepQuestState.questPoints().put(playerId, addSaturated(getQuestPoints(player), boosted));
         saveData();
     }
 
@@ -3573,7 +3226,7 @@ public final class SheepMergeManager {
         if (current < amount) {
             return false;
         }
-        questPointsByPlayer.put(player.getUniqueId(), current - amount);
+        SheepQuestState.questPoints().put(player.getUniqueId(), current - amount);
         saveData();
         return true;
     }
@@ -3593,27 +3246,27 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long nextReset = nextQuestResetTimestampByPlayer.getOrDefault(playerId, 0L);
+        long nextReset = SheepQuestState.nextQuestResetTimestamps().getOrDefault(playerId, 0L);
         long interval = getQuestResetIntervalMs(player);
         if (nextReset > now + interval) {
             nextReset = now + interval;
-            nextQuestResetTimestampByPlayer.put(playerId, nextReset);
+            SheepQuestState.nextQuestResetTimestamps().put(playerId, nextReset);
         }
         if (nextReset <= 0L) {
-            nextQuestResetTimestampByPlayer.put(playerId, now + interval);
+            SheepQuestState.nextQuestResetTimestamps().put(playerId, now + interval);
             return;
         }
         if (now < nextReset) {
             return;
         }
 
-        questShearsByPlayer.put(playerId, 0);
-        questSpawnsByPlayer.put(playerId, 0);
-        questMergesByPlayer.put(playerId, 0);
-        questShearsCompleteByPlayer.put(playerId, false);
-        questSpawnsCompleteByPlayer.put(playerId, false);
-        questMergesCompleteByPlayer.put(playerId, false);
-        nextQuestResetTimestampByPlayer.put(playerId, now + interval);
+        SheepQuestState.questShears().put(playerId, 0);
+        SheepQuestState.questSpawns().put(playerId, 0);
+        SheepQuestState.questMerges().put(playerId, 0);
+        SheepQuestState.questShearsComplete().put(playerId, false);
+        SheepQuestState.questSpawnsComplete().put(playerId, false);
+        SheepQuestState.questMergesComplete().put(playerId, false);
+        SheepQuestState.nextQuestResetTimestamps().put(playerId, now + interval);
         player.sendTitle(color("&eNew quests"), color("&7Quest board refreshed"), 10, 40, 10);
     }
 
@@ -3639,18 +3292,17 @@ public final class SheepMergeManager {
         long now = System.currentTimeMillis();
         tickTutorialTaskTitle(player, now);
         maybeSendTutorialMergePointsReminder(player, now);
-        tutorialStartedAtByPlayer.putIfAbsent(playerId, now);
-        long startedAt = tutorialStartedAtByPlayer.getOrDefault(playerId, now);
+        long startedAt = SheepTutorialState.ensureStartedAt(playerId, now);
         if (now - startedAt < TUTORIAL_REMINDER_DELAY_MS) {
             return;
         }
 
-        long lastReminder = lastTutorialReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastReminder = SheepTutorialState.getLastReminderTimestamp(playerId);
         if (now - lastReminder < TUTORIAL_REMINDER_REPEAT_MS) {
             return;
         }
 
-        lastTutorialReminderTimestampByPlayer.put(playerId, now);
+        SheepTutorialState.setLastReminderTimestamp(playerId, now);
         player.sendMessage(warning("Finish the tutorial to unlock your farm."));
         player.sendMessage(hint("Next: " + getTutorialNextStepLine(player)));
     }
@@ -3662,16 +3314,16 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         String titleStep = getTutorialNextStepLine(player);
 
-        String previousStep = lastTutorialTaskTitleStepByPlayer.get(playerId);
-        long lastShownAt = lastTutorialTaskTitleTimestampByPlayer.getOrDefault(playerId, 0L);
+        String previousStep = SheepTutorialState.getLastTaskTitleStep(playerId);
+        long lastShownAt = SheepTutorialState.getLastTaskTitleTimestamp(playerId);
         boolean stepChanged = !titleStep.equals(previousStep);
         if (!stepChanged && now - lastShownAt < TUTORIAL_TASK_TITLE_REPEAT_MS) {
             return;
         }
 
         sendTutorialTitle(player, "&eTutorial Step", "&f" + titleStep);
-        lastTutorialTaskTitleTimestampByPlayer.put(playerId, now);
-        lastTutorialTaskTitleStepByPlayer.put(playerId, titleStep);
+        SheepTutorialState.setLastTaskTitleTimestamp(playerId, now);
+        SheepTutorialState.setLastTaskTitleStep(playerId, titleStep);
     }
 
     private static void sendTutorialTitle(Player player, String title, String subtitle) {
@@ -3692,21 +3344,21 @@ public final class SheepMergeManager {
     }
 
     public static void recordQuestShear(Player player) {
-        updateQuestProgress(player, questShearsByPlayer, questShearsCompleteByPlayer,
+        updateQuestProgress(player, SheepQuestState.questShears(), SheepQuestState.questShearsComplete(),
                 getQuestTarget(player, QUEST_SHEARS_TARGET),
                 getQuestReward(player, QUEST_SHEARS_REWARD),
                 "Shearing quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     public static void recordQuestSpawn(Player player) {
-        updateQuestProgress(player, questSpawnsByPlayer, questSpawnsCompleteByPlayer,
+        updateQuestProgress(player, SheepQuestState.questSpawns(), SheepQuestState.questSpawnsComplete(),
                 getQuestTarget(player, QUEST_SPAWNS_TARGET),
                 getQuestReward(player, QUEST_SPAWNS_REWARD),
                 "Spawning quest complete", Sound.ENTITY_PLAYER_LEVELUP);
     }
 
     public static void recordQuestMerge(Player player) {
-        updateQuestProgress(player, questMergesByPlayer, questMergesCompleteByPlayer,
+        updateQuestProgress(player, SheepQuestState.questMerges(), SheepQuestState.questMergesComplete(),
                 getQuestTarget(player, QUEST_MERGES_TARGET),
                 getQuestReward(player, QUEST_MERGES_REWARD),
                 "Merging quest complete", Sound.ENTITY_PLAYER_LEVELUP);
@@ -3740,8 +3392,7 @@ public final class SheepMergeManager {
                 0.35,
                 0.02);
         if (areAllQuestsCompleted(playerId)) {
-            completedQuestCyclesByPlayer.put(playerId,
-                    addSaturated(completedQuestCyclesByPlayer.getOrDefault(playerId, 0), 1));
+            SheepLifetimeProgressState.incrementCompletedQuestCycles(playerId);
             player.sendTitle(color("&aAll Quests Complete"), color("&7Nice cycle. New quests on reset."), 10, 45, 10);
             playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.2f);
             player.sendMessage(action("All current quests are completed."));
@@ -3752,9 +3403,9 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return false;
         }
-        return questShearsCompleteByPlayer.getOrDefault(playerId, false)
-                && questSpawnsCompleteByPlayer.getOrDefault(playerId, false)
-                && questMergesCompleteByPlayer.getOrDefault(playerId, false);
+        return SheepQuestState.questShearsComplete().getOrDefault(playerId, false)
+                && SheepQuestState.questSpawnsComplete().getOrDefault(playerId, false)
+                && SheepQuestState.questMergesComplete().getOrDefault(playerId, false);
     }
 
     private static AchievementDefinition getAchievementDefinition(String achievementId) {
@@ -3863,27 +3514,19 @@ public final class SheepMergeManager {
     }
 
     private static Set<String> getUnlockedAchievementIds(UUID playerId) {
-        if (playerId == null) {
-            return Collections.emptySet();
-        }
-        Set<String> unlocked = unlockedAchievementIdsByPlayer.get(playerId);
-        return unlocked == null ? Collections.emptySet() : unlocked;
+        return SheepAchievementState.getUnlockedAchievementIds(playerId);
     }
 
     private static Set<String> getOrCreateUnlockedAchievementIds(UUID playerId) {
-        return unlockedAchievementIdsByPlayer.computeIfAbsent(playerId, ignored -> new LinkedHashSet<>());
+        return SheepAchievementState.getOrCreateUnlockedAchievementIds(playerId);
     }
 
     private static Set<String> getUnlockedAchievementMilestoneIds(UUID playerId) {
-        if (playerId == null) {
-            return Collections.emptySet();
-        }
-        Set<String> unlocked = unlockedAchievementMilestoneIdsByPlayer.get(playerId);
-        return unlocked == null ? Collections.emptySet() : unlocked;
+        return SheepAchievementState.getUnlockedAchievementMilestoneIds(playerId);
     }
 
     private static Set<String> getOrCreateUnlockedAchievementMilestoneIds(UUID playerId) {
-        return unlockedAchievementMilestoneIdsByPlayer.computeIfAbsent(playerId, ignored -> new LinkedHashSet<>());
+        return SheepAchievementState.getOrCreateUnlockedAchievementMilestoneIds(playerId);
     }
 
     private static int getUnlockedAchievementCount(UUID playerId) {
@@ -3956,36 +3599,32 @@ public final class SheepMergeManager {
         if (playerId == null || amount <= 0) {
             return;
         }
-        automationPointsByPlayer.put(playerId,
-                addSaturated(automationPointsByPlayer.getOrDefault(playerId, 0), amount));
-        achievementAutomationPointsGrantedByPlayer.put(playerId,
-                addSaturated(achievementAutomationPointsGrantedByPlayer.getOrDefault(playerId, 0), amount));
+        SheepAutomationState.setPoints(playerId,
+                addSaturated(SheepAutomationState.getPoints(playerId), amount));
+        SheepAchievementState.setAutomationPointsGranted(playerId,
+                addSaturated(SheepAchievementState.getAutomationPointsGranted(playerId), amount));
     }
 
     private static void reconcileAchievementAutomationPointGrants() {
-        Set<UUID> playerIds = new HashSet<>();
-        playerIds.addAll(unlockedAchievementIdsByPlayer.keySet());
-        playerIds.addAll(achievementAutomationPointsGrantedByPlayer.keySet());
-
-        for (UUID playerId : playerIds) {
+        for (UUID playerId : SheepAchievementState.getTrackedPlayerIds()) {
             if (playerId == null) {
                 continue;
             }
             int unlockedPoints = getAchievementPoints(playerId);
-            int grantedPoints = achievementAutomationPointsGrantedByPlayer.getOrDefault(playerId, 0);
+            int grantedPoints = SheepAchievementState.getAutomationPointsGranted(playerId);
 
             if (unlockedPoints <= 0) {
-                achievementAutomationPointsGrantedByPlayer.remove(playerId);
+                SheepAchievementState.removeAutomationPointsGranted(playerId);
                 continue;
             }
 
             if (grantedPoints < unlockedPoints) {
                 int missingPoints = unlockedPoints - grantedPoints;
-                automationPointsByPlayer.put(playerId,
-                        addSaturated(automationPointsByPlayer.getOrDefault(playerId, 0), missingPoints));
+                SheepAutomationState.setPoints(playerId,
+                        addSaturated(SheepAutomationState.getPoints(playerId), missingPoints));
             }
 
-            achievementAutomationPointsGrantedByPlayer.put(playerId, unlockedPoints);
+            SheepAchievementState.setAutomationPointsGranted(playerId, unlockedPoints);
         }
     }
 
@@ -4024,32 +3663,32 @@ public final class SheepMergeManager {
             return false;
         }
         return switch (achievementId) {
-            case "first_shear" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 10;
-            case "wool_tycoon" -> lifetimeShearsByPlayer.getOrDefault(playerId, 0) >= 1000;
-            case "first_hatch" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 10;
-            case "breeder" -> lifetimeSpawnsByPlayer.getOrDefault(playerId, 0) >= 2000;
-            case "pair_maker" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 250;
-            case "fusion_engine" -> lifetimeMergesByPlayer.getOrDefault(playerId, 0) >= 2500;
-            case "quest_cadet" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 3;
-            case "quest_veteran" -> completedQuestCyclesByPlayer.getOrDefault(playerId, 0) >= 15;
-            case "upgrade_mechanic" -> (extraLimitByPlayer.getOrDefault(playerId, 0)
-                    + eggSpeedLevelByPlayer.getOrDefault(playerId, 0)
-                    + woolRegenLevelByPlayer.getOrDefault(playerId, 0)
-                    + higherTierChanceLevelByPlayer.getOrDefault(playerId, 0)) >= 20;
+            case "first_shear" -> SheepLifetimeProgressState.getLifetimeShears(playerId) >= 10;
+            case "wool_tycoon" -> SheepLifetimeProgressState.getLifetimeShears(playerId) >= 1000;
+            case "first_hatch" -> SheepLifetimeProgressState.getLifetimeSpawns(playerId) >= 10;
+            case "breeder" -> SheepLifetimeProgressState.getLifetimeSpawns(playerId) >= 2000;
+            case "pair_maker" -> SheepLifetimeProgressState.getLifetimeMerges(playerId) >= 250;
+            case "fusion_engine" -> SheepLifetimeProgressState.getLifetimeMerges(playerId) >= 2500;
+            case "quest_cadet" -> SheepLifetimeProgressState.getCompletedQuestCycles(playerId) >= 3;
+            case "quest_veteran" -> SheepLifetimeProgressState.getCompletedQuestCycles(playerId) >= 15;
+            case "upgrade_mechanic" -> (SheepEconomyState.getExtraLimit(playerId)
+                    + SheepEconomyState.getEggSpeedLevel(playerId)
+                    + SheepEconomyState.getWoolRegenLevel(playerId)
+                    + SheepEconomyState.getHigherTierChanceLevel(playerId)) >= 20;
             case "shear_specialist" -> getShearShopLevel(player) >= 15;
-            case "prestige_initiate" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 3;
-            case "prestige_veteran" -> totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0) >= 100;
+            case "prestige_initiate" -> SheepPrestigeState.getTotalLevelsEarned(playerId) >= 3;
+            case "prestige_veteran" -> SheepPrestigeState.getTotalLevelsEarned(playerId) >= 100;
             case "automation_online" -> getUnlockedAutomationCount(player) >= 2;
             case "automation_matrix" -> getUnlockedAutomationCount(player) >= 6;
-            case "sacrifice_initiate" -> totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0) >= 2;
+            case "sacrifice_initiate" -> SheepSacrificeProgression.getTotalUnlocksPurchased(playerId) >= 2;
             case "sacrifice_mastery" -> getSacrificeUnlocksBought(playerId) >= SACRIFICE_UNLOCK_MAX;
             case "reborn" -> getRebirthLevel(player) >= 3;
-            case "rainbow_ascension" -> highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0) >= 4;
-            case "tutorial_mastery" -> tutorialCompletedByPlayer.getOrDefault(playerId, false);
+            case "rainbow_ascension" -> SheepUpgradeState.getHighestAnnouncedRainbowTier(playerId) >= 4;
+            case "tutorial_mastery" -> SheepTutorialState.isCompleted(playerId);
             case "layout_designer" -> getScoreboardLayoutMode(player) == 1
                     && getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
-                    && socialsPageByPlayer.containsKey(playerId);
-            case "socials_explorer" -> lifetimeOtherFarmVisitsByPlayer.getOrDefault(playerId, 0) >= 1;
+                    && SheepRuntimeUiState.socialsPages().containsKey(playerId);
+            case "socials_explorer" -> SheepLifetimeProgressState.getLifetimeOtherFarmVisits(playerId) >= 1;
             case "quick_access_curator" ->
                 getInventoryQuickAccessActions(playerId).size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS
                         && isInventoryQuickAccessCastingEnabled(playerId);
@@ -4075,7 +3714,7 @@ public final class SheepMergeManager {
                         && isSheepFarmWorld(author.getWorld());
             }
             case "secret_owner_farm" -> SOCIALS_AUTHOR_UUID.equals(playerId)
-                    || visitedOwnerFarmByPlayer.getOrDefault(playerId, false);
+                    || SheepLifetimeProgressState.hasVisitedOwnerFarm(playerId);
             default -> false;
         };
     }
@@ -4202,9 +3841,9 @@ public final class SheepMergeManager {
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
 
-        tickAbilityVisual(player, playerId, now, activeWoolRushUntilByPlayer, org.bukkit.Particle.CLOUD,
+        tickAbilityVisual(player, playerId, now, SheepQuestState.activeWoolRushUntil(), org.bukkit.Particle.CLOUD,
                 "Wool Rush ended");
-        tickAbilityVisual(player, playerId, now, activeJackpotShearsUntilByPlayer, org.bukkit.Particle.CRIT,
+        tickAbilityVisual(player, playerId, now, SheepQuestState.activeJackpotShearsUntil(), org.bukkit.Particle.CRIT,
                 "Jackpot Shears ended");
         emitAbilityAura(player, playerId, now);
         tickAutoMergeAbility(player, playerId, now);
@@ -4239,16 +3878,16 @@ public final class SheepMergeManager {
         if (AUTOMATION_POINT_INTERVAL_MS <= 0L) {
             return;
         }
-        long nextAt = nextAutomationPointAtByPlayer.getOrDefault(playerId, 0L);
+        long nextAt = SheepAutomationState.getNextPointAt(playerId);
         if (nextAt <= 0L) {
-            nextAutomationPointAtByPlayer.put(playerId, now + AUTOMATION_POINT_INTERVAL_MS);
+            SheepAutomationState.setNextPointAt(playerId, now + AUTOMATION_POINT_INTERVAL_MS);
             return;
         }
         if (now < nextAt) {
             return;
         }
-        automationPointsByPlayer.put(playerId, addSaturated(getAutomationPoints(player), 1));
-        nextAutomationPointAtByPlayer.put(playerId, now + AUTOMATION_POINT_INTERVAL_MS);
+        SheepAutomationState.setPoints(playerId, addSaturated(getAutomationPoints(player), 1));
+        SheepAutomationState.setNextPointAt(playerId, now + AUTOMATION_POINT_INTERVAL_MS);
         saveData();
     }
 
@@ -4262,13 +3901,13 @@ public final class SheepMergeManager {
             if (interval <= 0L) {
                 return;
             }
-            long nextAt = nextAutomationAutoBuyAtByPlayer.getOrDefault(playerId, 0L);
+            long nextAt = SheepAutomationState.getNextAutoBuyAt(playerId);
             if (now < nextAt) {
                 return;
             }
-            nextAutomationAutoBuyAtByPlayer.put(playerId, now + interval);
+            SheepAutomationState.setNextAutoBuyAt(playerId, now + interval);
         } else {
-            nextAutomationAutoBuyAtByPlayer.put(playerId, 0L);
+            SheepAutomationState.setNextAutoBuyAt(playerId, 0L);
         }
         if (!canAutomationRun(player, false)) {
             return;
@@ -4293,13 +3932,13 @@ public final class SheepMergeManager {
             if (AUTOMATION_AUTO_ABILITY_INTERVAL_MS <= 0L) {
                 return;
             }
-            long nextAt = nextAutomationAutoAbilityAtByPlayer.getOrDefault(playerId, 0L);
+            long nextAt = SheepAutomationState.getNextAutoAbilityAt(playerId);
             if (now < nextAt) {
                 return;
             }
-            nextAutomationAutoAbilityAtByPlayer.put(playerId, now + AUTOMATION_AUTO_ABILITY_INTERVAL_MS);
+            SheepAutomationState.setNextAutoAbilityAt(playerId, now + AUTOMATION_AUTO_ABILITY_INTERVAL_MS);
         } else {
-            nextAutomationAutoAbilityAtByPlayer.put(playerId, 0L);
+            SheepAutomationState.setNextAutoAbilityAt(playerId, 0L);
         }
         if (!canAutomationRun(player, true)) {
             return;
@@ -4313,11 +3952,11 @@ public final class SheepMergeManager {
                 || !isAutomationSlowAutoMergeEnabled(player)) {
             return;
         }
-        long nextAt = nextAutomationSlowMergeAtByPlayer.getOrDefault(playerId, 0L);
+        long nextAt = SheepAutomationState.getNextSlowMergeAt(playerId);
         if (now < nextAt) {
             return;
         }
-        nextAutomationSlowMergeAtByPlayer.put(playerId, now + interval);
+        SheepAutomationState.setNextSlowMergeAt(playerId, now + interval);
         if (!canAutomationRun(player, false) || !hasMergeCandidates(player)) {
             return;
         }
@@ -4330,11 +3969,11 @@ public final class SheepMergeManager {
                 || !isAutomationSlowAutoShearEnabled(player)) {
             return;
         }
-        long nextAt = nextAutomationSlowShearAtByPlayer.getOrDefault(playerId, 0L);
+        long nextAt = SheepAutomationState.getNextSlowShearAt(playerId);
         if (now < nextAt) {
             return;
         }
-        nextAutomationSlowShearAtByPlayer.put(playerId, now + interval);
+        SheepAutomationState.setNextSlowShearAt(playerId, now + interval);
         if (!canAutomationRun(player, false)
                 || countReadySheep(player) < AUTOMATION_CONDITION_MIN_READY_SHEEP_FOR_SHEAR) {
             return;
@@ -4347,14 +3986,14 @@ public final class SheepMergeManager {
             return;
         }
         long interval = getAutomationAutoSpawnIntervalMs(player);
-        long nextAt = nextAutomationAutoSpawnAtByPlayer.getOrDefault(playerId, 0L);
+        long nextAt = SheepAutomationState.getNextAutoSpawnAt(playerId);
         if (interval > 0L && now < nextAt) {
             return;
         }
         if (interval > 0L) {
-            nextAutomationAutoSpawnAtByPlayer.put(playerId, now + interval);
+            SheepAutomationState.setNextAutoSpawnAt(playerId, now + interval);
         } else {
-            nextAutomationAutoSpawnAtByPlayer.put(playerId, now);
+            SheepAutomationState.setNextAutoSpawnAt(playerId, now);
         }
         if (!canAutomationRun(player, false)) {
             return;
@@ -4377,11 +4016,11 @@ public final class SheepMergeManager {
                 || AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS <= 0L) {
             return;
         }
-        long nextAt = nextAutomationAutoPrestigeAtByPlayer.getOrDefault(playerId, 0L);
+        long nextAt = SheepAutomationState.getNextAutoPrestigeAt(playerId);
         if (now < nextAt) {
             return;
         }
-        nextAutomationAutoPrestigeAtByPlayer.put(playerId, now + AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS);
+        SheepAutomationState.setNextAutoPrestigeAt(playerId, now + AUTOMATION_AUTO_PRESTIGE_INTERVAL_MS);
         if (!canAutomationRun(player, false)) {
             return;
         }
@@ -4559,36 +4198,36 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         boolean changed = false;
-        if (getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) <= 0
+        if (getCountAbilityRemainingUses(SheepQuestState.activeAutoShearUses(), playerId) <= 0
                 && activateCountQuestAbility(player,
-                        activeAutoShearUsesByPlayer,
-                        autoShearEnabledByPlayer,
+                        SheepQuestState.activeAutoShearUses(),
+                        SheepQuestState.autoShearEnabled(),
                         getQuestAutoShearCost(player),
                         getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
                         Sound.ENTITY_SHEEP_SHEAR,
                         org.bukkit.Particle.WAX_OFF)) {
-            nextAutoShearAtByPlayer.put(playerId, 0L);
+            SheepQuestState.nextAutoShearAt().put(playerId, 0L);
             if (!buyAllMissing) {
                 return true;
             }
             changed = true;
         }
-        if (getCountAbilityRemainingUses(activeAutoMergeUsesByPlayer, playerId) <= 0
+        if (getCountAbilityRemainingUses(SheepQuestState.activeAutoMergeUses(), playerId) <= 0
                 && activateCountQuestAbility(player,
-                        activeAutoMergeUsesByPlayer,
-                        autoMergeEnabledByPlayer,
+                        SheepQuestState.activeAutoMergeUses(),
+                        SheepQuestState.autoMergeEnabled(),
                         getQuestAutoMergeCost(player),
                         getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
                         Sound.BLOCK_PISTON_EXTEND,
                         org.bukkit.Particle.ENCHANTMENT_TABLE)) {
-            nextAutoMergeAtByPlayer.put(playerId, 0L);
+            SheepQuestState.nextAutoMergeAt().put(playerId, 0L);
             if (!buyAllMissing) {
                 return true;
             }
             changed = true;
         }
-        if (!isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
-                && activateQuestAbility(player, activeJackpotShearsUntilByPlayer, getQuestJackpotCost(player),
+        if (!isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), playerId)
+                && activateQuestAbility(player, SheepQuestState.activeJackpotShearsUntil(), getQuestJackpotCost(player),
                         getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
                         Sound.ENTITY_PLAYER_LEVELUP, org.bukkit.Particle.CRIT)) {
             if (!buyAllMissing) {
@@ -4596,8 +4235,8 @@ public final class SheepMergeManager {
             }
             changed = true;
         }
-        if (!isAbilityActive(activeWoolRushUntilByPlayer, playerId)
-                && activateQuestAbility(player, activeWoolRushUntilByPlayer, getQuestWoolRushCost(player),
+        if (!isAbilityActive(SheepQuestState.activeWoolRushUntil(), playerId)
+                && activateQuestAbility(player, SheepQuestState.activeWoolRushUntil(), getQuestWoolRushCost(player),
                         getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
                         Sound.ENTITY_ENDER_DRAGON_FLAP, org.bukkit.Particle.CLOUD)) {
             if (!buyAllMissing) {
@@ -4605,10 +4244,10 @@ public final class SheepMergeManager {
             }
             changed = true;
         }
-        if (getCountAbilityRemainingUses(activeLuckyBurstUsesByPlayer, playerId) <= 0
+        if (getCountAbilityRemainingUses(SheepQuestState.activeLuckyBurstUses(), playerId) <= 0
                 && activateCountQuestAbility(player,
-                        activeLuckyBurstUsesByPlayer,
-                        luckyBurstEnabledByPlayer,
+                        SheepQuestState.activeLuckyBurstUses(),
+                        SheepQuestState.luckyBurstEnabled(),
                         getQuestLuckyBurstCost(player),
                         getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
                         Sound.BLOCK_BEACON_POWER_SELECT,
@@ -4873,23 +4512,25 @@ public final class SheepMergeManager {
     }
 
     private static void tickAutoMergeAbility(Player player, UUID playerId, long now) {
-        if (!isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId)) {
-            nextAutoMergeAtByPlayer.remove(playerId);
+        if (!isCountAbilityActive(SheepQuestState.activeAutoMergeUses(), SheepQuestState.autoMergeEnabled(),
+                playerId)) {
+            SheepQuestState.nextAutoMergeAt().remove(playerId);
         }
     }
 
     private static void tickAutoShearAbility(Player player, UUID playerId, long now) {
-        if (!isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)) {
-            nextAutoShearAtByPlayer.remove(playerId);
+        if (!isCountAbilityActive(SheepQuestState.activeAutoShearUses(), SheepQuestState.autoShearEnabled(),
+                playerId)) {
+            SheepQuestState.nextAutoShearAt().remove(playerId);
             return;
         }
 
-        long nextAutoShearAt = nextAutoShearAtByPlayer.getOrDefault(playerId, 0L);
+        long nextAutoShearAt = SheepQuestState.nextAutoShearAt().getOrDefault(playerId, 0L);
         if (now < nextAutoShearAt) {
             return;
         }
 
-        nextAutoShearAtByPlayer.put(playerId, now + 100L);
+        SheepQuestState.nextAutoShearAt().put(playerId, now + 100L);
         tryAutoShearLookTarget(player);
     }
 
@@ -4949,7 +4590,8 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        if (!isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId)) {
+        if (!isCountAbilityActive(SheepQuestState.activeAutoMergeUses(), SheepQuestState.autoMergeEnabled(),
+                playerId)) {
             return false;
         }
         if (!isFarmOwner(player, pickedSheep.getWorld())) {
@@ -4970,7 +4612,7 @@ public final class SheepMergeManager {
         if (!mergeSheepPair(player, pickedSheep, mergePartner, false)) {
             return false;
         }
-        consumeCountAbilityUse(activeAutoMergeUsesByPlayer, playerId);
+        consumeCountAbilityUse(SheepQuestState.activeAutoMergeUses(), playerId);
         return true;
     }
 
@@ -5169,7 +4811,8 @@ public final class SheepMergeManager {
 
     private static void emitAbilityAura(Player player, UUID playerId, long now) {
         boolean hasActiveAbility = false;
-        if (isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId)) {
+        if (isCountAbilityActive(SheepQuestState.activeLuckyBurstUses(), SheepQuestState.luckyBurstEnabled(),
+                playerId)) {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.TOTEM,
@@ -5181,7 +4824,7 @@ public final class SheepMergeManager {
                     0.0D);
         }
 
-        if (isAbilityActive(activeWoolRushUntilByPlayer, playerId)) {
+        if (isAbilityActive(SheepQuestState.activeWoolRushUntil(), playerId)) {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.SPORE_BLOSSOM_AIR,
@@ -5193,7 +4836,7 @@ public final class SheepMergeManager {
                     0.01D);
         }
 
-        if (isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)) {
+        if (isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), playerId)) {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.FIREWORKS_SPARK,
@@ -5205,7 +4848,7 @@ public final class SheepMergeManager {
                     0.01D);
         }
 
-        if (isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId)) {
+        if (isCountAbilityActive(SheepQuestState.activeAutoMergeUses(), SheepQuestState.autoMergeEnabled(), playerId)) {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.WAX_ON,
@@ -5217,7 +4860,7 @@ public final class SheepMergeManager {
                     0.02D);
         }
 
-        if (isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)) {
+        if (isCountAbilityActive(SheepQuestState.activeAutoShearUses(), SheepQuestState.autoShearEnabled(), playerId)) {
             hasActiveAbility = true;
             spawnParticle(player,
                     org.bukkit.Particle.WAX_OFF,
@@ -5233,12 +4876,12 @@ public final class SheepMergeManager {
             return;
         }
 
-        long lastSoundAt = lastAbilityAuraSoundTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastSoundAt = SheepQuestState.lastAbilityAuraSoundTimestamps().getOrDefault(playerId, 0L);
         if (now - lastSoundAt < ABILITY_AURA_SOUND_INTERVAL_MS) {
             return;
         }
 
-        lastAbilityAuraSoundTimestampByPlayer.put(playerId, now);
+        SheepQuestState.lastAbilityAuraSoundTimestamps().put(playerId, now);
         Sound[] gentleAuraSounds = {
                 Sound.BLOCK_NOTE_BLOCK_CHIME,
                 Sound.BLOCK_NOTE_BLOCK_HARP,
@@ -5248,15 +4891,15 @@ public final class SheepMergeManager {
     }
 
     public static int getShearShopLevel(Player player) {
-        return player == null ? 0 : shearShopLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepUpgradeState.getShearShopLevel(player.getUniqueId());
     }
 
     public static int getShearWoolSaveLevel(Player player) {
-        return player == null ? 0 : shearWoolSaveLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepUpgradeState.getShearWoolSaveLevel(player.getUniqueId());
     }
 
     public static int getShearTierBoostLevel(Player player) {
-        return player == null ? 0 : shearTierBoostLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepUpgradeState.getShearTierBoostLevel(player.getUniqueId());
     }
 
     public static int getShearFlatBonus(Player player) {
@@ -5297,43 +4940,43 @@ public final class SheepMergeManager {
     }
 
     public static int getComboDecayUpgradeLevel(Player player) {
-        return player == null ? 0 : comboDecayUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepComboState.getDecayUpgrade(player.getUniqueId());
     }
 
     public static int getComboMaxUpgradeLevel(Player player) {
-        return player == null ? 0 : comboMaxUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepComboState.getMaxUpgrade(player.getUniqueId());
     }
 
     public static int getComboGainUpgradeLevel(Player player) {
-        return player == null ? 0 : comboGainUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepComboState.getGainUpgrade(player.getUniqueId());
     }
 
     public static int getAutomationPoints(Player player) {
-        return player == null ? 0 : automationPointsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepAutomationState.getPoints(player.getUniqueId());
     }
 
     public static int getAutomationAutoBuyUpgradeLevel(Player player) {
         return player == null ? 0
                 : Math.min(AUTOMATION_AUTO_BUY_MAX_LEVEL,
-                        Math.max(0, automationAutoBuyUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepAutomationState.getAutoBuyUpgrade(player.getUniqueId())));
     }
 
     public static int getAutomationAutoAbilityUpgradeLevel(Player player) {
         return player == null ? 0
                 : Math.min(AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
-                        Math.max(0, automationAutoAbilityUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepAutomationState.getAutoAbilityUpgrade(player.getUniqueId())));
     }
 
     public static int getAutomationSlowAutoMergeUpgradeLevel(Player player) {
         return player == null ? 0
                 : Math.min(AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
-                        Math.max(0, automationSlowAutoMergeUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepAutomationState.getSlowAutoMergeUpgrade(player.getUniqueId())));
     }
 
     public static int getAutomationSlowAutoShearUpgradeLevel(Player player) {
         return player == null ? 0
                 : Math.min(AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
-                        Math.max(0, automationSlowAutoShearUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepAutomationState.getSlowAutoShearUpgrade(player.getUniqueId())));
     }
 
     private static long getAutomationAutoBuyIntervalMs(Player player) {
@@ -5380,191 +5023,106 @@ public final class SheepMergeManager {
     public static int getAutomationAutoSpawnUpgradeLevel(Player player) {
         return player == null ? 0
                 : Math.min(AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
-                        Math.max(0, automationAutoSpawnUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepAutomationState.getAutoSpawnUpgrade(player.getUniqueId())));
     }
 
     public static int getAutomationAutoPrestigeUpgradeLevel(Player player) {
         return player == null ? 0
                 : Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
-                        Math.max(0, automationAutoPrestigeUpgradeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepAutomationState.getAutoPrestigeUpgrade(player.getUniqueId())));
     }
 
     public static BigInteger getSacrificePoints(Player player) {
-        if (player == null) {
-            return BigInteger.ZERO;
-        }
-        return getSacrificePoints(player.getUniqueId());
+        return SheepSacrificeProgression.getPoints(player);
     }
 
     private static BigInteger getSacrificePoints(UUID playerId) {
-        if (playerId == null) {
-            return BigInteger.ZERO;
-        }
-        return sacrificePointsByPlayer.getOrDefault(playerId, BigInteger.ZERO).max(BigInteger.ZERO);
+        return SheepSacrificeProgression.getPoints(playerId);
     }
 
     public static int getSacrificeUnlocksBought(Player player) {
-        if (player == null) {
-            return 0;
-        }
-        return getSacrificeUnlocksBought(player.getUniqueId());
+        return SheepSacrificeProgression.getUnlocksBought(player);
     }
 
     private static int getSacrificeUnlocksBought(UUID playerId) {
-        return sacrificeUnlockState.getUnlocksBought(playerId);
+        return SheepSacrificeProgression.getUnlocksBought(playerId);
     }
 
     private static int getSacrificeUnlockMask(UUID playerId) {
-        return sacrificeUnlockState.getUnlockMask(playerId);
+        return SheepSacrificeProgression.getUnlockMask(playerId);
     }
 
     private static boolean isSacrificeUnlockActive(UUID playerId, int unlockId) {
-        return sacrificeUnlockState.isActive(playerId, unlockId);
+        return SheepSacrificeProgression.isUnlockActive(playerId, unlockId);
     }
 
     private static String sacrificeUnlockStatusLine(Player player, int unlockId) {
-        return sacrificeUnlockState.statusLine(player, unlockId);
+        return SheepSacrificeProgression.getUnlockStatusLine(player, unlockId);
     }
 
     private static boolean hasSacrificeUnlock(Player player, int unlockId) {
-        return player != null && hasSacrificeUnlock(player.getUniqueId(), unlockId);
+        return SheepSacrificeProgression.hasUnlock(player, unlockId);
     }
 
     private static boolean hasSacrificeUnlock(UUID playerId, int unlockId) {
-        return sacrificeUnlockState.hasUnlock(playerId, unlockId);
+        return SheepSacrificeProgression.hasUnlock(playerId, unlockId);
     }
 
     private static BigInteger getSacrificeUnlockCost(UUID playerId) {
-        int bought = getSacrificeUnlocksBought(playerId);
-        return SACRIFICE_UNLOCK_COST_MULTIPLIER.pow(Math.max(0, bought));
+        return SheepSacrificeProgression.getUnlockCost(playerId);
     }
 
     private static BigInteger getSacrificeUnlockCost(Player player) {
-        return player == null ? BigInteger.ONE : getSacrificeUnlockCost(player.getUniqueId());
+        return SheepSacrificeProgression.getUnlockCost(player);
     }
 
     private static void addSacrificePoints(UUID playerId, BigInteger amount) {
-        if (playerId == null || amount == null || amount.signum() <= 0) {
-            return;
-        }
-        Player player = Bukkit.getPlayer(playerId);
-        int multiplier = getSacrificePointsGainMultiplierFromRebirthSkills(player);
-        sacrificePointsByPlayer.put(playerId,
-                getSacrificePoints(playerId).add(amount.multiply(BigInteger.valueOf(multiplier))));
+        SheepSacrificeProgression.addPoints(playerId, amount,
+                SheepMergeManager::getSacrificePointsGainMultiplierFromRebirthSkills);
     }
 
     private static BigInteger getSpentSacrificePoints(int unlocksBought) {
-        int clamped = Math.max(0, Math.min(SACRIFICE_UNLOCK_MAX, unlocksBought));
-        BigInteger total = BigInteger.ZERO;
-        for (int i = 0; i < clamped; i++) {
-            total = total.add(SACRIFICE_UNLOCK_COST_MULTIPLIER.pow(i));
-        }
-        return total;
+        return SheepSacrificeProgression.getSpentPoints(unlocksBought);
     }
 
     private static BigInteger getSacrificeValueForSheep(Sheep sheep) {
-        if (sheep == null || !sheep.isValid() || sheep.isDead()) {
-            return BigInteger.ZERO;
-        }
-        SheepTier tier = getSheepTier(sheep);
-        if (tier == null) {
-            return BigInteger.ZERO;
-        }
-        int effectiveTier = Math.max(0, tier.getLevel());
-        if (tier == SheepTier.RAINBOW) {
-            effectiveTier = Math.max(0, SheepTier.RAINBOW.getLevel() + getRainbowTier(sheep) - 1);
-        }
-        return BigInteger.TWO.pow(effectiveTier);
+        return SheepSacrificeProgression.getValueForSheep(sheep);
     }
 
     private static BigInteger sacrificeAllSheepForPlayer(Player player) {
-        if (player == null || player.getWorld() == null || !isSheepFarmWorld(player.getWorld())) {
-            return BigInteger.ZERO;
-        }
-        if (!isFarmOwner(player, player.getWorld())) {
-            return BigInteger.ZERO;
-        }
-        BigInteger gained = BigInteger.ZERO;
-        World world = player.getWorld();
-        for (Sheep sheep : world.getEntitiesByClass(Sheep.class)) {
-            gained = gained.add(getSacrificeValueForSheep(sheep));
-            if (sheep != null && sheep.isValid()) {
-                sheep.remove();
-            }
-        }
-        refreshLiveSheepCount(world);
-        if (gained.signum() > 0) {
-            addSacrificePoints(player.getUniqueId(), gained);
-            saveData();
-        }
-        return gained;
+        return SheepSacrificeProgression.sacrificeAllSheepForPlayer(player,
+                SheepMergeManager::getSacrificePointsGainMultiplierFromRebirthSkills,
+                SheepMergeManager::saveData);
     }
 
     private static boolean tryBuySacrificeUnlock(Player player, int unlockId) {
-        if (player == null) {
-            return false;
-        }
-        if (unlockId <= 0 || unlockId > SACRIFICE_UNLOCK_MAX) {
-            return false;
-        }
-        UUID playerId = player.getUniqueId();
-        if (hasSacrificeUnlock(playerId, unlockId)) {
-            return false;
-        }
-        int current = getSacrificeUnlocksBought(playerId);
-        if (current >= SACRIFICE_UNLOCK_MAX) {
-            return false;
-        }
-        if (unlockId != current + 1) {
-            return false;
-        }
-        BigInteger cost = getSacrificeUnlockCost(playerId);
-        BigInteger points = getSacrificePoints(playerId);
-        if (points.compareTo(cost) < 0) {
-            return false;
-        }
-        sacrificePointsByPlayer.put(playerId, points.subtract(cost));
-        sacrificeUnlockState.recordPurchase(playerId, unlockId);
-        totalSacrificeUnlocksPurchasedByPlayer.put(playerId,
-                addSaturated(totalSacrificeUnlocksPurchasedByPlayer.getOrDefault(playerId, 0), 1));
-        saveData();
-        evaluateAchievementProgress(player, true);
-        return true;
+        return SheepSacrificeProgression.tryBuyUnlock(player, unlockId,
+                SheepMergeManager::saveData,
+                currentPlayer -> evaluateAchievementProgress(currentPlayer, true));
     }
 
     public static boolean isAutomationAutoBuyEnabled(Player player) {
-        return player != null && automationAutoBuyEnabledByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepAutomationState.isAutoBuyEnabled(player.getUniqueId());
     }
 
     public static boolean isAutomationAutoAbilityEnabled(Player player) {
-        return player != null && automationAutoAbilityEnabledByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepAutomationState.isAutoAbilityEnabled(player.getUniqueId());
     }
 
     public static boolean isAutomationSlowAutoMergeEnabled(Player player) {
-        return player != null && automationSlowAutoMergeEnabledByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepAutomationState.isSlowAutoMergeEnabled(player.getUniqueId());
     }
 
     public static boolean isAutomationSlowAutoShearEnabled(Player player) {
-        return player != null && automationSlowAutoShearEnabledByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepAutomationState.isSlowAutoShearEnabled(player.getUniqueId());
     }
 
     public static boolean isAutomationAutoSpawnEnabled(Player player) {
-        return player != null && automationAutoSpawnEnabledByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepAutomationState.isAutoSpawnEnabled(player.getUniqueId());
     }
 
     public static boolean isAutomationAutoPrestigeEnabled(Player player) {
-        return player != null && automationAutoPrestigeEnabledByPlayer.getOrDefault(player.getUniqueId(), false);
-    }
-
-    private static boolean toggleAutomationEnabled(Player player, Map<UUID, Boolean> enabledMap) {
-        if (player == null || enabledMap == null) {
-            return false;
-        }
-        UUID playerId = player.getUniqueId();
-        boolean next = !enabledMap.getOrDefault(playerId, false);
-        enabledMap.put(playerId, next);
-        saveData();
-        return next;
+        return player != null && SheepAutomationState.isAutoPrestigeEnabled(player.getUniqueId());
     }
 
     private static int getUnlockedAutomationCount(Player player) {
@@ -5601,33 +5159,33 @@ public final class SheepMergeManager {
         int changed = 0;
 
         if (getAutomationAutoBuyUpgradeLevel(player) > 0
-                && automationAutoBuyEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
-            automationAutoBuyEnabledByPlayer.put(playerId, enabled);
+                && SheepAutomationState.isAutoBuyEnabled(playerId) != enabled) {
+            SheepAutomationState.setAutoBuyEnabled(playerId, enabled);
             changed++;
         }
         if (getAutomationAutoAbilityUpgradeLevel(player) > 0
-                && automationAutoAbilityEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
-            automationAutoAbilityEnabledByPlayer.put(playerId, enabled);
+                && SheepAutomationState.isAutoAbilityEnabled(playerId) != enabled) {
+            SheepAutomationState.setAutoAbilityEnabled(playerId, enabled);
             changed++;
         }
         if (getAutomationSlowAutoMergeUpgradeLevel(player) > 0
-                && automationSlowAutoMergeEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
-            automationSlowAutoMergeEnabledByPlayer.put(playerId, enabled);
+                && SheepAutomationState.isSlowAutoMergeEnabled(playerId) != enabled) {
+            SheepAutomationState.setSlowAutoMergeEnabled(playerId, enabled);
             changed++;
         }
         if (getAutomationSlowAutoShearUpgradeLevel(player) > 0
-                && automationSlowAutoShearEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
-            automationSlowAutoShearEnabledByPlayer.put(playerId, enabled);
+                && SheepAutomationState.isSlowAutoShearEnabled(playerId) != enabled) {
+            SheepAutomationState.setSlowAutoShearEnabled(playerId, enabled);
             changed++;
         }
         if (getAutomationAutoSpawnUpgradeLevel(player) > 0
-                && automationAutoSpawnEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
-            automationAutoSpawnEnabledByPlayer.put(playerId, enabled);
+                && SheepAutomationState.isAutoSpawnEnabled(playerId) != enabled) {
+            SheepAutomationState.setAutoSpawnEnabled(playerId, enabled);
             changed++;
         }
         if (getAutomationAutoPrestigeUpgradeLevel(player) > 0
-                && automationAutoPrestigeEnabledByPlayer.getOrDefault(playerId, false) != enabled) {
-            automationAutoPrestigeEnabledByPlayer.put(playerId, enabled);
+                && SheepAutomationState.isAutoPrestigeEnabled(playerId) != enabled) {
+            SheepAutomationState.setAutoPrestigeEnabled(playerId, enabled);
             changed++;
         }
 
@@ -5713,7 +5271,7 @@ public final class SheepMergeManager {
         if (current < amount) {
             return false;
         }
-        automationPointsByPlayer.put(player.getUniqueId(), current - amount);
+        SheepAutomationState.setPoints(player.getUniqueId(), current - amount);
         saveData();
         return true;
     }
@@ -5733,7 +5291,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        comboDecayUpgradeByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepComboState.setDecayUpgrade(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -5747,9 +5305,9 @@ public final class SheepMergeManager {
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
-        comboMaxUpgradeByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepComboState.setMaxUpgrade(player.getUniqueId(), currentLevel + 1);
         double score = Math.min(getComboMaxScore(player), getComboScore(player));
-        comboScoreByPlayer.put(player.getUniqueId(), score);
+        SheepComboState.setScore(player.getUniqueId(), score);
         saveData();
         return true;
     }
@@ -5769,7 +5327,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        comboGainUpgradeByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepComboState.setGainUpgrade(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -5782,7 +5340,7 @@ public final class SheepMergeManager {
         if (!trySpendAutomationPoints(player, cost)) {
             return false;
         }
-        automationAutoBuyUpgradeByPlayer.put(player.getUniqueId(), getAutomationAutoBuyUpgradeLevel(player) + 1);
+        SheepAutomationState.setAutoBuyUpgrade(player.getUniqueId(), getAutomationAutoBuyUpgradeLevel(player) + 1);
         saveData();
         return true;
     }
@@ -5795,9 +5353,9 @@ public final class SheepMergeManager {
         if (!trySpendAutomationPoints(player, cost)) {
             return false;
         }
-        automationAutoAbilityUpgradeByPlayer.put(player.getUniqueId(),
+        SheepAutomationState.setAutoAbilityUpgrade(player.getUniqueId(),
                 getAutomationAutoAbilityUpgradeLevel(player) + 1);
-        nextAutomationAutoAbilityAtByPlayer.put(player.getUniqueId(), 0L);
+        SheepAutomationState.setNextAutoAbilityAt(player.getUniqueId(), 0L);
         saveData();
         return true;
     }
@@ -5810,9 +5368,9 @@ public final class SheepMergeManager {
         if (!trySpendAutomationPoints(player, cost)) {
             return false;
         }
-        automationSlowAutoMergeUpgradeByPlayer.put(player.getUniqueId(),
+        SheepAutomationState.setSlowAutoMergeUpgrade(player.getUniqueId(),
                 getAutomationSlowAutoMergeUpgradeLevel(player) + 1);
-        nextAutomationSlowMergeAtByPlayer.put(player.getUniqueId(), 0L);
+        SheepAutomationState.setNextSlowMergeAt(player.getUniqueId(), 0L);
         saveData();
         return true;
     }
@@ -5825,9 +5383,9 @@ public final class SheepMergeManager {
         if (!trySpendAutomationPoints(player, cost)) {
             return false;
         }
-        automationSlowAutoShearUpgradeByPlayer.put(player.getUniqueId(),
+        SheepAutomationState.setSlowAutoShearUpgrade(player.getUniqueId(),
                 getAutomationSlowAutoShearUpgradeLevel(player) + 1);
-        nextAutomationSlowShearAtByPlayer.put(player.getUniqueId(), 0L);
+        SheepAutomationState.setNextSlowShearAt(player.getUniqueId(), 0L);
         saveData();
         return true;
     }
@@ -5840,8 +5398,8 @@ public final class SheepMergeManager {
         if (!trySpendAutomationPoints(player, cost)) {
             return false;
         }
-        automationAutoSpawnUpgradeByPlayer.put(player.getUniqueId(), getAutomationAutoSpawnUpgradeLevel(player) + 1);
-        nextAutomationAutoSpawnAtByPlayer.put(player.getUniqueId(), 0L);
+        SheepAutomationState.setAutoSpawnUpgrade(player.getUniqueId(), getAutomationAutoSpawnUpgradeLevel(player) + 1);
+        SheepAutomationState.setNextAutoSpawnAt(player.getUniqueId(), 0L);
         saveData();
         return true;
     }
@@ -5855,8 +5413,8 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        automationAutoPrestigeUpgradeByPlayer.put(playerId, 1);
-        nextAutomationAutoPrestigeAtByPlayer.put(playerId, 0L);
+        SheepAutomationState.setAutoPrestigeUpgrade(playerId, 1);
+        SheepAutomationState.setNextAutoPrestigeAt(playerId, 0L);
         saveData();
         return true;
     }
@@ -5872,7 +5430,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        shearShopLevelByPlayer.put(player.getUniqueId(), getShearShopLevel(player) + 1);
+        SheepUpgradeState.setShearShopLevel(player.getUniqueId(), getShearShopLevel(player) + 1);
         saveData();
         return true;
     }
@@ -5892,7 +5450,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        shearWoolSaveLevelByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepUpgradeState.setShearWoolSaveLevel(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -5912,7 +5470,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        shearTierBoostLevelByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepUpgradeState.setShearTierBoostLevel(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -5936,10 +5494,10 @@ public final class SheepMergeManager {
         int nextPrestige = current + affordableLevels;
         int gainedPrestigePoints = getPrestigePointsRewardForNextLevels(current, affordableLevels);
         UUID playerId = player.getUniqueId();
-        totalPrestigeLevelsEarnedByPlayer.put(playerId,
-                addSaturated(totalPrestigeLevelsEarnedByPlayer.getOrDefault(playerId, 0), affordableLevels));
-        prestigeLevelByPlayer.put(playerId, nextPrestige);
-        prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
+        SheepPrestigeState.setTotalLevelsEarned(playerId,
+                addSaturated(SheepPrestigeState.getTotalLevelsEarned(playerId), affordableLevels));
+        SheepPrestigeState.setLevel(playerId, nextPrestige);
+        SheepPrestigeState.setPoints(playerId, addSaturated(getPrestigePoints(player), gainedPrestigePoints));
         clearPrestigeReminder(player);
 
         runPrestigeResetEffects(player, false);
@@ -5961,20 +5519,19 @@ public final class SheepMergeManager {
 
         int gainedRebirthPoints = getRebirthPointsRewardForNextLevels(currentRebirth, affordable);
         UUID playerId = player.getUniqueId();
-        rebirthLevelByPlayer.put(playerId, currentRebirth + affordable);
-        rebirthPointsByPlayer.put(playerId, addSaturated(getRebirthPoints(player), gainedRebirthPoints));
+        SheepRebirthState.setLevel(playerId, currentRebirth + affordable);
+        SheepRebirthState.setPoints(playerId, addSaturated(getRebirthPoints(player), gainedRebirthPoints));
 
         resetPrestigeUpgrades(playerId, true);
-        prestigeLevelByPlayer.remove(playerId);
-        prestigePointsByPlayer.remove(playerId);
+        SheepPrestigeState.removeLevel(playerId);
+        SheepPrestigeState.removePoints(playerId);
         clearPrestigeReminder(player);
         clearMergeReminder(player);
         clearRebirthReminder(player);
 
         runPrestigeResetEffects(player, true);
         if (!hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
-            sacrificePointsByPlayer.remove(playerId);
-            sacrificeUnlockState.remove(playerId);
+            SheepSacrificeProgression.removeProgress(playerId);
         }
         saveData();
         evaluateAchievementProgress(player, true);
@@ -6005,23 +5562,17 @@ public final class SheepMergeManager {
         }
 
         if (!keepPoints) {
-            pointsByPlayer.put(playerId, BigInteger.ZERO);
+            SheepEconomyState.setPoints(playerId, BigInteger.ZERO);
             refreshTopPointsDisplays();
         }
         if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_REGULAR_RESETS) || forRebirth) {
-            extraLimitByPlayer.remove(playerId);
-            eggSpeedLevelByPlayer.remove(playerId);
-            woolRegenLevelByPlayer.remove(playerId);
-            higherTierChanceLevelByPlayer.remove(playerId);
+            SheepEconomyState.resetRegularUpgrades(playerId);
         }
         if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_SHEAR_RESETS) || forRebirth) {
-            shearShopLevelByPlayer.remove(playerId);
-            shearWoolSaveLevelByPlayer.remove(playerId);
-            shearTierBoostLevelByPlayer.remove(playerId);
+            SheepUpgradeState.resetShearUpgrades(playerId);
         }
         if (!isSacrificeUnlockActive(playerId, SACRIFICE_UNLOCK_NO_COMBO_RESETS) || forRebirth) {
-            comboDecayUpgradeByPlayer.remove(playerId);
-            comboGainUpgradeByPlayer.remove(playerId);
+            SheepComboState.resetRegularUpgrades(playerId);
         }
         clearMergeReminder(player);
         EGG_MODULE.clearRuntimeState(playerId);
@@ -6090,8 +5641,8 @@ public final class SheepMergeManager {
         if (ownerId == null) {
             return SheepTier.WHITE.getLevel();
         }
-        int prestigeLevel = prestigeLevelByPlayer.getOrDefault(ownerId, 0);
-        int maxLevelBonus = prestigeHigherMaxLevelByPlayer.getOrDefault(ownerId, 0);
+        int prestigeLevel = SheepPrestigeState.getLevel(ownerId);
+        int maxLevelBonus = SheepPrestigeState.getHigherMaxLevel(ownerId);
         int cap = 1 + prestigeLevel * 2 + maxLevelBonus * 2;
         return Math.min(SheepTier.RAINBOW.getLevel(), cap);
     }
@@ -6104,15 +5655,15 @@ public final class SheepMergeManager {
     }
 
     public static int getTutorialShearCount(Player player) {
-        return player == null ? 0 : tutorialShearsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepTutorialState.getShears(player.getUniqueId());
     }
 
     public static int getTutorialSpawnCount(Player player) {
-        return player == null ? 0 : tutorialSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepTutorialState.getSpawns(player.getUniqueId());
     }
 
     public static int getTutorialMergeCount(Player player) {
-        return player == null ? 0 : tutorialMergesByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepTutorialState.getMerges(player.getUniqueId());
     }
 
     private static boolean isTutorialInProgress(Player player) {
@@ -6129,25 +5680,25 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         int count = 0;
-        if (tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.UPGRADE_OPENED)) {
             count++;
         }
-        if (tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.QUEST_OPENED)) {
             count++;
         }
-        if (tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGE_OPENED)) {
             count++;
         }
-        if (tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.ABILITY_USED)) {
             count++;
         }
-        if (tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.SHEAR_UPGRADED)) {
             count++;
         }
-        if (tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.REGULAR_UPGRADES_BOUGHT)) {
             count++;
         }
-        if (tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGED_ONCE)) {
             count++;
         }
         return count;
@@ -6170,25 +5721,25 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        if (!tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.UPGRADE_OPENED)) {
             return "Hotbar Slot 9 -> Upgrade Menu";
         }
-        if (!tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.REGULAR_UPGRADES_BOUGHT)) {
             return "Hotbar Slot 9 -> Upgrade Menu -> Buy any regular upgrade";
         }
-        if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.QUEST_OPENED)) {
             return "Upgrade Menu -> Quest Menu";
         }
-        if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.ABILITY_USED)) {
             return "Upgrade Menu -> Quest Menu -> Activate any quest ability";
         }
-        if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.SHEAR_UPGRADED)) {
             return "Upgrade Menu -> Shear Shop -> Buy one Shear Shop upgrade";
         }
-        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGE_OPENED)) {
             return "Upgrade Menu -> Prestige Menu";
         }
-        if (!tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGED_ONCE)) {
             return "Upgrade Menu -> Prestige Menu -> Prestige Reset";
         }
         return "Tutorial complete";
@@ -6204,8 +5755,8 @@ public final class SheepMergeManager {
             saveData();
         }
 
-        tutorialStartedAtByPlayer.put(playerId, System.currentTimeMillis());
-        lastTutorialReminderTimestampByPlayer.remove(playerId);
+        SheepTutorialState.setStartedAt(playerId, System.currentTimeMillis());
+        SheepTutorialState.clearLastReminderTimestamp(playerId);
 
         if (!SheepFarmWorldCommand.teleportToTutorialWorld(player)) {
             player.sendMessage(warning("Unable to open your tutorial world right now."));
@@ -6223,15 +5774,15 @@ public final class SheepMergeManager {
         sendTutorialStatusFeed(player);
     }
 
-    private static void markTutorialSection(Player player, Map<UUID, Boolean> sectionMap, String message) {
-        if (!isTutorialInProgress(player) || !isInTutorialWorld(player) || sectionMap == null) {
+    private static void markTutorialSection(Player player, SheepTutorialState.Section section, String message) {
+        if (!isTutorialInProgress(player) || !isInTutorialWorld(player) || section == null) {
             return;
         }
         UUID playerId = player.getUniqueId();
-        if (sectionMap.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isSectionComplete(playerId, section)) {
             return;
         }
-        sectionMap.put(playerId, true);
+        SheepTutorialState.setSectionComplete(playerId, section);
         player.sendMessage(action(message));
         sendTutorialStatusFeed(player);
         maybeGrantTutorialPrestigePrepReward(player);
@@ -6239,31 +5790,34 @@ public final class SheepMergeManager {
     }
 
     public static void markTutorialUpgradeOpened(Player player) {
-        markTutorialSection(player, tutorialUpgradeOpenedByPlayer, "Tutorial step done: Upgrades opened.");
+        markTutorialSection(player, SheepTutorialState.Section.UPGRADE_OPENED, "Tutorial step done: Upgrades opened.");
     }
 
     public static void markTutorialQuestOpened(Player player) {
-        markTutorialSection(player, tutorialQuestOpenedByPlayer, "Tutorial step done: Quests opened.");
+        markTutorialSection(player, SheepTutorialState.Section.QUEST_OPENED, "Tutorial step done: Quests opened.");
     }
 
     public static void markTutorialPrestigeOpened(Player player) {
-        markTutorialSection(player, tutorialPrestigeOpenedByPlayer, "Tutorial step done: Prestige opened.");
+        markTutorialSection(player, SheepTutorialState.Section.PRESTIGE_OPENED, "Tutorial step done: Prestige opened.");
     }
 
     public static void markTutorialQuestUpgradesOpened(Player player) {
-        markTutorialSection(player, tutorialQuestUpgradesOpenedByPlayer, "Tutorial step done: Quest Upgrades opened.");
+        markTutorialSection(player, SheepTutorialState.Section.QUEST_UPGRADES_OPENED,
+                "Tutorial step done: Quest Upgrades opened.");
     }
 
     public static void markTutorialAbilityUsed(Player player) {
-        markTutorialSection(player, tutorialAbilityUsedByPlayer, "Tutorial step done: Ability used.");
+        markTutorialSection(player, SheepTutorialState.Section.ABILITY_USED, "Tutorial step done: Ability used.");
     }
 
     public static void markTutorialShearUpgraded(Player player) {
-        markTutorialSection(player, tutorialShearUpgradedByPlayer, "Tutorial step done: Shear upgrade bought.");
+        markTutorialSection(player, SheepTutorialState.Section.SHEAR_UPGRADED,
+                "Tutorial step done: Shear upgrade bought.");
     }
 
     public static void markTutorialPrestigedOnce(Player player) {
-        markTutorialSection(player, tutorialPrestigedOnceByPlayer, "Tutorial step done: Prestiged once.");
+        markTutorialSection(player, SheepTutorialState.Section.PRESTIGED_ONCE,
+                "Tutorial step done: Prestiged once.");
     }
 
     public static void markTutorialRegularUpgradesIfComplete(Player player) {
@@ -6278,19 +5832,20 @@ public final class SheepMergeManager {
         }
         markTutorialSection(
                 player,
-                tutorialRegularUpgradesBoughtByPlayer,
+                SheepTutorialState.Section.REGULAR_UPGRADES_BOUGHT,
                 "Tutorial step done: Regular upgrade bought.");
     }
 
     public static void markTutorialShearShopOpened(Player player) {
-        markTutorialSection(player, tutorialShearShopOpenedByPlayer, "Tutorial step done: Shear Shop opened.");
+        markTutorialSection(player, SheepTutorialState.Section.SHEAR_SHOP_OPENED,
+                "Tutorial step done: Shear Shop opened.");
     }
 
     public static void recordTutorialShear(Player player) {
         if (!isTutorialInProgress(player) || !isInTutorialWorld(player)) {
             return;
         }
-        tutorialShearsByPlayer.put(player.getUniqueId(), getTutorialShearCount(player) + 1);
+        SheepTutorialState.setShears(player.getUniqueId(), getTutorialShearCount(player) + 1);
         sendTutorialStatusFeed(player);
         maybeGrantTutorialShearTaskReward(player);
         maybeGrantTutorialPrestigePrepReward(player);
@@ -6301,7 +5856,7 @@ public final class SheepMergeManager {
         if (!isTutorialInProgress(player) || !isInTutorialWorld(player)) {
             return;
         }
-        tutorialSpawnsByPlayer.put(player.getUniqueId(), getTutorialSpawnCount(player) + 1);
+        SheepTutorialState.setSpawns(player.getUniqueId(), getTutorialSpawnCount(player) + 1);
         sendTutorialStatusFeed(player);
         maybeGrantTutorialShearTaskReward(player);
         maybeGrantTutorialPrestigePrepReward(player);
@@ -6312,7 +5867,7 @@ public final class SheepMergeManager {
         if (!isTutorialInProgress(player) || !isInTutorialWorld(player)) {
             return;
         }
-        tutorialMergesByPlayer.put(player.getUniqueId(), getTutorialMergeCount(player) + 1);
+        SheepTutorialState.setMerges(player.getUniqueId(), getTutorialMergeCount(player) + 1);
         sendTutorialStatusFeed(player);
         maybeGrantTutorialPrestigePrepReward(player);
         checkTutorialCompletion(player);
@@ -6323,14 +5878,14 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        if (tutorialShearTaskRewardGrantedByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isShearTaskRewardGranted(playerId)) {
             return;
         }
         if (getTutorialSpawnCount(player) < TUTORIAL_SPAWN_TARGET
                 || getTutorialShearCount(player) < TUTORIAL_SHEAR_TARGET) {
             return;
         }
-        tutorialShearTaskRewardGrantedByPlayer.put(playerId, true);
+        SheepTutorialState.setShearTaskRewardGranted(playerId);
         player.sendMessage(action("Tutorial milestone: spawn + shear goals complete."));
     }
 
@@ -6339,23 +5894,24 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        if (tutorialPrestigePrepRewardGrantedByPlayer.getOrDefault(playerId, false)
-                || tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
+        if (SheepTutorialState.isPrestigePrepRewardGranted(playerId)
+                || SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGED_ONCE)) {
             return;
         }
         if (getTutorialShearCount(player) < TUTORIAL_SHEAR_TARGET
                 || getTutorialSpawnCount(player) < TUTORIAL_SPAWN_TARGET
                 || getTutorialMergeCount(player) < TUTORIAL_MERGE_TARGET
-                || !tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)
-                || !tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)
-                || !tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)
-                || !tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)
-                || !tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)
-                || !tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
+                || !SheepTutorialState.isSectionComplete(playerId,
+                        SheepTutorialState.Section.REGULAR_UPGRADES_BOUGHT)
+                || !SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.UPGRADE_OPENED)
+                || !SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.QUEST_OPENED)
+                || !SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGE_OPENED)
+                || !SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.ABILITY_USED)
+                || !SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.SHEAR_UPGRADED)) {
             return;
         }
 
-        tutorialPrestigePrepRewardGrantedByPlayer.put(playerId, true);
+        SheepTutorialState.setPrestigePrepRewardGranted(playerId);
         player.sendMessage(action("Tutorial milestone: prestige prep complete."));
     }
 
@@ -6398,25 +5954,25 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        if (!tutorialUpgradeOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.UPGRADE_OPENED)) {
             return TutorialStep.OPEN_UPGRADES;
         }
-        if (!tutorialRegularUpgradesBoughtByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.REGULAR_UPGRADES_BOUGHT)) {
             return TutorialStep.BUY_REGULAR_UPGRADE;
         }
-        if (!tutorialQuestOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.QUEST_OPENED)) {
             return TutorialStep.OPEN_QUESTS;
         }
-        if (!tutorialAbilityUsedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.ABILITY_USED)) {
             return TutorialStep.USE_ABILITY;
         }
-        if (!tutorialShearUpgradedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.SHEAR_UPGRADED)) {
             return TutorialStep.BUY_SHEAR_UPGRADE;
         }
-        if (!tutorialPrestigeOpenedByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGE_OPENED)) {
             return TutorialStep.OPEN_PRESTIGE;
         }
-        if (!tutorialPrestigedOnceByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepTutorialState.isSectionComplete(playerId, SheepTutorialState.Section.PRESTIGED_ONCE)) {
             return TutorialStep.PRESTIGE_ONCE;
         }
         return TutorialStep.COMPLETE;
@@ -6505,14 +6061,14 @@ public final class SheepMergeManager {
             return;
         }
 
-        long lastReminder = lastTutorialMergePointsReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastReminder = SheepTutorialState.getLastMergePointsReminderTimestamp(playerId);
         if (now - lastReminder < TUTORIAL_MERGE_POINTS_REMINDER_REPEAT_MS) {
             return;
         }
 
         BigInteger missing = requiredPoints.subtract(currentPoints).max(BigInteger.ZERO);
         String taskLabel = getCurrentTutorialTaskLabel(step);
-        lastTutorialMergePointsReminderTimestampByPlayer.put(playerId, now);
+        SheepTutorialState.setLastMergePointsReminderTimestamp(playerId, now);
         player.sendMessage(warning("Need " + formatPoints(requiredPoints) + " Coins for: " + taskLabel));
         player.sendMessage(hint("You are short " + formatPoints(missing) + ". Merge sheep to gain Coins fast."));
     }
@@ -6577,12 +6133,12 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long lastShownAt = lastTutorialFocusNotificationTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastShownAt = SheepTutorialState.getLastFocusNotificationTimestamp(playerId);
         if (now - lastShownAt < TUTORIAL_FOCUS_NOTIFICATION_COOLDOWN_MS) {
             return;
         }
 
-        lastTutorialFocusNotificationTimestampByPlayer.put(playerId, now);
+        SheepTutorialState.setLastFocusNotificationTimestamp(playerId, now);
         String currentTask = getCurrentTutorialTaskLabel(step);
         if (attemptedAction != null && !attemptedAction.isBlank()) {
             player.sendMessage(warning("Not now: " + attemptedAction));
@@ -6600,17 +6156,17 @@ public final class SheepMergeManager {
         String progressLine = getTutorialProgressLine(player);
         String stepLine = getTutorialNextStepLine(player);
         long now = System.currentTimeMillis();
-        String previousProgressLine = lastTutorialProgressFeedLineByPlayer.get(playerId);
-        String previousStepLine = lastTutorialStepFeedLineByPlayer.get(playerId);
-        long lastSentAt = lastTutorialStatusFeedTimestampByPlayer.getOrDefault(playerId, 0L);
+        String previousProgressLine = SheepTutorialState.getLastProgressFeedLine(playerId);
+        String previousStepLine = SheepTutorialState.getLastStepFeedLine(playerId);
+        long lastSentAt = SheepTutorialState.getLastStatusFeedTimestamp(playerId);
         boolean changed = !progressLine.equals(previousProgressLine) || !stepLine.equals(previousStepLine);
         if (!changed && now - lastSentAt < TUTORIAL_STATUS_FEED_REPEAT_MS) {
             return;
         }
 
-        lastTutorialStatusFeedTimestampByPlayer.put(playerId, now);
-        lastTutorialProgressFeedLineByPlayer.put(playerId, progressLine);
-        lastTutorialStepFeedLineByPlayer.put(playerId, stepLine);
+        SheepTutorialState.setLastStatusFeedTimestamp(playerId, now);
+        SheepTutorialState.setLastProgressFeedLine(playerId, progressLine);
+        SheepTutorialState.setLastStepFeedLine(playerId, stepLine);
         player.sendMessage(hint("Step: " + stepLine));
         player.sendMessage(accent(progressLine));
     }
@@ -6637,7 +6193,7 @@ public final class SheepMergeManager {
                 && getTutorialMergeCount(player) >= TUTORIAL_MERGE_TARGET
                 && getTutorialSectionCount(player) >= menuSectionTarget) {
             UUID playerId = player.getUniqueId();
-            tutorialCompletedByPlayer.put(playerId, true);
+            SheepTutorialState.setCompleted(playerId, true);
             clearTutorialRuntimeState(playerId);
             migrateTutorialSheepToFarmWorld(playerId);
             String worldName = SheepFarmWorldCommand.getWorldName(playerId);
@@ -6689,129 +6245,31 @@ public final class SheepMergeManager {
         UUID id = player.getUniqueId();
         savedFarmSheepByPlayer.remove(id);
         savedTutorialSheepByPlayer.remove(id);
-        pointsByPlayer.remove(id);
+        SheepEconomyState.resetAdminPlayer(id);
         refreshTopPointsDisplays();
-        extraLimitByPlayer.remove(id);
-        eggSpeedLevelByPlayer.remove(id);
-        woolRegenLevelByPlayer.remove(id);
-        higherTierChanceLevelByPlayer.remove(id);
-        prestigeLevelByPlayer.remove(id);
-        prestigePointsByPlayer.remove(id);
-        prestigeDoublePointsChanceByPlayer.remove(id);
-        prestigeHigherMaxLevelByPlayer.remove(id);
-        prestigeStartEggsByPlayer.remove(id);
-        prestigeEggCapByPlayer.remove(id);
-        prestigeBaseSpawnTierByPlayer.remove(id);
-        nextPrestigeRefundTimestampByPlayer.remove(id);
-        highestAnnouncedTierByPlayer.remove(id);
-        highestAnnouncedRainbowTierByPlayer.remove(id);
-        lastPrestigeReminderTimestampByPlayer.remove(id);
-        lastRebirthReminderTimestampByPlayer.remove(id);
-        rebirthTitleReminderShownByPlayer.remove(id);
-        shearShopLevelByPlayer.remove(id);
-        shearWoolSaveLevelByPlayer.remove(id);
-        shearTierBoostLevelByPlayer.remove(id);
+        SheepPrestigeState.resetAdminPlayer(id);
+        SheepUpgradeState.resetAdminPlayer(id);
         resetTutorialProgress(id);
-        tutorialShearTaskRewardGrantedByPlayer.remove(id);
-        tutorialPrestigePrepRewardGrantedByPlayer.remove(id);
-        farmVisitEnabledByPlayer.remove(id);
-        visitAccessPageByPlayer.remove(id);
-        soundEffectsEnabledByPlayer.remove(id);
-        sheepSoundsEnabledByPlayer.remove(id);
-        particleEffectsEnabledByPlayer.remove(id);
-        farmVisitBlockedUsersByPlayer.remove(id);
-        lastOutOfEggWarningTimestampByPlayer.remove(id);
-        questPointsByPlayer.remove(id);
-        nextQuestResetTimestampByPlayer.remove(id);
-        questShearsByPlayer.remove(id);
-        questSpawnsByPlayer.remove(id);
-        questMergesByPlayer.remove(id);
-        questShearsCompleteByPlayer.remove(id);
-        questSpawnsCompleteByPlayer.remove(id);
-        questMergesCompleteByPlayer.remove(id);
-        questUpgradeDurationByPlayer.remove(id);
-        questUpgradePowerByPlayer.remove(id);
-        activeLuckyBurstUntilByPlayer.remove(id);
-        activeLuckyBurstUsesByPlayer.remove(id);
-        luckyBurstEnabledByPlayer.remove(id);
-        activeWoolRushUntilByPlayer.remove(id);
-        activeJackpotShearsUntilByPlayer.remove(id);
-        activeAutoMergeUntilByPlayer.remove(id);
-        activeAutoMergeUsesByPlayer.remove(id);
-        autoMergeEnabledByPlayer.remove(id);
-        pausedLuckyBurstRemainingMsByPlayer.remove(id);
-        pausedWoolRushRemainingMsByPlayer.remove(id);
-        pausedJackpotShearsRemainingMsByPlayer.remove(id);
-        pausedAutoMergeRemainingMsByPlayer.remove(id);
-        nextAutoMergeAtByPlayer.remove(id);
-        activeAutoShearUntilByPlayer.remove(id);
-        activeAutoShearUsesByPlayer.remove(id);
-        autoShearEnabledByPlayer.remove(id);
-        pausedAutoShearRemainingMsByPlayer.remove(id);
-        nextAutoShearAtByPlayer.remove(id);
+        SheepVisitAccessState.resetPlayer(id);
+        SheepEffectPreferences.resetPlayer(id);
+        SheepRuntimeUiState.lastOutOfEggWarnings().remove(id);
+        SheepQuestState.resetPlayer(id);
         stopQueuedShearAllTask(id);
-        lastTierBoostSoundTimestampByPlayer.remove(id);
         EGG_MODULE.clearRuntimeState(id);
-        lastSpawnLimitWarningTimestampByPlayer.remove(id);
-        comboScoreByPlayer.remove(id);
-        comboLastUpdateTimestampByPlayer.remove(id);
-        comboDecayUpgradeByPlayer.remove(id);
-        comboMaxUpgradeByPlayer.remove(id);
-        comboGainUpgradeByPlayer.remove(id);
-        automationPointsByPlayer.remove(id);
-        achievementAutomationPointsGrantedByPlayer.remove(id);
-        automationAutoBuyUpgradeByPlayer.remove(id);
-        automationAutoAbilityUpgradeByPlayer.remove(id);
-        automationSlowAutoMergeUpgradeByPlayer.remove(id);
-        automationSlowAutoShearUpgradeByPlayer.remove(id);
-        automationAutoSpawnUpgradeByPlayer.remove(id);
-        automationAutoPrestigeUpgradeByPlayer.remove(id);
-        automationAutoBuyEnabledByPlayer.remove(id);
-        automationAutoAbilityEnabledByPlayer.remove(id);
-        automationSlowAutoMergeEnabledByPlayer.remove(id);
-        automationSlowAutoShearEnabledByPlayer.remove(id);
-        automationAutoSpawnEnabledByPlayer.remove(id);
-        automationAutoPrestigeEnabledByPlayer.remove(id);
-        scoreboardLayoutModeByPlayer.remove(id);
-        scoreboardShowAchievementPointsByPlayer.remove(id);
-        scoreboardShowQuestPointsByPlayer.remove(id);
-        scoreboardShowAutomationPointsByPlayer.remove(id);
-        scoreboardShowSacrificePointsByPlayer.remove(id);
-        scoreboardShowPrestigeStatsByPlayer.remove(id);
-        scoreboardShowQuestProgressByPlayer.remove(id);
-        scoreboardShowAbilityStatusByPlayer.remove(id);
-        lastPointsScoreboardUpdateAtByPlayer.remove(id);
-        socialsPageByPlayer.remove(id);
-        inventoryQuickAccessByPlayer.remove(id);
-        inventoryQuickAccessCastingEnabledByPlayer.remove(id);
-        sacrificePointsByPlayer.remove(id);
-        sacrificeUnlockState.remove(id);
-        rebirthLevelByPlayer.remove(id);
-        rebirthPointsByPlayer.remove(id);
-        rebirthSkillUnlockMaskByPlayer.remove(id);
-        rebirthSkillPendingMaskByPlayer.remove(id);
-        nextRebirthRespecTimestampByPlayer.remove(id);
-        nextAutomationPointAtByPlayer.remove(id);
-        nextAutomationAutoBuyAtByPlayer.remove(id);
-        nextAutomationAutoAbilityAtByPlayer.remove(id);
-        nextAutomationSlowMergeAtByPlayer.remove(id);
-        nextAutomationSlowShearAtByPlayer.remove(id);
-        nextAutomationAutoSpawnAtByPlayer.remove(id);
-        nextAutomationAutoPrestigeAtByPlayer.remove(id);
-        lastPointsOverlayByPlayer.remove(id);
-        pointsOverlayExpiresAtByPlayer.remove(id);
-        lifetimeShearsByPlayer.remove(id);
-        lifetimeSpawnsByPlayer.remove(id);
-        lifetimeMergesByPlayer.remove(id);
-        lifetimeOtherFarmVisitsByPlayer.remove(id);
-        visitedOwnerFarmByPlayer.remove(id);
-        completedQuestCyclesByPlayer.remove(id);
-        totalPrestigeLevelsEarnedByPlayer.remove(id);
-        totalSacrificeUnlocksPurchasedByPlayer.remove(id);
-        unlockedAchievementIdsByPlayer.remove(id);
-        unlockedAchievementMilestoneIdsByPlayer.remove(id);
+        SheepRuntimeUiState.lastSpawnLimitWarnings().remove(id);
+        SheepComboState.resetPlayer(id);
+        SheepAutomationState.resetPlayer(id);
+        SheepUiPreferences.resetPlayer(id);
+        SheepRuntimeUiState.lastPointsScoreboardUpdates().remove(id);
+        SheepRuntimeUiState.socialsPages().remove(id);
+        SheepSacrificeProgression.resetPlayer(id);
+        SheepRebirthState.resetPlayer(id);
+        SheepRuntimeUiState.lastPointsOverlays().remove(id);
+        SheepRuntimeUiState.pointsOverlayExpirations().remove(id);
+        SheepLifetimeProgressState.resetPlayer(id);
+        SheepAchievementState.resetPlayer(id);
         removeComboBossBar(id);
-        carriedSheepByPlayer.remove(id);
+        SheepEntityRuntimeState.removeCarriedSheep(id);
         resetFarmWorldForPlayer(id);
         saveData();
         return true;
@@ -6841,7 +6299,8 @@ public final class SheepMergeManager {
             return;
         }
         UUID id = player.getUniqueId();
-        pointsByPlayer.put(id, getPlayerPointsBig(player).add(BigInteger.valueOf(amount)).max(BigInteger.ZERO));
+        SheepEconomyState.setPoints(id,
+                getPlayerPointsBig(player).add(BigInteger.valueOf(amount)).max(BigInteger.ZERO));
         refreshTopPointsDisplays();
         saveData();
     }
@@ -6850,7 +6309,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        pointsByPlayer.put(player.getUniqueId(), BigInteger.valueOf(Math.max(0L, amount)));
+        SheepEconomyState.setPoints(player.getUniqueId(), BigInteger.valueOf(Math.max(0L, amount)));
         refreshTopPointsDisplays();
         saveData();
     }
@@ -6860,7 +6319,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID id = player.getUniqueId();
-        questPointsByPlayer.put(id, addSaturated(questPointsByPlayer.getOrDefault(id, 0), amount));
+        SheepQuestState.questPoints().put(id, addSaturated(SheepQuestState.questPoints().getOrDefault(id, 0), amount));
         saveData();
     }
 
@@ -6869,24 +6328,19 @@ public final class SheepMergeManager {
             return;
         }
         UUID id = player.getUniqueId();
-        automationPointsByPlayer.put(id, addSaturated(automationPointsByPlayer.getOrDefault(id, 0), amount));
+        SheepAutomationState.setPoints(id, addSaturated(SheepAutomationState.getPoints(id), amount));
         saveData();
     }
 
     public static void adminGiveSacrificePoints(Player player, BigInteger amount) {
-        if (player == null || amount == null || amount.signum() == 0) {
-            return;
-        }
-        UUID id = player.getUniqueId();
-        sacrificePointsByPlayer.put(id, getSacrificePoints(id).add(amount).max(BigInteger.ZERO));
-        saveData();
+        SheepSacrificeProgression.adminGivePoints(player, amount, SheepMergeManager::saveData);
     }
 
     public static void adminSetQuestPoints(Player player, int amount) {
         if (player == null) {
             return;
         }
-        questPointsByPlayer.put(player.getUniqueId(), Math.max(0, amount));
+        SheepQuestState.questPoints().put(player.getUniqueId(), Math.max(0, amount));
         saveData();
     }
 
@@ -6900,7 +6354,7 @@ public final class SheepMergeManager {
         int spentPoints = getPrestigeRefundAmount(player);
         int availablePoints = totalEarnedPoints - spentPoints;
 
-        prestigeLevelByPlayer.put(playerId, targetLevel);
+        SheepPrestigeState.setLevel(playerId, targetLevel);
         clearPrestigeReminder(player);
 
         if (availablePoints < 0) {
@@ -6908,7 +6362,7 @@ public final class SheepMergeManager {
             availablePoints = totalEarnedPoints;
         }
 
-        prestigePointsByPlayer.put(playerId, Math.max(0, availablePoints));
+        SheepPrestigeState.setPoints(playerId, Math.max(0, availablePoints));
         saveData();
         return true;
     }
@@ -6964,7 +6418,7 @@ public final class SheepMergeManager {
         if (hasActiveRebirthSkill(ownerId, REBIRTH_SKILL_WOOL_REGEN_X10)) {
             multiplier *= 0.1D;
         }
-        if (isAbilityActive(activeWoolRushUntilByPlayer, ownerId)) {
+        if (isAbilityActive(SheepQuestState.activeWoolRushUntil(), ownerId)) {
             multiplier *= 0.1D;
         }
         return Math.max(1, (int) Math.ceil(baseSeconds * multiplier));
@@ -7059,7 +6513,7 @@ public final class SheepMergeManager {
 
         UUID sheepId = sheep.getUniqueId();
         org.bukkit.Location location = sheep.getLocation();
-        boolean rescueInProgress = sheepRescueStartByEntity.containsKey(sheepId);
+        boolean rescueInProgress = SheepEntityRuntimeState.isRescueInProgress(sheepId);
         boolean shouldRescue = rescueInProgress
                 ? !isSafelyOnPlatform(sheep, location)
                 : (isOffPlatform(location) || isFallingOffPlatform(sheep, location));
@@ -7075,9 +6529,9 @@ public final class SheepMergeManager {
         sheep.setGravity(true);
 
         long now = System.currentTimeMillis();
-        long started = sheepRescueStartByEntity.computeIfAbsent(sheepId, key -> now);
-        sheepRescueOriginByEntity.computeIfAbsent(sheepId, key -> location.clone());
-        sheepRescueNextCorrectionAtByEntity.putIfAbsent(sheepId, now);
+        long started = SheepEntityRuntimeState.getOrStartRescue(sheepId, now);
+        org.bukkit.Location origin = SheepEntityRuntimeState.getOrSetRescueOrigin(sheepId, location);
+        SheepEntityRuntimeState.ensureRescueCorrectionAt(sheepId, now);
 
         if (now - started >= SHEEP_RESCUE_TIMEOUT_MS) {
             teleportSheepToFarmCenter(sheep);
@@ -7086,18 +6540,17 @@ public final class SheepMergeManager {
             return false;
         }
 
-        org.bukkit.Location origin = sheepRescueOriginByEntity.getOrDefault(sheepId, location.clone());
         org.bukkit.Location desired = getRescuePathTargetLocation(sheep, origin, started, now);
         Vector steeringVelocity = getRescueSteeringVelocity(location, desired);
         sheep.setVelocity(steeringVelocity);
 
-        long nextCorrectionAt = sheepRescueNextCorrectionAtByEntity.getOrDefault(sheepId, now);
+        long nextCorrectionAt = SheepEntityRuntimeState.getRescueCorrectionAt(sheepId, now);
         if (now >= nextCorrectionAt) {
             if (location.distanceSquared(desired) >= SHEEP_RESCUE_POSITION_CORRECTION_DISTANCE
                     * SHEEP_RESCUE_POSITION_CORRECTION_DISTANCE) {
                 sheep.teleport(desired);
             }
-            sheepRescueNextCorrectionAtByEntity.put(sheepId, now + SHEEP_RESCUE_CORRECTION_INTERVAL_MS);
+            SheepEntityRuntimeState.setRescueCorrectionAt(sheepId, now + SHEEP_RESCUE_CORRECTION_INTERVAL_MS);
         }
 
         sheep.setFallDistance(0.0F);
@@ -7157,9 +6610,7 @@ public final class SheepMergeManager {
     }
 
     private static void clearSheepRescueState(UUID sheepId) {
-        sheepRescueStartByEntity.remove(sheepId);
-        sheepRescueOriginByEntity.remove(sheepId);
-        sheepRescueNextCorrectionAtByEntity.remove(sheepId);
+        SheepEntityRuntimeState.clearRescue(sheepId);
     }
 
     private static boolean isSafelyOnPlatform(Sheep sheep, org.bukkit.Location location) {
@@ -7328,7 +6779,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return BigInteger.ZERO;
         }
-        return pointsByPlayer.getOrDefault(player.getUniqueId(), getStartingPointsBig());
+        return SheepEconomyState.getPoints(player.getUniqueId(), getStartingPointsBig());
     }
 
     public static long getPlayerPoints(Player player) {
@@ -7363,7 +6814,7 @@ public final class SheepMergeManager {
         long combinedMultiplier = (long) Math.max(1, getShearPointMultiplier(player))
                 * Math.max(1, getAchievementPointMultiplier(player));
         BigInteger points = base.multiply(BigInteger.valueOf(Math.max(1L, combinedMultiplier)));
-        if (isAbilityActive(activeJackpotShearsUntilByPlayer, player == null ? null : player.getUniqueId())) {
+        if (isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), player == null ? null : player.getUniqueId())) {
             points = points.multiply(BigInteger.valueOf(2L + getQuestUpgradePowerLevel(player)));
         }
         if (RANDOM.nextInt(100) < getDoublePointsChancePercent(player)) {
@@ -7395,7 +6846,7 @@ public final class SheepMergeManager {
     }
 
     public static String formatRainbowTier(int tier) {
-        return "T" + formatPoints(Math.max(1L, tier));
+        return SheepFormatting.formatRainbowTier(tier);
     }
 
     public static boolean shearSheepForPlayer(Player player, Sheep sheep) {
@@ -7403,7 +6854,7 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        if (isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)) {
+        if (isCountAbilityActive(SheepQuestState.activeAutoShearUses(), SheepQuestState.autoShearEnabled(), playerId)) {
             return queueShearAllEligibleSheepForPlayer(player, sheep);
         }
         return shearSingleSheepForPlayer(player, sheep);
@@ -7419,7 +6870,7 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        BukkitTask existingTask = activeShearAllTaskByPlayer.get(playerId);
+        BukkitTask existingTask = SheepEntityRuntimeState.getShearAllTask(playerId);
         if (existingTask != null && !existingTask.isCancelled()) {
             return true;
         }
@@ -7440,8 +6891,9 @@ public final class SheepMergeManager {
                         || onlinePlayer.getWorld() == null
                         || !onlinePlayer.getWorld().getUID().equals(world.getUID())
                         || !isFarmOwner(onlinePlayer, world)
-                        || !isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId)
-                        || getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) <= 0
+                        || !isCountAbilityActive(SheepQuestState.activeAutoShearUses(),
+                                SheepQuestState.autoShearEnabled(), playerId)
+                        || getCountAbilityRemainingUses(SheepQuestState.activeAutoShearUses(), playerId) <= 0
                         || index >= targetSheepIds.size()) {
                     stopQueuedShearAllTask(playerId);
                     return;
@@ -7459,8 +6911,8 @@ public final class SheepMergeManager {
                     }
 
                     if (shearSingleSheepForPlayer(onlinePlayer, candidate)) {
-                        consumeCountAbilityUse(activeAutoShearUsesByPlayer, playerId);
-                        if (getCountAbilityRemainingUses(activeAutoShearUsesByPlayer, playerId) <= 0) {
+                        consumeCountAbilityUse(SheepQuestState.activeAutoShearUses(), playerId);
+                        if (getCountAbilityRemainingUses(SheepQuestState.activeAutoShearUses(), playerId) <= 0) {
                             saveData();
                             stopQueuedShearAllTask(playerId);
                         }
@@ -7473,7 +6925,7 @@ public final class SheepMergeManager {
             }
         }, 1L, 1L);
 
-        activeShearAllTaskByPlayer.put(playerId, task);
+        SheepEntityRuntimeState.putShearAllTask(playerId, task);
         return true;
     }
 
@@ -7512,14 +6964,14 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return;
         }
-        BukkitTask task = activeShearAllTaskByPlayer.remove(playerId);
+        BukkitTask task = SheepEntityRuntimeState.removeShearAllTask(playerId);
         if (task != null) {
             task.cancel();
         }
     }
 
     private static void stopAllQueuedShearAllTasks() {
-        for (UUID playerId : new ArrayList<>(activeShearAllTaskByPlayer.keySet())) {
+        for (UUID playerId : SheepEntityRuntimeState.shearAllTaskPlayerIds()) {
             stopQueuedShearAllTask(playerId);
         }
     }
@@ -7545,7 +6997,7 @@ public final class SheepMergeManager {
         sheep.setSheared(true);
         sheep.setAI(true);
         UUID playerId = player.getUniqueId();
-        lifetimeShearsByPlayer.put(playerId, addSaturated(lifetimeShearsByPlayer.getOrDefault(playerId, 0), 1));
+        SheepLifetimeProgressState.incrementLifetimeShears(playerId);
         SheepTier tier = getSheepTier(sheep);
         setNextEatTimestamp(sheep,
                 System.currentTimeMillis() + getEatCooldownSeconds(sheep, tier) * 1000L);
@@ -7623,16 +7075,16 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long lastPlayed = lastTierBoostSoundTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastPlayed = SheepQuestState.lastTierBoostSoundTimestamps().getOrDefault(playerId, 0L);
         if (now - lastPlayed < TIER_BOOST_SOUND_COOLDOWN_MS) {
             return;
         }
-        lastTierBoostSoundTimestampByPlayer.put(playerId, now);
+        SheepQuestState.lastTierBoostSoundTimestamps().put(playerId, now);
         playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.35f, 0.95f);
     }
 
     public static String buildTopPointsText(int maxEntries) {
-        Map<UUID, BigInteger> pointsSnapshot = new HashMap<>(pointsByPlayer);
+        Map<UUID, BigInteger> pointsSnapshot = SheepEconomyState.getPointsSnapshot();
         return buildTopPointsText(pointsSnapshot, snapshotTopPointsPlayerNames(pointsSnapshot.keySet()), maxEntries);
     }
 
@@ -7707,7 +7159,7 @@ public final class SheepMergeManager {
     public static List<String> getTopPointsLines(int maxEntries) {
         List<String> lines = new ArrayList<>();
         final int limit = Math.max(1, maxEntries);
-        List<Map.Entry<UUID, BigInteger>> entries = pointsByPlayer.entrySet().stream()
+        List<Map.Entry<UUID, BigInteger>> entries = SheepEconomyState.getPointsSnapshot().entrySet().stream()
                 .sorted((left, right) -> {
                     int pointsCompare = right.getValue().compareTo(left.getValue());
                     if (pointsCompare != 0) {
@@ -7749,7 +7201,7 @@ public final class SheepMergeManager {
 
     public static int getTopPointsPageCount(int pageSize) {
         int safePageSize = Math.max(1, pageSize);
-        int totalEntries = pointsByPlayer.size();
+        int totalEntries = SheepEconomyState.getPointsSnapshot().size();
         if (totalEntries <= 0) {
             return 1;
         }
@@ -7761,7 +7213,7 @@ public final class SheepMergeManager {
         final int safePageSize = Math.max(1, pageSize);
         final int safePageNumber = Math.max(1, pageNumber);
 
-        List<Map.Entry<UUID, BigInteger>> entries = pointsByPlayer.entrySet().stream()
+        List<Map.Entry<UUID, BigInteger>> entries = SheepEconomyState.getPointsSnapshot().entrySet().stream()
                 .sorted((left, right) -> {
                     int pointsCompare = right.getValue().compareTo(left.getValue());
                     if (pointsCompare != 0) {
@@ -7932,7 +7384,7 @@ public final class SheepMergeManager {
             return;
         }
 
-        Map<UUID, BigInteger> pointsSnapshot = new HashMap<>(pointsByPlayer);
+        Map<UUID, BigInteger> pointsSnapshot = SheepEconomyState.getPointsSnapshot();
         Map<UUID, String> nameSnapshot = snapshotTopPointsPlayerNames(pointsSnapshot.keySet());
         Location savedLocation = getSavedTopPointsDisplayLocation();
         long requestVersion;
@@ -8191,699 +7643,103 @@ public final class SheepMergeManager {
         return new Location(world, x, y, z, yaw, pitch);
     }
 
+    static SheepMergePlugin getBackupPlugin() {
+        return plugin;
+    }
+
+    static void saveSheepSnapshotForBackup(World world) {
+        saveSheepSnapshotForWorld(world);
+    }
+
+    static boolean saveFarmLayoutForBackup() {
+        return saveFarmLayout();
+    }
+
+    static void clearStateForBackupLoad() {
+        clearStateBeforeDataLoad();
+    }
+
+    static void loadDataForBackupLoad() {
+        loadData();
+    }
+
+    static void loadFarmLayoutForBackupLoad() {
+        loadFarmLayout();
+    }
+
     public static synchronized File createBackup(boolean permanent, String trigger) {
-        if (plugin == null) {
-            return null;
-        }
-
-        captureLiveSheepSnapshotsForLoadedWorlds();
-        saveData();
-        captureFarmLayoutSnapshotForBackup();
-
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        if (!backupDir.exists() && !backupDir.mkdirs()) {
-            return null;
-        }
-
-        if (permanent) {
-            String timestamp = BACKUP_TIMESTAMP_FORMATTER.format(Instant.now());
-            String suffix = trigger == null || trigger.isBlank() ? "manual" : sanitizeBackupToken(trigger);
-            File destination = new File(backupDir, "permanent-" + timestamp + "-" + suffix + ".zip");
-            if (!writeBackupArchive(destination)) {
-                return null;
-            }
-            markLastPermanentBackupNow();
-            return destination;
-        }
-
-        File rolling = new File(backupDir, BACKUP_ROLLING_FILE_NAME);
-        if (!writeBackupArchive(rolling)) {
-            return null;
-        }
-        return rolling;
+        return SheepBackupManager.createBackup(permanent, trigger);
     }
 
     public static synchronized boolean maybeCreateAutomaticBackup(String trigger) {
-        if (plugin == null) {
-            return false;
-        }
-        long now = System.currentTimeMillis();
-        long lastPermanentAt = getLastPermanentBackupAt();
-        long lastBufferAt = getLastBufferBackupAt();
-        boolean duePermanent = now - lastPermanentAt >= BACKUP_AUTOMATIC_PERMANENT_INTERVAL_MS;
-        if (duePermanent) {
-            return createBackup(true, trigger == null ? "auto-weekly" : trigger + "-weekly") != null;
-        }
-
-        boolean dueBuffer = now - lastBufferAt >= BACKUP_AUTOMATIC_BUFFER_INTERVAL_MS;
-        if (dueBuffer) {
-            return createBufferBackup(trigger == null ? "auto-24h" : trigger + "-24h") != null;
-        }
-
-        return createBackup(false, trigger == null ? "auto" : trigger + "-rolling") != null;
+        return SheepBackupManager.maybeCreateAutomaticBackup(trigger);
     }
 
     public static long getAutomaticBackupIntervalTicks() {
-        return BACKUP_AUTOMATIC_ROLLING_INTERVAL_TICKS;
+        return SheepBackupManager.getAutomaticBackupIntervalTicks();
     }
 
     public static synchronized File createManualBackup() {
-        return createBackup(true, "manual");
-    }
-
-    private static synchronized File createBufferBackup(String trigger) {
-        if (plugin == null) {
-            return null;
-        }
-
-        captureLiveSheepSnapshotsForLoadedWorlds();
-        saveData();
-        captureFarmLayoutSnapshotForBackup();
-
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        if (!backupDir.exists() && !backupDir.mkdirs()) {
-            return null;
-        }
-
-        String timestamp = BACKUP_TIMESTAMP_FORMATTER.format(Instant.now());
-        String suffix = trigger == null || trigger.isBlank() ? "auto-24h" : sanitizeBackupToken(trigger);
-        File destination = new File(backupDir, BACKUP_BUFFER_FILE_PREFIX + timestamp + "-" + suffix + ".zip");
-        if (!writeBackupArchive(destination)) {
-            return null;
-        }
-
-        markLastBufferBackupNow();
-        pruneBufferBackups(backupDir);
-        return destination;
-    }
-
-    private static void captureLiveSheepSnapshotsForLoadedWorlds() {
-        if (plugin == null || plugin.getServer() == null) {
-            return;
-        }
-
-        for (World world : plugin.getServer().getWorlds()) {
-            if (!isSheepFarmWorld(world)) {
-                continue;
-            }
-            saveSheepSnapshotForWorld(world);
-        }
-    }
-
-    private static void captureFarmLayoutSnapshotForBackup() {
-        if (plugin == null || plugin.getServer() == null) {
-            return;
-        }
-
-        World buildWorld = Bukkit.getWorld(FARM_BUILD_WORLD_NAME);
-        if (isFarmBuildWorld(buildWorld)) {
-            if (!saveSharedFarmLayoutFromWorld(buildWorld) && hasSavedFarmLayout()) {
-                saveFarmLayout();
-            }
-            return;
-        }
-
-        if (hasSavedFarmLayout()) {
-            saveFarmLayout();
-        }
-    }
-
-    private static void pruneBufferBackups(File backupDir) {
-        if (backupDir == null || !backupDir.exists() || !backupDir.isDirectory()) {
-            return;
-        }
-
-        File[] bufferFiles = backupDir
-                .listFiles(file -> file != null && file.isFile() && file.getName().startsWith(BACKUP_BUFFER_FILE_PREFIX)
-                        && file.getName().endsWith(".zip"));
-        if (bufferFiles == null || bufferFiles.length <= BACKUP_AUTOMATIC_BUFFER_MAX_FILES) {
-            return;
-        }
-
-        List<File> sorted = new ArrayList<>(List.of(bufferFiles));
-        sorted.sort((left, right) -> Long.compare(right.lastModified(), left.lastModified()));
-        for (int index = BACKUP_AUTOMATIC_BUFFER_MAX_FILES; index < sorted.size(); index++) {
-            sorted.get(index).delete();
-        }
+        return SheepBackupManager.createManualBackup();
     }
 
     public static synchronized List<String> listBackups() {
-        if (plugin == null) {
-            return List.of();
-        }
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        if (!backupDir.exists() || !backupDir.isDirectory()) {
-            return List.of();
-        }
-        File[] files = backupDir.listFiles(file -> file != null && file.isFile() && file.getName().endsWith(".zip"));
-        if (files == null || files.length == 0) {
-            return List.of();
-        }
-        List<String> names = new ArrayList<>();
-        for (File file : files) {
-            names.add(file.getName());
-        }
-        Collections.sort(names);
-        Collections.reverse(names);
-        return names;
+        return SheepBackupManager.listBackups();
     }
 
     public static synchronized boolean markBackupForDeletion(String backupName) {
-        if (plugin == null || backupName == null || backupName.isBlank()) {
-            return false;
-        }
-        if (BACKUP_ROLLING_FILE_NAME.equals(backupName)) {
-            return false;
-        }
-
-        File source = resolveBackupArchiveFile(backupName, true);
-        if (!source.exists() || !source.isFile() || !source.getName().endsWith(".zip")) {
-            return false;
-        }
-
-        Map<String, Long> marks = getMarkedBackupsMap();
-        marks.put(backupName, System.currentTimeMillis());
-        saveMarkedBackupsMap(marks);
-        return true;
+        return SheepBackupManager.markBackupForDeletion(backupName);
     }
 
     public static synchronized boolean recoverBackupMarkedForDeletion(String backupName) {
-        if (plugin == null || backupName == null || backupName.isBlank()) {
-            return false;
-        }
-        if (!isValidBackupArchiveName(backupName)) {
-            return false;
-        }
-        Map<String, Long> marks = getMarkedBackupsMap();
-        Long removed = marks.remove(backupName);
-        if (removed == null) {
-            return false;
-        }
-        saveMarkedBackupsMap(marks);
-        return true;
+        return SheepBackupManager.recoverBackupMarkedForDeletion(backupName);
     }
 
     public static synchronized boolean isBackupMarkedForDeletion(String backupName) {
-        if (backupName == null || backupName.isBlank()) {
-            return false;
-        }
-        return getMarkedBackupsMap().containsKey(backupName);
+        return SheepBackupManager.isBackupMarkedForDeletion(backupName);
     }
 
     public static synchronized int purgeMarkedBackupsIfEligibleOnStartup() {
-        if (plugin == null) {
-            return 0;
-        }
-
-        Map<String, Long> marks = getMarkedBackupsMap();
-        if (marks.isEmpty()) {
-            return 0;
-        }
-
-        long now = System.currentTimeMillis();
-        int deleted = 0;
-        boolean changed = false;
-
-        var iterator = marks.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, Long> entry = iterator.next();
-            long markedAt = Math.max(0L, entry.getValue());
-            File target = resolveBackupArchiveFile(entry.getKey(), false);
-            if (target == null) {
-                iterator.remove();
-                changed = true;
-                continue;
-            }
-            if (now - markedAt < BACKUP_SOFT_DELETE_GRACE_MS) {
-                continue;
-            }
-            if (!target.exists() || target.delete()) {
-                if (target.exists()) {
-                    // No-op fallback; delete may fail and file still exists.
-                } else {
-                    deleted++;
-                    iterator.remove();
-                    changed = true;
-                }
-            }
-        }
-
-        if (changed) {
-            saveMarkedBackupsMap(marks);
-        }
-        return deleted;
+        return SheepBackupManager.purgeMarkedBackupsIfEligibleOnStartup();
     }
 
     public static synchronized File loadBackup(String backupName) {
-        if (plugin == null || backupName == null || backupName.isBlank()) {
-            return null;
-        }
-
-        File source = resolveBackupArchiveFile(backupName, true);
-        if (!source.exists() || !source.isFile() || !source.getName().endsWith(".zip")) {
-            return null;
-        }
-
-        if (!restoreBackupArchive(source)) {
-            return null;
-        }
-
-        plugin.reloadConfig();
-        SheepMergeConfiguration.initialize(plugin);
-        applyConfiguration(SheepMergeConfiguration.get());
-
-        clearStateBeforeDataLoad();
-        loadData();
-        loadFarmLayout();
-
-        for (World world : plugin.getServer().getWorlds()) {
-            if (isSheepFarmWorld(world)) {
-                rebuildFarmWorld(world);
-                continue;
-            }
-            if (isFarmBuildWorld(world)) {
-                applyFarmLayout(world);
-                world.save();
-            }
-        }
-
-        restoreTopPointsDisplayAfterRestart(null);
-
-        File postLoadBackup = createBackup(true, "post-load");
-        return postLoadBackup == null ? source : postLoadBackup;
+        return SheepBackupManager.loadBackup(backupName);
     }
 
     private static void clearStateBeforeDataLoad() {
         stopAllQueuedShearAllTasks();
-        pointsByPlayer.clear();
-        extraLimitByPlayer.clear();
-        eggSpeedLevelByPlayer.clear();
-        woolRegenLevelByPlayer.clear();
-        higherTierChanceLevelByPlayer.clear();
-        prestigeLevelByPlayer.clear();
-        prestigePointsByPlayer.clear();
-        prestigeDoublePointsChanceByPlayer.clear();
-        prestigeHigherMaxLevelByPlayer.clear();
-        prestigeStartEggsByPlayer.clear();
-        prestigeEggCapByPlayer.clear();
-        prestigeBaseSpawnTierByPlayer.clear();
-        prestigeQuestRewardByPlayer.clear();
-        nextPrestigeRefundTimestampByPlayer.clear();
-        highestAnnouncedTierByPlayer.clear();
-        highestAnnouncedRainbowTierByPlayer.clear();
-        shearShopLevelByPlayer.clear();
-        shearWoolSaveLevelByPlayer.clear();
-        shearTierBoostLevelByPlayer.clear();
-        tutorialCompletedByPlayer.clear();
-        tutorialBypassedByPlayer.clear();
-        tutorialShearsByPlayer.clear();
-        tutorialSpawnsByPlayer.clear();
-        tutorialMergesByPlayer.clear();
-        tutorialUpgradeOpenedByPlayer.clear();
-        tutorialQuestOpenedByPlayer.clear();
-        tutorialQuestUpgradesOpenedByPlayer.clear();
-        tutorialPrestigeOpenedByPlayer.clear();
-        tutorialAbilityUsedByPlayer.clear();
-        tutorialShearUpgradedByPlayer.clear();
-        tutorialRegularUpgradesBoughtByPlayer.clear();
-        tutorialShearTaskRewardGrantedByPlayer.clear();
-        tutorialPrestigePrepRewardGrantedByPlayer.clear();
-        tutorialPrestigedOnceByPlayer.clear();
-        tutorialShearShopOpenedByPlayer.clear();
-        farmVisitEnabledByPlayer.clear();
-        visitAccessPageByPlayer.clear();
-        soundEffectsEnabledByPlayer.clear();
-        sheepSoundsEnabledByPlayer.clear();
-        particleEffectsEnabledByPlayer.clear();
-        farmVisitBlockedUsersByPlayer.clear();
-        questPointsByPlayer.clear();
-        nextQuestResetTimestampByPlayer.clear();
-        questShearsByPlayer.clear();
-        questSpawnsByPlayer.clear();
-        questMergesByPlayer.clear();
-        questShearsCompleteByPlayer.clear();
-        questSpawnsCompleteByPlayer.clear();
-        questMergesCompleteByPlayer.clear();
-        questUpgradeDurationByPlayer.clear();
-        questUpgradePowerByPlayer.clear();
-        activeLuckyBurstUntilByPlayer.clear();
-        activeLuckyBurstUsesByPlayer.clear();
-        luckyBurstEnabledByPlayer.clear();
-        activeWoolRushUntilByPlayer.clear();
-        activeJackpotShearsUntilByPlayer.clear();
-        activeAutoMergeUntilByPlayer.clear();
-        activeAutoMergeUsesByPlayer.clear();
-        autoMergeEnabledByPlayer.clear();
-        activeAutoShearUntilByPlayer.clear();
-        activeAutoShearUsesByPlayer.clear();
-        autoShearEnabledByPlayer.clear();
-        pausedLuckyBurstRemainingMsByPlayer.clear();
-        pausedWoolRushRemainingMsByPlayer.clear();
-        pausedJackpotShearsRemainingMsByPlayer.clear();
-        pausedAutoMergeRemainingMsByPlayer.clear();
-        pausedAutoShearRemainingMsByPlayer.clear();
-        lastTierBoostSoundTimestampByPlayer.clear();
-        comboDecayUpgradeByPlayer.clear();
-        comboMaxUpgradeByPlayer.clear();
-        comboGainUpgradeByPlayer.clear();
-        automationPointsByPlayer.clear();
-        achievementAutomationPointsGrantedByPlayer.clear();
-        automationAutoBuyUpgradeByPlayer.clear();
-        automationAutoAbilityUpgradeByPlayer.clear();
-        automationSlowAutoMergeUpgradeByPlayer.clear();
-        automationSlowAutoShearUpgradeByPlayer.clear();
-        automationAutoSpawnUpgradeByPlayer.clear();
-        automationAutoPrestigeUpgradeByPlayer.clear();
-        automationAutoBuyEnabledByPlayer.clear();
-        automationAutoAbilityEnabledByPlayer.clear();
-        automationSlowAutoMergeEnabledByPlayer.clear();
-        automationSlowAutoShearEnabledByPlayer.clear();
-        automationAutoSpawnEnabledByPlayer.clear();
-        automationAutoPrestigeEnabledByPlayer.clear();
-        lastRebirthReminderTimestampByPlayer.clear();
-        rebirthTitleReminderShownByPlayer.clear();
-        scoreboardLayoutModeByPlayer.clear();
-        scoreboardShowAchievementPointsByPlayer.clear();
-        scoreboardShowQuestPointsByPlayer.clear();
-        scoreboardShowAutomationPointsByPlayer.clear();
-        scoreboardShowSacrificePointsByPlayer.clear();
-        scoreboardShowPrestigeStatsByPlayer.clear();
-        scoreboardShowQuestProgressByPlayer.clear();
-        scoreboardShowAbilityStatusByPlayer.clear();
-        lastPointsScoreboardUpdateAtByPlayer.clear();
-        socialsPageByPlayer.clear();
-        inventoryQuickAccessByPlayer.clear();
-        inventoryQuickAccessCastingEnabledByPlayer.clear();
-        sacrificePointsByPlayer.clear();
-        sacrificeUnlockState.clear();
-        rebirthLevelByPlayer.clear();
-        rebirthPointsByPlayer.clear();
-        rebirthSkillUnlockMaskByPlayer.clear();
-        rebirthSkillPendingMaskByPlayer.clear();
-        nextRebirthRespecTimestampByPlayer.clear();
-        liveUpdateEnabled = true;
-        dataSchemaVersion = 0;
-        stagedLiveUpdateVersion = "";
-        lastLiveUpdateStatus = "Not checked yet.";
-        lastLiveUpdateCheckAt = 0L;
-        for (BossBar bar : visitFarmBossBarByPlayer.values()) {
+        SheepEconomyState.clear();
+        SheepPrestigeState.clearBeforeDataLoad();
+        SheepUpgradeState.clear();
+        SheepTutorialState.clear();
+        SheepVisitAccessState.clear();
+        SheepEffectPreferences.clear();
+        SheepQuestState.clear();
+        SheepComboState.clearPersisted();
+        SheepAutomationState.clearPersisted();
+        SheepRebirthState.clear();
+        SheepUiPreferences.clear();
+        SheepRuntimeUiState.lastPointsScoreboardUpdates().clear();
+        SheepRuntimeUiState.socialsPages().clear();
+        SheepSacrificeProgression.clear();
+        SheepLiveUpdateState.reset();
+        for (BossBar bar : SheepRuntimeUiState.visitFarmBossBars().values()) {
             if (bar != null) {
                 bar.removeAll();
                 bar.setVisible(false);
             }
         }
-        visitFarmBossBarByPlayer.clear();
+        SheepRuntimeUiState.visitFarmBossBars().clear();
         savedFarmSheepByPlayer.clear();
         savedTutorialSheepByPlayer.clear();
-        savedInventories.clear();
-        savedScoreboards.clear();
-        carriedSheepByPlayer.clear();
-        liveSheepCountByWorld.clear();
-        lastOutOfEggWarningTimestampByPlayer.clear();
-        lifetimeShearsByPlayer.clear();
-        lifetimeSpawnsByPlayer.clear();
-        lifetimeMergesByPlayer.clear();
-        lifetimeOtherFarmVisitsByPlayer.clear();
-        visitedOwnerFarmByPlayer.clear();
-        completedQuestCyclesByPlayer.clear();
-        totalPrestigeLevelsEarnedByPlayer.clear();
-        totalSacrificeUnlocksPurchasedByPlayer.clear();
-        unlockedAchievementIdsByPlayer.clear();
-        unlockedAchievementMilestoneIdsByPlayer.clear();
-    }
-
-    private static boolean writeBackupArchive(File destination) {
-        if (plugin == null || destination == null) {
-            return false;
-        }
-
-        File dataFolder = plugin.getDataFolder();
-        if (!dataFolder.exists() && !dataFolder.mkdirs()) {
-            return false;
-        }
-
-        File scores = new File(dataFolder, "scores.yml");
-        File layout = new File(dataFolder, "farm-layout.yml");
-        File config = new File(dataFolder, "config.yml");
-
-        try (FileOutputStream fileOut = new FileOutputStream(destination);
-                ZipOutputStream zipOut = new ZipOutputStream(fileOut)) {
-            zipOut.setLevel(Deflater.BEST_COMPRESSION);
-            addFileToZip(zipOut, scores, "scores.yml");
-            addFileToZip(zipOut, layout, "farm-layout.yml");
-            addFileToZip(zipOut, config, "config.yml");
-            return true;
-        } catch (IOException exception) {
-            if (plugin != null) {
-                plugin.getLogger().warning("Unable to create backup archive: " + exception.getMessage());
-            }
-            return false;
-        }
-    }
-
-    private static boolean restoreBackupArchive(File source) {
-        if (plugin == null || source == null || !source.exists()) {
-            return false;
-        }
-
-        File dataFolder = plugin.getDataFolder();
-        if (!dataFolder.exists() && !dataFolder.mkdirs()) {
-            return false;
-        }
-
-        Set<String> requiredEntries = Set.of("scores.yml", "farm-layout.yml", "config.yml");
-        Path tempDir = null;
-        try {
-            tempDir = Files.createTempDirectory(dataFolder.toPath(), "backup-restore-");
-            Set<String> restoredEntries = new HashSet<>();
-            try (FileInputStream fileIn = new FileInputStream(source);
-                    ZipInputStream zipIn = new ZipInputStream(fileIn)) {
-                ZipEntry entry;
-                while ((entry = zipIn.getNextEntry()) != null) {
-                    String name = entry.getName();
-                    if (!requiredEntries.contains(name) || entry.isDirectory()) {
-                        zipIn.closeEntry();
-                        continue;
-                    }
-
-                    Path tempTarget = tempDir.resolve(name);
-                    try (OutputStream out = Files.newOutputStream(tempTarget)) {
-                        copyStream(zipIn, out);
-                    }
-                    restoredEntries.add(name);
-                    zipIn.closeEntry();
-                }
-            }
-            if (!restoredEntries.containsAll(requiredEntries)) {
-                return false;
-            }
-
-            for (String name : requiredEntries) {
-                Files.move(tempDir.resolve(name), new File(dataFolder, name).toPath(),
-                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            }
-            return true;
-        } catch (IOException exception) {
-            if (plugin != null) {
-                plugin.getLogger().warning("Unable to restore backup archive: " + exception.getMessage());
-            }
-            return false;
-        } finally {
-            if (tempDir != null) {
-                try {
-                    deleteDirectory(tempDir);
-                } catch (IOException ignored) {
-                    // Best-effort cleanup only.
-                }
-            }
-        }
-    }
-
-    private static boolean isValidBackupArchiveName(String backupName) {
-        return backupName != null
-                && !backupName.isBlank()
-                && backupName.endsWith(".zip")
-                && !backupName.contains("/")
-                && !backupName.contains("\\")
-                && backupName.equals(new File(backupName).getName());
-    }
-
-    private static File resolveBackupArchiveFile(String backupName, boolean requireExisting) {
-        if (plugin == null || !isValidBackupArchiveName(backupName)) {
-            return null;
-        }
-
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        File candidate = new File(backupDir, backupName);
-        try {
-            File canonicalDir = backupDir.getCanonicalFile();
-            File canonicalCandidate = candidate.getCanonicalFile();
-            File candidateParent = canonicalCandidate.getParentFile();
-            if (candidateParent == null || !candidateParent.equals(canonicalDir)) {
-                return null;
-            }
-            if (requireExisting && !canonicalCandidate.exists()) {
-                return null;
-            }
-            return canonicalCandidate;
-        } catch (IOException exception) {
-            return null;
-        }
-    }
-
-    private static void addFileToZip(ZipOutputStream zipOut, File source, String entryName) throws IOException {
-        if (zipOut == null || source == null || entryName == null || !source.exists() || !source.isFile()) {
-            return;
-        }
-        ZipEntry entry = new ZipEntry(entryName);
-        entry.setTime(source.lastModified());
-        zipOut.putNextEntry(entry);
-        try (FileInputStream in = new FileInputStream(source)) {
-            copyStream(in, zipOut);
-        }
-        zipOut.closeEntry();
-    }
-
-    private static void copyStream(InputStream in, OutputStream out) throws IOException {
-        byte[] buffer = new byte[8192];
-        int read;
-        while ((read = in.read(buffer)) >= 0) {
-            out.write(buffer, 0, read);
-        }
-    }
-
-    private static String sanitizeBackupToken(String token) {
-        if (token == null || token.isBlank()) {
-            return "auto";
-        }
-        String cleaned = token.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]+", "-");
-        return cleaned.isBlank() ? "auto" : cleaned;
-    }
-
-    private static Map<String, Long> getMarkedBackupsMap() {
-        File indexFile = getBackupIndexFile();
-        if (indexFile == null || !indexFile.exists()) {
-            return new HashMap<>();
-        }
-
-        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
-        if (!indexConfig.isConfigurationSection(BACKUP_INDEX_MARKED_FOR_DELETION_KEY)) {
-            return new HashMap<>();
-        }
-
-        Map<String, Long> marks = new HashMap<>();
-        var section = indexConfig.getConfigurationSection(BACKUP_INDEX_MARKED_FOR_DELETION_KEY);
-        for (String encodedName : section.getKeys(false)) {
-            String backupName = decodeBackupName(encodedName);
-            if (backupName == null || backupName.isBlank()) {
-                continue;
-            }
-            long markedAt = Math.max(0L,
-                    indexConfig.getLong(BACKUP_INDEX_MARKED_FOR_DELETION_KEY + "." + encodedName, 0L));
-            if (markedAt > 0L) {
-                marks.put(backupName, markedAt);
-            }
-        }
-        return marks;
-    }
-
-    private static void saveMarkedBackupsMap(Map<String, Long> marks) {
-        File indexFile = getBackupIndexFile();
-        if (indexFile == null) {
-            return;
-        }
-        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
-        indexConfig.set(BACKUP_INDEX_MARKED_FOR_DELETION_KEY, null);
-        if (marks != null) {
-            for (Map.Entry<String, Long> entry : marks.entrySet()) {
-                String key = encodeBackupName(entry.getKey());
-                if (key == null) {
-                    continue;
-                }
-                indexConfig.set(BACKUP_INDEX_MARKED_FOR_DELETION_KEY + "." + key, Math.max(0L, entry.getValue()));
-            }
-        }
-        try {
-            indexConfig.save(indexFile);
-        } catch (IOException ignored) {
-            // Best effort metadata write.
-        }
-    }
-
-    private static String encodeBackupName(String backupName) {
-        if (backupName == null || backupName.isBlank()) {
-            return null;
-        }
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(backupName.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static String decodeBackupName(String encodedBackupName) {
-        if (encodedBackupName == null || encodedBackupName.isBlank()) {
-            return null;
-        }
-        try {
-            byte[] decoded = Base64.getUrlDecoder().decode(encodedBackupName);
-            return new String(decoded, StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException exception) {
-            return null;
-        }
-    }
-
-    private static long getLastPermanentBackupAt() {
-        File indexFile = getBackupIndexFile();
-        if (indexFile == null || !indexFile.exists()) {
-            return 0L;
-        }
-        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
-        return Math.max(0L, indexConfig.getLong(BACKUP_INDEX_LAST_PERMANENT_AT_KEY, 0L));
-    }
-
-    private static long getLastBufferBackupAt() {
-        File indexFile = getBackupIndexFile();
-        if (indexFile == null || !indexFile.exists()) {
-            return 0L;
-        }
-        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
-        return Math.max(0L, indexConfig.getLong(BACKUP_INDEX_LAST_BUFFER_AT_KEY, 0L));
-    }
-
-    private static void markLastPermanentBackupNow() {
-        File indexFile = getBackupIndexFile();
-        if (indexFile == null) {
-            return;
-        }
-        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
-        indexConfig.set(BACKUP_INDEX_LAST_PERMANENT_AT_KEY, System.currentTimeMillis());
-        try {
-            indexConfig.save(indexFile);
-        } catch (IOException ignored) {
-            // Best effort metadata write; backup file has already been created.
-        }
-    }
-
-    private static void markLastBufferBackupNow() {
-        File indexFile = getBackupIndexFile();
-        if (indexFile == null) {
-            return;
-        }
-        FileConfiguration indexConfig = YamlConfiguration.loadConfiguration(indexFile);
-        indexConfig.set(BACKUP_INDEX_LAST_BUFFER_AT_KEY, System.currentTimeMillis());
-        try {
-            indexConfig.save(indexFile);
-        } catch (IOException ignored) {
-            // Best effort metadata write; backup file has already been created.
-        }
-    }
-
-    private static File getBackupIndexFile() {
-        if (plugin == null) {
-            return null;
-        }
-        File backupDir = new File(plugin.getDataFolder(), BACKUP_DIR_NAME);
-        if (!backupDir.exists() && !backupDir.mkdirs()) {
-            return null;
-        }
-        return new File(backupDir, BACKUP_INDEX_FILE_NAME);
+        SheepRuntimeUiState.savedInventories().clear();
+        SheepRuntimeUiState.savedScoreboards().clear();
+        SheepEntityRuntimeState.clearCarriedSheep();
+        SheepEntityRuntimeState.clearLiveSheepCounts();
+        SheepRuntimeUiState.lastOutOfEggWarnings().clear();
+        SheepLifetimeProgressState.clear();
+        SheepAchievementState.clear();
     }
 
     public static void addPoints(Player player, int points) {
@@ -8899,7 +7755,7 @@ public final class SheepMergeManager {
         }
         BigInteger boosted = points.multiply(BigInteger.valueOf(getPointsGainMultiplierFromRebirthSkills(player)));
         UUID playerId = player.getUniqueId();
-        pointsByPlayer.put(playerId, getPlayerPointsBig(player).add(boosted));
+        SheepEconomyState.setPoints(playerId, getPlayerPointsBig(player).add(boosted));
         refreshTopPointsDisplays();
         queuePointsGainOverlay(player, boosted);
         saveData();
@@ -8911,8 +7767,9 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        lastPointsOverlayByPlayer.put(playerId, points);
-        pointsOverlayExpiresAtByPlayer.put(playerId, System.currentTimeMillis() + POINTS_OVERLAY_DISPLAY_DURATION_MS);
+        SheepRuntimeUiState.lastPointsOverlays().put(playerId, points);
+        SheepRuntimeUiState.pointsOverlayExpirations().put(
+                playerId, System.currentTimeMillis() + POINTS_OVERLAY_DISPLAY_DURATION_MS);
     }
 
     public static void tickPointsGainOverlay(Player player) {
@@ -8920,16 +7777,16 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        BigInteger lastPoints = lastPointsOverlayByPlayer.get(playerId);
+        BigInteger lastPoints = SheepRuntimeUiState.lastPointsOverlays().get(playerId);
         if (lastPoints == null || lastPoints.signum() <= 0) {
             return;
         }
 
         long now = System.currentTimeMillis();
-        long expiresAt = pointsOverlayExpiresAtByPlayer.getOrDefault(playerId, 0L);
+        long expiresAt = SheepRuntimeUiState.pointsOverlayExpirations().getOrDefault(playerId, 0L);
         if (expiresAt <= now) {
-            lastPointsOverlayByPlayer.remove(playerId);
-            pointsOverlayExpiresAtByPlayer.remove(playerId);
+            SheepRuntimeUiState.lastPointsOverlays().remove(playerId);
+            SheepRuntimeUiState.pointsOverlayExpirations().remove(playerId);
             return;
         }
 
@@ -8944,10 +7801,7 @@ public final class SheepMergeManager {
     }
 
     public static String color(String message) {
-        if (message == null) {
-            return "";
-        }
-        return ChatColor.translateAlternateColorCodes('&', message);
+        return SheepFormatting.color(message);
     }
 
     public static String hint(String message) {
@@ -8972,9 +7826,9 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        lastMergeTimestampByPlayer.put(playerId, now);
-        lastMergeReminderTimestampByPlayer.remove(playerId);
-        mergeTitleReminderShownByPlayer.remove(playerId);
+        SheepRuntimeUiState.lastMergeTimestamps().put(playerId, now);
+        SheepRuntimeUiState.lastMergeReminderTimestamps().remove(playerId);
+        SheepRuntimeUiState.mergeTitleReminderShown().remove(playerId);
     }
 
     public static void clearMergeReminder(Player player) {
@@ -8982,9 +7836,9 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        lastMergeTimestampByPlayer.remove(playerId);
-        lastMergeReminderTimestampByPlayer.remove(playerId);
-        mergeTitleReminderShownByPlayer.remove(playerId);
+        SheepRuntimeUiState.lastMergeTimestamps().remove(playerId);
+        SheepRuntimeUiState.lastMergeReminderTimestamps().remove(playerId);
+        SheepRuntimeUiState.mergeTitleReminderShown().remove(playerId);
     }
 
     public static void clearComboRuntime(Player player) {
@@ -8993,12 +7847,11 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         stopQueuedShearAllTask(playerId);
-        lastPointsScoreboardUpdateAtByPlayer.remove(playerId);
-        comboScoreByPlayer.remove(playerId);
-        comboLastUpdateTimestampByPlayer.remove(playerId);
-        lastPointsOverlayByPlayer.remove(playerId);
-        pointsOverlayExpiresAtByPlayer.remove(playerId);
-        lastAbilityAuraSoundTimestampByPlayer.remove(playerId);
+        SheepRuntimeUiState.lastPointsScoreboardUpdates().remove(playerId);
+        SheepComboState.resetRuntime(playerId);
+        SheepRuntimeUiState.lastPointsOverlays().remove(playerId);
+        SheepRuntimeUiState.pointsOverlayExpirations().remove(playerId);
+        SheepQuestState.lastAbilityAuraSoundTimestamps().remove(playerId);
         removeComboBossBar(playerId);
         clearVisitFarmBossBar(player);
     }
@@ -9007,18 +7860,14 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        UUID playerId = player.getUniqueId();
-        lastPrestigeReminderTimestampByPlayer.remove(playerId);
-        prestigeTitleReminderShownByPlayer.remove(playerId);
+        SheepPrestigeState.clearReminder(player.getUniqueId());
     }
 
     public static void clearRebirthReminder(Player player) {
         if (player == null) {
             return;
         }
-        UUID playerId = player.getUniqueId();
-        lastRebirthReminderTimestampByPlayer.remove(playerId);
-        rebirthTitleReminderShownByPlayer.remove(playerId);
+        SheepRebirthState.clearReminder(player.getUniqueId());
     }
 
     public static void tickPrestigeReminder(Player player) {
@@ -9036,23 +7885,23 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long lastReminder = lastPrestigeReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastReminder = SheepPrestigeState.getLastReminderTimestamp(playerId);
         if (now - lastReminder < 20_000L) {
             return;
         }
 
-        if (!prestigeTitleReminderShownByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepPrestigeState.isTitleReminderShown(playerId)) {
             player.sendTitle(
                     color("&ePrestige ready"),
                     color("&7Use /sheepmerge prestige"),
                     10,
                     60,
                     10);
-            prestigeTitleReminderShownByPlayer.put(playerId, true);
+            SheepPrestigeState.setTitleReminderShown(playerId, true);
         } else {
             player.sendMessage(hint("Prestige ready. Use /sheepmerge prestige"));
         }
-        lastPrestigeReminderTimestampByPlayer.put(playerId, now);
+        SheepPrestigeState.setLastReminderTimestamp(playerId, now);
     }
 
     public static void tickRebirthReminder(Player player) {
@@ -9067,23 +7916,23 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long lastReminder = lastRebirthReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastReminder = SheepRebirthState.getLastReminderTimestamp(playerId);
         if (now - lastReminder < 20_000L) {
             return;
         }
 
-        if (!rebirthTitleReminderShownByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepRebirthState.isTitleReminderShown(playerId)) {
             player.sendTitle(
                     color("&dRebirth ready"),
                     color("&7Open the rebirth menu"),
                     10,
                     60,
                     10);
-            rebirthTitleReminderShownByPlayer.put(playerId, true);
+            SheepRebirthState.setTitleReminderShown(playerId, true);
         } else {
             player.sendMessage(hint("Rebirth ready. Open the rebirth menu from /sheepmerge upgrade."));
         }
-        lastRebirthReminderTimestampByPlayer.put(playerId, now);
+        SheepRebirthState.setLastReminderTimestamp(playerId, now);
     }
 
     public static void recordSheepMerge(Player player, SheepTier mergedFromTier, int woolReadySourceSheep) {
@@ -9091,11 +7940,11 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        lifetimeMergesByPlayer.put(playerId, addSaturated(lifetimeMergesByPlayer.getOrDefault(playerId, 0), 1));
+        SheepLifetimeProgressState.incrementLifetimeMerges(playerId);
         long now = System.currentTimeMillis();
-        lastMergeTimestampByPlayer.put(playerId, now);
-        lastMergeReminderTimestampByPlayer.remove(playerId);
-        mergeTitleReminderShownByPlayer.remove(playerId);
+        SheepRuntimeUiState.lastMergeTimestamps().put(playerId, now);
+        SheepRuntimeUiState.lastMergeReminderTimestamps().remove(playerId);
+        SheepRuntimeUiState.mergeTitleReminderShown().remove(playerId);
 
         tickComboDecay(player, now);
         double comboGain = (mergedFromTier.getLevel() + 1)
@@ -9104,8 +7953,8 @@ public final class SheepMergeManager {
             comboGain *= COMBO_FRENZY_MULTIPLIER;
         }
         double updatedScore = Math.min(getComboMaxScore(player), getComboScore(player) + comboGain);
-        comboScoreByPlayer.put(playerId, updatedScore);
-        comboLastUpdateTimestampByPlayer.put(playerId, now);
+        SheepComboState.setScore(playerId, updatedScore);
+        SheepComboState.setLastUpdateTimestamp(playerId, now);
 
         showOverlay(player, accent("Merge combo x" + formatComboMultiplier(getComboMultiplier(player, updatedScore))));
         updateComboBossBar(player, updatedScore);
@@ -9116,14 +7965,14 @@ public final class SheepMergeManager {
     }
 
     private static String formatComboMultiplier(double multiplier) {
-        return String.format(java.util.Locale.ROOT, "%.2f", multiplier);
+        return SheepFormatting.formatComboMultiplier(multiplier);
     }
 
     private static double getComboScore(Player player) {
         if (player == null) {
             return 0.0D;
         }
-        return Math.max(0.0D, comboScoreByPlayer.getOrDefault(player.getUniqueId(), 0.0D));
+        return Math.max(0.0D, SheepComboState.getScore(player.getUniqueId()));
     }
 
     private static double getComboMaxScore(Player player) {
@@ -9156,12 +8005,12 @@ public final class SheepMergeManager {
 
         UUID playerId = player.getUniqueId();
         double currentScore = getComboScore(player);
-        long lastTick = comboLastUpdateTimestampByPlayer.getOrDefault(playerId, now);
-        comboLastUpdateTimestampByPlayer.put(playerId, now);
+        long lastTick = SheepComboState.getLastUpdateTimestamp(playerId, now);
+        SheepComboState.setLastUpdateTimestamp(playerId, now);
 
         if (currentScore <= 0.0D || now <= lastTick) {
             if (currentScore <= 0.0D) {
-                comboScoreByPlayer.remove(playerId);
+                SheepComboState.removeScore(playerId);
             }
             return;
         }
@@ -9173,10 +8022,10 @@ public final class SheepMergeManager {
         double updatedScore = Math.max(0.0D, currentScore - decayPerSecond * elapsedSeconds);
 
         if (updatedScore <= 0.01D) {
-            comboScoreByPlayer.remove(playerId);
+            SheepComboState.removeScore(playerId);
             return;
         }
-        comboScoreByPlayer.put(playerId, Math.min(maxScore, updatedScore));
+        SheepComboState.setScore(playerId, Math.min(maxScore, updatedScore));
     }
 
     private static void updateComboBossBar(Player player, double comboScore) {
@@ -9192,10 +8041,10 @@ public final class SheepMergeManager {
             return;
         }
 
-        BossBar bar = comboBossBarByPlayer.get(playerId);
+        BossBar bar = SheepRuntimeUiState.comboBossBars().get(playerId);
         if (bar == null) {
             bar = Bukkit.createBossBar("Combo", BarColor.YELLOW, BarStyle.SEGMENTED_10);
-            comboBossBarByPlayer.put(playerId, bar);
+            SheepRuntimeUiState.comboBossBars().put(playerId, bar);
         }
 
         double maxScore = getComboMaxScore(player);
@@ -9225,7 +8074,7 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return;
         }
-        BossBar bar = comboBossBarByPlayer.remove(playerId);
+        BossBar bar = SheepRuntimeUiState.comboBossBars().remove(playerId);
         if (bar == null) {
             return;
         }
@@ -9266,7 +8115,7 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(playerId, SheepTier.WHITE.getLevel());
+        int highestAnnounced = SheepUpgradeState.getHighestAnnouncedTier(playerId, SheepTier.WHITE.getLevel());
         if (tier.getLevel() > highestAnnounced) {
             return true;
         }
@@ -9274,7 +8123,7 @@ public final class SheepMergeManager {
             return false;
         }
         int normalizedRainbowTier = Math.max(1, rainbowTier);
-        int highestRainbowAnnounced = highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0);
+        int highestRainbowAnnounced = SheepUpgradeState.getHighestAnnouncedRainbowTier(playerId);
         return normalizedRainbowTier > highestRainbowAnnounced;
     }
 
@@ -9287,15 +8136,15 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        int highestAnnounced = highestAnnouncedTierByPlayer.getOrDefault(playerId, SheepTier.WHITE.getLevel());
+        int highestAnnounced = SheepUpgradeState.getHighestAnnouncedTier(playerId, SheepTier.WHITE.getLevel());
         if (tier.getLevel() > highestAnnounced) {
-            highestAnnouncedTierByPlayer.put(playerId, tier.getLevel());
+            SheepUpgradeState.setHighestAnnouncedTier(playerId, tier.getLevel());
         }
         if (tier == SheepTier.RAINBOW) {
             int normalizedRainbowTier = Math.max(1, rainbowTier);
-            int highestRainbowAnnounced = highestAnnouncedRainbowTierByPlayer.getOrDefault(playerId, 0);
+            int highestRainbowAnnounced = SheepUpgradeState.getHighestAnnouncedRainbowTier(playerId);
             if (normalizedRainbowTier > highestRainbowAnnounced) {
-                highestAnnouncedRainbowTierByPlayer.put(playerId, normalizedRainbowTier);
+                SheepUpgradeState.setHighestAnnouncedRainbowTier(playerId, normalizedRainbowTier);
             }
         }
         saveData();
@@ -9360,26 +8209,26 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long lastMerge = lastMergeTimestampByPlayer.getOrDefault(playerId, now);
+        long lastMerge = SheepRuntimeUiState.lastMergeTimestamps().getOrDefault(playerId, now);
         if (now - lastMerge < MERGE_REMINDER_DELAY_MS) {
             return;
         }
-        long lastReminder = lastMergeReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        long lastReminder = SheepRuntimeUiState.lastMergeReminderTimestamps().getOrDefault(playerId, 0L);
         if (now - lastReminder < MERGE_REMINDER_REPEAT_MS) {
             return;
         }
-        if (!mergeTitleReminderShownByPlayer.getOrDefault(playerId, false)) {
+        if (!SheepRuntimeUiState.mergeTitleReminderShown().getOrDefault(playerId, false)) {
             player.sendTitle(
                     color("&eMerge sheep"),
                     color("&7Sneak-right-click one sheep, then right-click the same tier"),
                     10,
                     60,
                     10);
-            mergeTitleReminderShownByPlayer.put(playerId, true);
+            SheepRuntimeUiState.mergeTitleReminderShown().put(playerId, true);
         } else {
             player.sendMessage(hint("Merge sheep. Sneak-right-click one sheep, then right-click the same tier."));
         }
-        lastMergeReminderTimestampByPlayer.put(playerId, now);
+        SheepRuntimeUiState.lastMergeReminderTimestamps().put(playerId, now);
     }
 
     public static void enforceFarmLoadout(Player player) {
@@ -9625,7 +8474,7 @@ public final class SheepMergeManager {
         if (current.compareTo(points) < 0) {
             return false;
         }
-        pointsByPlayer.put(uuid, current.subtract(points));
+        SheepEconomyState.setPoints(uuid, current.subtract(points));
         refreshTopPointsDisplays();
         saveData();
         return true;
@@ -9638,7 +8487,7 @@ public final class SheepMergeManager {
         int maxLimit = getMaxSheepLimit(player.getUniqueId());
         return Math.min(
                 maxLimit,
-                BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                BASE_SHEEP_LIMIT + Math.max(0, SheepEconomyState.getExtraLimit(player.getUniqueId())));
     }
 
     public static int getOwnerLimit(World world) {
@@ -9649,7 +8498,7 @@ public final class SheepMergeManager {
         int maxLimit = getMaxSheepLimit(ownerId);
         return Math.min(
                 maxLimit,
-                BASE_SHEEP_LIMIT + Math.max(0, extraLimitByPlayer.getOrDefault(ownerId, 0)));
+                BASE_SHEEP_LIMIT + Math.max(0, SheepEconomyState.getExtraLimit(ownerId)));
     }
 
     public static BigInteger getUpgradeCost(Player player) {
@@ -9677,9 +8526,9 @@ public final class SheepMergeManager {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        int currentExtra = Math.max(0, extraLimitByPlayer.getOrDefault(playerId, 0));
+        int currentExtra = Math.max(0, SheepEconomyState.getExtraLimit(playerId));
         int maxExtra = maxLimit - BASE_SHEEP_LIMIT;
-        extraLimitByPlayer.put(playerId, Math.min(maxExtra, currentExtra + LIMIT_UPGRADE_STEP));
+        SheepEconomyState.setExtraLimit(playerId, Math.min(maxExtra, currentExtra + LIMIT_UPGRADE_STEP));
         saveData();
         return true;
     }
@@ -9688,7 +8537,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        int extra = Math.max(0, extraLimitByPlayer.getOrDefault(player.getUniqueId(), 0));
+        int extra = Math.max(0, SheepEconomyState.getExtraLimit(player.getUniqueId()));
         int maxLimit = getMaxSheepLimit(player.getUniqueId());
         int maxExtra = maxLimit - BASE_SHEEP_LIMIT;
         return Math.min(maxExtra, extra) / LIMIT_UPGRADE_STEP;
@@ -9698,7 +8547,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return eggSpeedLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return SheepEconomyState.getEggSpeedLevel(player.getUniqueId());
     }
 
     public static int getEggIntervalSeconds(Player player) {
@@ -9709,7 +8558,7 @@ public final class SheepMergeManager {
                 ? MIN_EGG_INTERVAL_SECONDS_WITH_SACRIFICE
                 : MIN_EGG_INTERVAL_SECONDS;
         return Math.max(minEggInterval,
-                BASE_EGG_INTERVAL_SECONDS - eggSpeedLevelByPlayer.getOrDefault(player.getUniqueId(), 0));
+                BASE_EGG_INTERVAL_SECONDS - SheepEconomyState.getEggSpeedLevel(player.getUniqueId()));
     }
 
     public static int getEggSpeedMaxLevel(Player player) {
@@ -9750,14 +8599,14 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return Math.max(0, woolRegenLevelByPlayer.getOrDefault(player.getUniqueId(), 0));
+        return Math.max(0, SheepEconomyState.getWoolRegenLevel(player.getUniqueId()));
     }
 
     public static int getHigherTierChanceLevel(Player player) {
         if (player == null) {
             return 0;
         }
-        return higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return SheepEconomyState.getHigherTierChanceLevel(player.getUniqueId());
     }
 
     public static int getHigherTierChancePercent(Player player) {
@@ -9765,8 +8614,9 @@ public final class SheepMergeManager {
             return 0;
         }
         int base = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT,
-                higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0) * 5);
-        if (isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, player.getUniqueId())) {
+                SheepEconomyState.getHigherTierChanceLevel(player.getUniqueId()) * 5);
+        if (isCountAbilityActive(SheepQuestState.activeLuckyBurstUses(), SheepQuestState.luckyBurstEnabled(),
+                player.getUniqueId())) {
             base += QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT;
         }
         return Math.min(100, base);
@@ -9778,8 +8628,9 @@ public final class SheepMergeManager {
             return 0;
         }
         int base = Math.min(HIGHER_TIER_CHANCE_BASE_CAP_PERCENT,
-                higherTierChanceLevelByPlayer.getOrDefault(ownerId, 0) * 5);
-        if (isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, ownerId)) {
+                SheepEconomyState.getHigherTierChanceLevel(ownerId) * 5);
+        if (isCountAbilityActive(SheepQuestState.activeLuckyBurstUses(), SheepQuestState.luckyBurstEnabled(),
+                ownerId)) {
             base += QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT;
         }
         return Math.min(100, base);
@@ -9822,7 +8673,7 @@ public final class SheepMergeManager {
     }
 
     public static int getStartEggsBonus(Player player) {
-        return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0) * 10;
+        return player == null ? 0 : SheepPrestigeState.getStartEggs(player.getUniqueId()) * 10;
     }
 
     public static int getEggCap(Player player) {
@@ -9886,9 +8737,10 @@ public final class SheepMergeManager {
         Sheep sheep = player.getWorld().spawn(spawnLocation, Sheep.class);
         setSheepTier(sheep, rollSpawnTier(player.getWorld()));
         UUID playerId = player.getUniqueId();
-        lifetimeSpawnsByPlayer.put(playerId, addSaturated(lifetimeSpawnsByPlayer.getOrDefault(playerId, 0), 1));
-        if (isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId)) {
-            consumeCountAbilityUse(activeLuckyBurstUsesByPlayer, playerId);
+        SheepLifetimeProgressState.incrementLifetimeSpawns(playerId);
+        if (isCountAbilityActive(SheepQuestState.activeLuckyBurstUses(), SheepQuestState.luckyBurstEnabled(),
+                playerId)) {
+            consumeCountAbilityUse(SheepQuestState.activeLuckyBurstUses(), playerId);
             saveData();
         }
         return sheep;
@@ -9897,7 +8749,7 @@ public final class SheepMergeManager {
     public static int getPrestigeDoublePointsChanceLevel(Player player) {
         return player == null ? 0
                 : Math.min(PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
-                        Math.max(0, prestigeDoublePointsChanceByPlayer.getOrDefault(player.getUniqueId(), 0)));
+                        Math.max(0, SheepPrestigeState.getDoublePointsChance(player.getUniqueId())));
     }
 
     public static int getDoublePointsChancePercent(Player player) {
@@ -9915,7 +8767,7 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return 0;
         }
-        int raw = prestigeHigherMaxLevelByPlayer.getOrDefault(playerId, 0);
+        int raw = SheepPrestigeState.getHigherMaxLevel(playerId);
         return Math.max(0, raw);
     }
 
@@ -9933,39 +8785,39 @@ public final class SheepMergeManager {
         boolean changed = false;
 
         int maxExtra = Math.max(0, getMaxSheepLimit(playerId) - BASE_SHEEP_LIMIT);
-        int rawExtra = Math.max(0, extraLimitByPlayer.getOrDefault(playerId, 0));
+        int rawExtra = Math.max(0, SheepEconomyState.getExtraLimit(playerId));
         int clampedExtra = Math.min(maxExtra, rawExtra);
         if (clampedExtra <= 0) {
-            changed |= extraLimitByPlayer.remove(playerId) != null;
+            changed |= SheepEconomyState.removeExtraLimit(playerId);
         } else if (clampedExtra != rawExtra) {
-            extraLimitByPlayer.put(playerId, clampedExtra);
+            SheepEconomyState.setExtraLimit(playerId, clampedExtra);
             changed = true;
         }
 
-        int rawEggSpeed = Math.max(0, eggSpeedLevelByPlayer.getOrDefault(playerId, 0));
+        int rawEggSpeed = Math.max(0, SheepEconomyState.getEggSpeedLevel(playerId));
         int clampedEggSpeed = Math.min(rawEggSpeed, getEggSpeedMaxLevel(playerId));
         if (clampedEggSpeed <= 0) {
-            changed |= eggSpeedLevelByPlayer.remove(playerId) != null;
+            changed |= SheepEconomyState.removeEggSpeedLevel(playerId);
         } else if (clampedEggSpeed != rawEggSpeed) {
-            eggSpeedLevelByPlayer.put(playerId, clampedEggSpeed);
+            SheepEconomyState.setEggSpeedLevel(playerId, clampedEggSpeed);
             changed = true;
         }
 
-        int rawWool = Math.max(0, woolRegenLevelByPlayer.getOrDefault(playerId, 0));
+        int rawWool = Math.max(0, SheepEconomyState.getWoolRegenLevel(playerId));
         int clampedWool = Math.min(rawWool, getWoolRegenMaxLevel(playerId));
         if (clampedWool <= 0) {
-            changed |= woolRegenLevelByPlayer.remove(playerId) != null;
+            changed |= SheepEconomyState.removeWoolRegenLevel(playerId);
         } else if (clampedWool != rawWool) {
-            woolRegenLevelByPlayer.put(playerId, clampedWool);
+            SheepEconomyState.setWoolRegenLevel(playerId, clampedWool);
             changed = true;
         }
 
-        int rawChance = Math.max(0, higherTierChanceLevelByPlayer.getOrDefault(playerId, 0));
+        int rawChance = Math.max(0, SheepEconomyState.getHigherTierChanceLevel(playerId));
         int clampedChance = Math.min(rawChance, getHigherTierChanceMaxLevel(playerId));
         if (clampedChance <= 0) {
-            changed |= higherTierChanceLevelByPlayer.remove(playerId) != null;
+            changed |= SheepEconomyState.removeHigherTierChanceLevel(playerId);
         } else if (clampedChance != rawChance) {
-            higherTierChanceLevelByPlayer.put(playerId, clampedChance);
+            SheepEconomyState.setHigherTierChanceLevel(playerId, clampedChance);
             changed = true;
         }
 
@@ -9973,22 +8825,22 @@ public final class SheepMergeManager {
     }
 
     public static int getPrestigeStartEggsLevel(Player player) {
-        return player == null ? 0 : prestigeStartEggsByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepPrestigeState.getStartEggs(player.getUniqueId());
     }
 
     public static int getPrestigeQuestRewardLevel(Player player) {
-        return player == null ? 0 : prestigeQuestRewardByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepPrestigeState.getQuestReward(player.getUniqueId());
     }
 
     public static int getPrestigeEggCapLevel(Player player) {
-        return player == null ? 0 : prestigeEggCapByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepPrestigeState.getEggCap(player.getUniqueId());
     }
 
     public static int getBaseSpawnTierLevel(Player player) {
         return player == null ? 0
                 : Math.min(
                         SheepTier.RAINBOW.getLevel(),
-                        prestigeBaseSpawnTierByPlayer.getOrDefault(player.getUniqueId(), 0));
+                        SheepPrestigeState.getBaseSpawnTier(player.getUniqueId()));
     }
 
     public static int getBaseSpawnTierLevel(World world) {
@@ -9998,7 +8850,7 @@ public final class SheepMergeManager {
         }
         return Math.min(
                 SheepTier.RAINBOW.getLevel(),
-                prestigeBaseSpawnTierByPlayer.getOrDefault(ownerId, 0));
+                SheepPrestigeState.getBaseSpawnTier(ownerId));
     }
 
     public static SheepTier getBaseSpawnTier(Player player) {
@@ -10037,11 +8889,11 @@ public final class SheepMergeManager {
     }
 
     public static int getQuestUpgradeDurationLevel(Player player) {
-        return player == null ? 0 : questUpgradeDurationByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepQuestState.questUpgradeDurations().getOrDefault(player.getUniqueId(), 0);
     }
 
     public static int getQuestUpgradePowerLevel(Player player) {
-        return player == null ? 0 : questUpgradePowerByPlayer.getOrDefault(player.getUniqueId(), 0);
+        return player == null ? 0 : SheepQuestState.questUpgradePowers().getOrDefault(player.getUniqueId(), 0);
     }
 
     public static int getQuestUpgradeDurationCost(Player player) {
@@ -10260,7 +9112,7 @@ public final class SheepMergeManager {
         if (!trySpendQuestPoints(player, cost)) {
             return false;
         }
-        questUpgradeDurationByPlayer.put(player.getUniqueId(), getQuestUpgradeDurationLevel(player) + 1);
+        SheepQuestState.questUpgradeDurations().put(player.getUniqueId(), getQuestUpgradeDurationLevel(player) + 1);
         saveData();
         return true;
     }
@@ -10270,7 +9122,7 @@ public final class SheepMergeManager {
         if (!trySpendQuestPoints(player, cost)) {
             return false;
         }
-        questUpgradePowerByPlayer.put(player.getUniqueId(), getQuestUpgradePowerLevel(player) + 1);
+        SheepQuestState.questUpgradePowers().put(player.getUniqueId(), getQuestUpgradePowerLevel(player) + 1);
         saveData();
         return true;
     }
@@ -10279,7 +9131,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0L;
         }
-        long nextRefund = nextPrestigeRefundTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        long nextRefund = SheepPrestigeState.getNextRefundTimestamp(player.getUniqueId());
         return Math.max(0L, nextRefund - System.currentTimeMillis());
     }
 
@@ -10415,20 +9267,8 @@ public final class SheepMergeManager {
         if (playerId == null) {
             return;
         }
-        prestigeDoublePointsChanceByPlayer.remove(playerId);
-        prestigeHigherMaxLevelByPlayer.remove(playerId);
-        prestigeStartEggsByPlayer.remove(playerId);
-        prestigeEggCapByPlayer.remove(playerId);
-        prestigeBaseSpawnTierByPlayer.remove(playerId);
-        prestigeQuestRewardByPlayer.remove(playerId);
-        comboMaxUpgradeByPlayer.remove(playerId);
-        Double comboScore = comboScoreByPlayer.get(playerId);
-        if (comboScore != null) {
-            comboScoreByPlayer.put(playerId, Math.min(COMBO_BASE_MAX_SCORE, Math.max(0.0D, comboScore)));
-        }
-        if (clearRefundCooldown) {
-            nextPrestigeRefundTimestampByPlayer.remove(playerId);
-        }
+        SheepPrestigeState.resetUpgrades(playerId, clearRefundCooldown);
+        SheepComboState.resetMaxUpgrade(playerId, COMBO_BASE_MAX_SCORE);
         clampUpgradeLevelsToCurrentCaps(playerId);
     }
 
@@ -10453,7 +9293,7 @@ public final class SheepMergeManager {
             return false;
         }
         long now = System.currentTimeMillis();
-        long nextRefund = nextPrestigeRefundTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        long nextRefund = SheepPrestigeState.getNextRefundTimestamp(player.getUniqueId());
         if (now < nextRefund) {
             return false;
         }
@@ -10464,9 +9304,9 @@ public final class SheepMergeManager {
         }
 
         UUID playerId = player.getUniqueId();
-        prestigePointsByPlayer.put(playerId, addSaturated(getPrestigePoints(player), refund));
+        SheepPrestigeState.setPoints(playerId, addSaturated(getPrestigePoints(player), refund));
         resetPrestigeUpgrades(playerId, false);
-        nextPrestigeRefundTimestampByPlayer.put(playerId, now + PRESTIGE_REFUND_COOLDOWN_MS);
+        SheepPrestigeState.setNextRefundTimestamp(playerId, now + PRESTIGE_REFUND_COOLDOWN_MS);
         saveData();
         return true;
     }
@@ -10491,23 +9331,22 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long now = System.currentTimeMillis();
-        long nextRespec = nextRebirthRespecTimestampByPlayer.getOrDefault(playerId, 0L);
+        long nextRespec = SheepRebirthState.getNextRespecTimestamp(playerId);
         if (now < nextRespec) {
             return false;
         }
         if (getRebirthSkillUnlockMask(playerId) == 0) {
             return false;
         }
-        rebirthSkillUnlockMaskByPlayer.remove(playerId);
-        rebirthSkillPendingMaskByPlayer.remove(playerId);
-        nextRebirthRespecTimestampByPlayer.put(playerId, now + REBIRTH_RESPEC_COOLDOWN_MS);
+        SheepRebirthState.clearSkillUnlockMask(playerId);
+        SheepRebirthState.clearSkillPendingMask(playerId);
+        SheepRebirthState.setNextRespecTimestamp(playerId, now + REBIRTH_RESPEC_COOLDOWN_MS);
         saveData();
         return true;
     }
 
     private static String formatDuration(long durationMs) {
-        long totalSeconds = Math.max(0L, durationMs / 1000L);
-        return totalSeconds + "s";
+        return SheepFormatting.formatDuration(durationMs);
     }
 
     private static long getAbilityRemainingMs(Map<UUID, Long> activeUntil, UUID playerId) {
@@ -10573,7 +9412,7 @@ public final class SheepMergeManager {
             return 0L;
         }
         long now = System.currentTimeMillis();
-        long nextReset = nextQuestResetTimestampByPlayer.getOrDefault(player.getUniqueId(), 0L);
+        long nextReset = SheepQuestState.nextQuestResetTimestamps().getOrDefault(player.getUniqueId(), 0L);
         if (nextReset <= 0L) {
             return getQuestResetIntervalMs(player);
         }
@@ -10588,7 +9427,7 @@ public final class SheepMergeManager {
         if (current < points) {
             return false;
         }
-        prestigePointsByPlayer.put(player.getUniqueId(), current - points);
+        SheepPrestigeState.setPoints(player.getUniqueId(), current - points);
         saveData();
         return true;
     }
@@ -10630,7 +9469,7 @@ public final class SheepMergeManager {
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
-        prestigeDoublePointsChanceByPlayer.put(player.getUniqueId(), getPrestigeDoublePointsChanceLevel(player) + 1);
+        SheepPrestigeState.setDoublePointsChance(player.getUniqueId(), getPrestigeDoublePointsChanceLevel(player) + 1);
         saveData();
         return true;
     }
@@ -10647,7 +9486,7 @@ public final class SheepMergeManager {
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
-        prestigeHigherMaxLevelByPlayer.put(player.getUniqueId(), current + 1);
+        SheepPrestigeState.setHigherMaxLevel(player.getUniqueId(), current + 1);
         saveData();
         return true;
     }
@@ -10661,7 +9500,7 @@ public final class SheepMergeManager {
             return false;
         }
         int oldBonus = getStartEggsBonus(player);
-        prestigeStartEggsByPlayer.put(player.getUniqueId(), getPrestigeStartEggsLevel(player) + 1);
+        SheepPrestigeState.setStartEggs(player.getUniqueId(), getPrestigeStartEggsLevel(player) + 1);
         int newBonus = getStartEggsBonus(player);
         int gainedEggs = Math.max(0, newBonus - oldBonus);
         if (gainedEggs > 0) {
@@ -10676,7 +9515,7 @@ public final class SheepMergeManager {
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
-        prestigeEggCapByPlayer.put(player.getUniqueId(), getPrestigeEggCapLevel(player) + 1);
+        SheepPrestigeState.setEggCap(player.getUniqueId(), getPrestigeEggCapLevel(player) + 1);
         saveData();
         return true;
     }
@@ -10693,7 +9532,7 @@ public final class SheepMergeManager {
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
-        prestigeBaseSpawnTierByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepPrestigeState.setBaseSpawnTier(player.getUniqueId(), currentLevel + 1);
         upgradeSheepBelowMinimumSpawnTier(player.getWorld());
         saveData();
         return true;
@@ -10708,7 +9547,7 @@ public final class SheepMergeManager {
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
         }
-        prestigeQuestRewardByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepPrestigeState.setQuestReward(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -10831,11 +9670,11 @@ public final class SheepMergeManager {
                 List.of(
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
-                        "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                        "Shear " + SheepQuestState.questShears().getOrDefault(player.getUniqueId(), 0) + "/"
                                 + getQuestTarget(player, QUEST_SHEARS_TARGET),
-                        "Spawn " + questSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                        "Spawn " + SheepQuestState.questSpawns().getOrDefault(player.getUniqueId(), 0) + "/"
                                 + getQuestTarget(player, QUEST_SPAWNS_TARGET),
-                        "Merge " + questMergesByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                        "Merge " + SheepQuestState.questMerges().getOrDefault(player.getUniqueId(), 0) + "/"
                                 + getQuestTarget(player, QUEST_MERGES_TARGET),
                         "Click to open")));
 
@@ -11092,11 +9931,11 @@ public final class SheepMergeManager {
                 List.of(
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         "Next reset: " + formatDuration(getQuestResetRemainingMs(player)),
-                        "Shear " + questShearsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                        "Shear " + SheepQuestState.questShears().getOrDefault(player.getUniqueId(), 0) + "/"
                                 + getQuestTarget(player, QUEST_SHEARS_TARGET),
-                        "Spawn " + questSpawnsByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                        "Spawn " + SheepQuestState.questSpawns().getOrDefault(player.getUniqueId(), 0) + "/"
                                 + getQuestTarget(player, QUEST_SPAWNS_TARGET),
-                        "Merge " + questMergesByPlayer.getOrDefault(player.getUniqueId(), 0) + "/"
+                        "Merge " + SheepQuestState.questMerges().getOrDefault(player.getUniqueId(), 0) + "/"
                                 + getQuestTarget(player, QUEST_MERGES_TARGET),
                         "Click to open")));
 
@@ -11245,22 +10084,25 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         long remaining = getQuestResetRemainingMs(player);
-        boolean shearsComplete = questShearsCompleteByPlayer.getOrDefault(playerId, false);
-        boolean spawnsComplete = questSpawnsCompleteByPlayer.getOrDefault(playerId, false);
-        boolean mergesComplete = questMergesCompleteByPlayer.getOrDefault(playerId, false);
+        boolean shearsComplete = SheepQuestState.questShearsComplete().getOrDefault(playerId, false);
+        boolean spawnsComplete = SheepQuestState.questSpawnsComplete().getOrDefault(playerId, false);
+        boolean mergesComplete = SheepQuestState.questMergesComplete().getOrDefault(playerId, false);
         int currentQuestPoints = getQuestPoints(player);
         int luckyCost = getQuestLuckyBurstCost(player);
         int woolRushCost = getQuestWoolRushCost(player);
         int jackpotCost = getQuestJackpotCost(player);
         int autoMergeCost = getQuestAutoMergeCost(player);
         int autoShearCost = getQuestAutoShearCost(player);
-        boolean luckyBurstGlint = isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+        boolean luckyBurstGlint = isCountAbilityActive(SheepQuestState.activeLuckyBurstUses(),
+                SheepQuestState.luckyBurstEnabled(),
                 playerId);
-        boolean woolRushGlint = isAbilityActive(activeWoolRushUntilByPlayer, playerId);
-        boolean jackpotGlint = isAbilityActive(activeJackpotShearsUntilByPlayer, playerId);
-        boolean autoMergeGlint = isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+        boolean woolRushGlint = isAbilityActive(SheepQuestState.activeWoolRushUntil(), playerId);
+        boolean jackpotGlint = isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), playerId);
+        boolean autoMergeGlint = isCountAbilityActive(SheepQuestState.activeAutoMergeUses(),
+                SheepQuestState.autoMergeEnabled(),
                 playerId);
-        boolean autoShearGlint = isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+        boolean autoShearGlint = isCountAbilityActive(SheepQuestState.activeAutoShearUses(),
+                SheepQuestState.autoShearEnabled(),
                 playerId);
 
         setMenuItemIfChanged(inventory, QUEST_BOARD_SLOT, MenuItemFactory.create(
@@ -11270,15 +10112,15 @@ public final class SheepMergeManager {
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
                         (shearsComplete ? "DONE " : "TODO ")
-                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + "Shear " + SheepQuestState.questShears().getOrDefault(playerId, 0) + "/"
                                 + getQuestTarget(player, QUEST_SHEARS_TARGET)
                                 + " (" + formatPoints(getQuestReward(player, QUEST_SHEARS_REWARD)) + " pts)",
                         (spawnsComplete ? "DONE " : "TODO ")
-                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + "Spawn " + SheepQuestState.questSpawns().getOrDefault(playerId, 0) + "/"
                                 + getQuestTarget(player, QUEST_SPAWNS_TARGET)
                                 + " (" + formatPoints(getQuestReward(player, QUEST_SPAWNS_REWARD)) + " pts)",
                         (mergesComplete ? "DONE " : "TODO ")
-                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/"
+                                + "Merge " + SheepQuestState.questMerges().getOrDefault(playerId, 0) + "/"
                                 + getQuestTarget(player, QUEST_MERGES_TARGET)
                                 + " (" + formatPoints(getQuestReward(player, QUEST_MERGES_REWARD)) + " pts)")));
 
@@ -11290,8 +10132,10 @@ public final class SheepMergeManager {
                         "&bBoost: &f+" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% tier chance",
                         "&7Uses: &f" + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
                         currentQuestPoints >= luckyCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
-                        getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+                        getCountAbilityMenuStatus(SheepQuestState.activeLuckyBurstUses(),
+                                SheepQuestState.luckyBurstEnabled(), playerId),
+                        getCountAbilityToggleActionLine(SheepQuestState.activeLuckyBurstUses(),
+                                SheepQuestState.luckyBurstEnabled(),
                                 playerId)),
                 luckyBurstGlint));
 
@@ -11303,8 +10147,8 @@ public final class SheepMergeManager {
                         "&bBoost: &fwool grows 90% faster",
                         "&7Time: &f" + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
                         currentQuestPoints >= woolRushCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
-                        isAbilityActive(activeWoolRushUntilByPlayer, playerId)
+                        getAbilityMenuStatus(SheepQuestState.activeWoolRushUntil(), null, playerId),
+                        isAbilityActive(SheepQuestState.activeWoolRushUntil(), playerId)
                                 ? "&eClick: Extend"
                                 : "&aClick: Activate"),
                 woolRushGlint));
@@ -11318,8 +10162,8 @@ public final class SheepMergeManager {
                         "&7Time: &f"
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
                         currentQuestPoints >= jackpotCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
-                        isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
+                        getAbilityMenuStatus(SheepQuestState.activeJackpotShearsUntil(), null, playerId),
+                        isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), playerId)
                                 ? "&eClick: Extend"
                                 : "&aClick: Activate"),
                 jackpotGlint));
@@ -11332,8 +10176,10 @@ public final class SheepMergeManager {
                         "&bBoost: &fauto-merges carried sheep",
                         "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
                         currentQuestPoints >= autoMergeCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
-                        getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+                        getCountAbilityMenuStatus(SheepQuestState.activeAutoMergeUses(),
+                                SheepQuestState.autoMergeEnabled(), playerId),
+                        getCountAbilityToggleActionLine(SheepQuestState.activeAutoMergeUses(),
+                                SheepQuestState.autoMergeEnabled(),
                                 playerId)),
                 autoMergeGlint));
 
@@ -11345,8 +10191,10 @@ public final class SheepMergeManager {
                         "&bBoost: &fshears every ready sheep",
                         "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
                         currentQuestPoints >= autoShearCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
-                        getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+                        getCountAbilityMenuStatus(SheepQuestState.activeAutoShearUses(),
+                                SheepQuestState.autoShearEnabled(), playerId),
+                        getCountAbilityToggleActionLine(SheepQuestState.activeAutoShearUses(),
+                                SheepQuestState.autoShearEnabled(),
                                 playerId)),
                 autoShearGlint));
 
@@ -11657,35 +10505,35 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return Math.max(0, Math.min(1, scoreboardLayoutModeByPlayer.getOrDefault(player.getUniqueId(), 0)));
+        return SheepUiPreferences.getScoreboardLayoutMode(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardQuestPoints(Player player) {
-        return player != null && scoreboardShowQuestPointsByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepUiPreferences.shouldShowScoreboardQuestPoints(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardAchievementPoints(Player player) {
-        return player != null && scoreboardShowAchievementPointsByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepUiPreferences.shouldShowScoreboardAchievementPoints(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardAutomationPoints(Player player) {
-        return player != null && scoreboardShowAutomationPointsByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepUiPreferences.shouldShowScoreboardAutomationPoints(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardSacrificePoints(Player player) {
-        return player != null && scoreboardShowSacrificePointsByPlayer.getOrDefault(player.getUniqueId(), false);
+        return player != null && SheepUiPreferences.shouldShowScoreboardSacrificePoints(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardPrestigeStats(Player player) {
-        return player != null && scoreboardShowPrestigeStatsByPlayer.getOrDefault(player.getUniqueId(), true);
+        return player != null && SheepUiPreferences.shouldShowScoreboardPrestigeStats(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardQuestProgress(Player player) {
-        return player != null && scoreboardShowQuestProgressByPlayer.getOrDefault(player.getUniqueId(), true);
+        return player != null && SheepUiPreferences.shouldShowScoreboardQuestProgress(player.getUniqueId());
     }
 
     private static boolean shouldShowScoreboardAbilityStatus(Player player) {
-        return player != null && scoreboardShowAbilityStatusByPlayer.getOrDefault(player.getUniqueId(), true);
+        return player != null && SheepUiPreferences.shouldShowScoreboardAbilityStatus(player.getUniqueId());
     }
 
     public static void openScoreboardMenu(Player player) {
@@ -11766,21 +10614,21 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         switch (slot) {
-            case SCOREBOARD_ACHIEVEMENT_POINTS_SLOT -> scoreboardShowAchievementPointsByPlayer.put(playerId,
+            case SCOREBOARD_ACHIEVEMENT_POINTS_SLOT -> SheepUiPreferences.setShowScoreboardAchievementPoints(playerId,
                     !shouldShowScoreboardAchievementPoints(player));
-            case SCOREBOARD_QUEST_POINTS_SLOT -> scoreboardShowQuestPointsByPlayer.put(playerId,
+            case SCOREBOARD_QUEST_POINTS_SLOT -> SheepUiPreferences.setShowScoreboardQuestPoints(playerId,
                     !shouldShowScoreboardQuestPoints(player));
-            case SCOREBOARD_AUTOMATION_POINTS_SLOT -> scoreboardShowAutomationPointsByPlayer.put(playerId,
+            case SCOREBOARD_AUTOMATION_POINTS_SLOT -> SheepUiPreferences.setShowScoreboardAutomationPoints(playerId,
                     !shouldShowScoreboardAutomationPoints(player));
-            case SCOREBOARD_SACRIFICE_POINTS_SLOT -> scoreboardShowSacrificePointsByPlayer.put(playerId,
+            case SCOREBOARD_SACRIFICE_POINTS_SLOT -> SheepUiPreferences.setShowScoreboardSacrificePoints(playerId,
                     !shouldShowScoreboardSacrificePoints(player));
-            case SCOREBOARD_PRESTIGE_STATS_SLOT -> scoreboardShowPrestigeStatsByPlayer.put(playerId,
+            case SCOREBOARD_PRESTIGE_STATS_SLOT -> SheepUiPreferences.setShowScoreboardPrestigeStats(playerId,
                     !shouldShowScoreboardPrestigeStats(player));
-            case SCOREBOARD_QUEST_PROGRESS_SLOT -> scoreboardShowQuestProgressByPlayer.put(playerId,
+            case SCOREBOARD_QUEST_PROGRESS_SLOT -> SheepUiPreferences.setShowScoreboardQuestProgress(playerId,
                     !shouldShowScoreboardQuestProgress(player));
-            case SCOREBOARD_ABILITIES_SLOT -> scoreboardShowAbilityStatusByPlayer.put(playerId,
+            case SCOREBOARD_ABILITIES_SLOT -> SheepUiPreferences.setShowScoreboardAbilityStatus(playerId,
                     !shouldShowScoreboardAbilityStatus(player));
-            case SCOREBOARD_LAYOUT_SLOT -> scoreboardLayoutModeByPlayer.put(playerId,
+            case SCOREBOARD_LAYOUT_SLOT -> SheepUiPreferences.setScoreboardLayoutMode(playerId,
                     getScoreboardLayoutMode(player) == 1 ? 0 : 1);
             case SCOREBOARD_BACK_SLOT -> {
                 openUniversalLayoutMenu(player);
@@ -11990,7 +10838,7 @@ public final class SheepMergeManager {
         List<Player> managedPlayers = getManagedVisitPlayers(player);
         int totalPages = Math.max(1, (int) Math.ceil(managedPlayers.size() / (double) SOCIALS_VISIT_PAGE_SIZE));
         int page = Math.max(0, Math.min(totalPages - 1, requestedPage));
-        visitAccessPageByPlayer.put(ownerId, page);
+        SheepVisitAccessState.setVisitAccessPage(ownerId, page);
 
         setMenuItemIfChanged(inventory, VISIT_ACCESS_TOGGLE_SLOT, MenuItemFactory.create(
                 isFarmVisitable(ownerId) ? Material.OAK_DOOR : Material.IRON_DOOR,
@@ -12049,7 +10897,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return Math.max(0, visitAccessPageByPlayer.getOrDefault(player.getUniqueId(), 0));
+        return SheepVisitAccessState.getVisitAccessPage(player.getUniqueId());
     }
 
     private static List<Player> getManagedVisitPlayers(Player viewer) {
@@ -12181,8 +11029,8 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         switch (slot) {
-            case SCOREBOARD_LAYOUT_DETAILED_SLOT -> scoreboardLayoutModeByPlayer.put(playerId, 0);
-            case SCOREBOARD_LAYOUT_COMPACT_SLOT -> scoreboardLayoutModeByPlayer.put(playerId, 1);
+            case SCOREBOARD_LAYOUT_DETAILED_SLOT -> SheepUiPreferences.setScoreboardLayoutMode(playerId, 0);
+            case SCOREBOARD_LAYOUT_COMPACT_SLOT -> SheepUiPreferences.setScoreboardLayoutMode(playerId, 1);
             case SCOREBOARD_LAYOUT_BACK_SLOT -> {
                 openUniversalLayoutMenu(player);
                 return;
@@ -12532,7 +11380,7 @@ public final class SheepMergeManager {
         List<Player> visitableOwners = getVisitableFarmOwners(player);
         int totalPages = Math.max(1, (int) Math.ceil(visitableOwners.size() / (double) SOCIALS_VISIT_PAGE_SIZE));
         int page = Math.max(0, Math.min(totalPages - 1, requestedPage));
-        socialsPageByPlayer.put(player.getUniqueId(), page);
+        SheepRuntimeUiState.socialsPages().put(player.getUniqueId(), page);
 
         setMenuItemIfChanged(inventory, SOCIALS_PREVIOUS_PAGE_SLOT, MenuItemFactory.create(
                 Material.ARROW,
@@ -12593,7 +11441,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return 0;
         }
-        return Math.max(0, socialsPageByPlayer.getOrDefault(player.getUniqueId(), 0));
+        return Math.max(0, SheepRuntimeUiState.socialsPages().getOrDefault(player.getUniqueId(), 0));
     }
 
     private static List<Integer> getSocialVisitDisplaySlots() {
@@ -12836,7 +11684,7 @@ public final class SheepMergeManager {
                         "Hotbar Slot 9 -> Upgrade Menu -> Buy one regular upgrade")) {
                     break;
                 }
-                int level = higherTierChanceLevelByPlayer.getOrDefault(player.getUniqueId(), 0);
+                int level = SheepEconomyState.getHigherTierChanceLevel(player.getUniqueId());
                 if (level >= getHigherTierChanceMaxLevel(player)) {
                     player.sendMessage(warning("Spawn chance maxed."));
                     break;
@@ -13526,7 +12374,8 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Buy Auto Buy level 1 first."));
                     break;
                 }
-                boolean enabled = toggleAutomationEnabled(player, automationAutoBuyEnabledByPlayer);
+                boolean enabled = SheepAutomationState.toggleAutoBuyEnabled(player.getUniqueId());
+                saveData();
                 player.sendMessage(action("Auto Buy " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_AUTO_ABILITY_TOGGLE_SLOT -> {
@@ -13534,7 +12383,8 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Buy Auto Ability level 1 first."));
                     break;
                 }
-                boolean enabled = toggleAutomationEnabled(player, automationAutoAbilityEnabledByPlayer);
+                boolean enabled = SheepAutomationState.toggleAutoAbilityEnabled(player.getUniqueId());
+                saveData();
                 player.sendMessage(action("Auto Ability " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_SLOW_AUTO_MERGE_TOGGLE_SLOT -> {
@@ -13542,7 +12392,8 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Buy Auto Merge level 1 first."));
                     break;
                 }
-                boolean enabled = toggleAutomationEnabled(player, automationSlowAutoMergeEnabledByPlayer);
+                boolean enabled = SheepAutomationState.toggleSlowAutoMergeEnabled(player.getUniqueId());
+                saveData();
                 player.sendMessage(action("Auto Merge " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_SLOW_AUTO_SHEAR_TOGGLE_SLOT -> {
@@ -13550,7 +12401,8 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Buy Auto Shear level 1 first."));
                     break;
                 }
-                boolean enabled = toggleAutomationEnabled(player, automationSlowAutoShearEnabledByPlayer);
+                boolean enabled = SheepAutomationState.toggleSlowAutoShearEnabled(player.getUniqueId());
+                saveData();
                 player.sendMessage(action("Auto Shear " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_AUTO_PRESTIGE_TOGGLE_SLOT -> {
@@ -13558,7 +12410,8 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Buy Auto Prestige first."));
                     break;
                 }
-                boolean enabled = toggleAutomationEnabled(player, automationAutoPrestigeEnabledByPlayer);
+                boolean enabled = SheepAutomationState.toggleAutoPrestigeEnabled(player.getUniqueId());
+                saveData();
                 player.sendMessage(action("Auto Prestige " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_AUTO_SPAWN_TOGGLE_SLOT -> {
@@ -13566,7 +12419,8 @@ public final class SheepMergeManager {
                     player.sendMessage(warning("Buy Auto Spawn level 1 first."));
                     break;
                 }
-                boolean enabled = toggleAutomationEnabled(player, automationAutoSpawnEnabledByPlayer);
+                boolean enabled = SheepAutomationState.toggleAutoSpawnEnabled(player.getUniqueId());
+                saveData();
                 player.sendMessage(action("Auto Spawn " + (enabled ? "enabled" : "disabled") + "."));
             }
             case AUTOMATION_ENABLE_ALL_SLOT -> {
@@ -13978,8 +12832,8 @@ public final class SheepMergeManager {
         }
         UUID playerId = player.getUniqueId();
         int updatedMask = getRebirthSkillUnlockMask(playerId) | getRebirthSkillBit(skillId);
-        rebirthSkillUnlockMaskByPlayer.put(playerId, updatedMask);
-        rebirthSkillPendingMaskByPlayer.remove(playerId);
+        SheepRebirthState.setSkillUnlockMask(playerId, updatedMask);
+        SheepRebirthState.clearSkillPendingMask(playerId);
         saveData();
         return true;
     }
@@ -13992,22 +12846,25 @@ public final class SheepMergeManager {
         Inventory inventory = Bukkit.createInventory(null, 27, QUEST_MENU_TITLE);
         UUID playerId = player.getUniqueId();
         long remaining = getQuestResetRemainingMs(player);
-        boolean shearsComplete = questShearsCompleteByPlayer.getOrDefault(playerId, false);
-        boolean spawnsComplete = questSpawnsCompleteByPlayer.getOrDefault(playerId, false);
-        boolean mergesComplete = questMergesCompleteByPlayer.getOrDefault(playerId, false);
+        boolean shearsComplete = SheepQuestState.questShearsComplete().getOrDefault(playerId, false);
+        boolean spawnsComplete = SheepQuestState.questSpawnsComplete().getOrDefault(playerId, false);
+        boolean mergesComplete = SheepQuestState.questMergesComplete().getOrDefault(playerId, false);
         int currentQuestPoints = getQuestPoints(player);
         int luckyCost = getQuestLuckyBurstCost(player);
         int woolRushCost = getQuestWoolRushCost(player);
         int jackpotCost = getQuestJackpotCost(player);
         int autoMergeCost = getQuestAutoMergeCost(player);
         int autoShearCost = getQuestAutoShearCost(player);
-        boolean luckyBurstGlint = isCountAbilityActive(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+        boolean luckyBurstGlint = isCountAbilityActive(SheepQuestState.activeLuckyBurstUses(),
+                SheepQuestState.luckyBurstEnabled(),
                 playerId);
-        boolean woolRushGlint = isAbilityActive(activeWoolRushUntilByPlayer, playerId);
-        boolean jackpotGlint = isAbilityActive(activeJackpotShearsUntilByPlayer, playerId);
-        boolean autoMergeGlint = isCountAbilityActive(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+        boolean woolRushGlint = isAbilityActive(SheepQuestState.activeWoolRushUntil(), playerId);
+        boolean jackpotGlint = isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), playerId);
+        boolean autoMergeGlint = isCountAbilityActive(SheepQuestState.activeAutoMergeUses(),
+                SheepQuestState.autoMergeEnabled(),
                 playerId);
-        boolean autoShearGlint = isCountAbilityActive(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+        boolean autoShearGlint = isCountAbilityActive(SheepQuestState.activeAutoShearUses(),
+                SheepQuestState.autoShearEnabled(),
                 playerId);
 
         inventory.setItem(QUEST_BOARD_SLOT, MenuItemFactory.create(
@@ -14017,15 +12874,15 @@ public final class SheepMergeManager {
                         "Quest points: " + formatPoints(getQuestPoints(player)),
                         remaining > 0L ? "Next reset: " + formatDuration(remaining) : "Next reset: incoming",
                         (shearsComplete ? "DONE " : "TODO ")
-                                + "Shear " + questShearsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + "Shear " + SheepQuestState.questShears().getOrDefault(playerId, 0) + "/"
                                 + getQuestTarget(player, QUEST_SHEARS_TARGET)
                                 + " (" + formatPoints(getQuestReward(player, QUEST_SHEARS_REWARD)) + " pts)",
                         (spawnsComplete ? "DONE " : "TODO ")
-                                + "Spawn " + questSpawnsByPlayer.getOrDefault(playerId, 0) + "/"
+                                + "Spawn " + SheepQuestState.questSpawns().getOrDefault(playerId, 0) + "/"
                                 + getQuestTarget(player, QUEST_SPAWNS_TARGET)
                                 + " (" + formatPoints(getQuestReward(player, QUEST_SPAWNS_REWARD)) + " pts)",
                         (mergesComplete ? "DONE " : "TODO ")
-                                + "Merge " + questMergesByPlayer.getOrDefault(playerId, 0) + "/"
+                                + "Merge " + SheepQuestState.questMerges().getOrDefault(playerId, 0) + "/"
                                 + getQuestTarget(player, QUEST_MERGES_TARGET)
                                 + " (" + formatPoints(getQuestReward(player, QUEST_MERGES_REWARD)) + " pts)")));
 
@@ -14037,8 +12894,10 @@ public final class SheepMergeManager {
                         "&bBoost: &f+" + QUEST_LUCKY_BURST_SPAWN_CHANCE_BONUS_PERCENT + "% tier chance",
                         "&7Uses: &f" + getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
                         currentQuestPoints >= luckyCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getCountAbilityMenuStatus(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer, playerId),
-                        getCountAbilityToggleActionLine(activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer,
+                        getCountAbilityMenuStatus(SheepQuestState.activeLuckyBurstUses(),
+                                SheepQuestState.luckyBurstEnabled(), playerId),
+                        getCountAbilityToggleActionLine(SheepQuestState.activeLuckyBurstUses(),
+                                SheepQuestState.luckyBurstEnabled(),
                                 playerId)),
                 luckyBurstGlint));
 
@@ -14050,8 +12909,8 @@ public final class SheepMergeManager {
                         "&bBoost: &fwool grows 90% faster",
                         "&7Time: &f" + formatDuration(getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS)),
                         currentQuestPoints >= woolRushCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getAbilityMenuStatus(activeWoolRushUntilByPlayer, null, playerId),
-                        isAbilityActive(activeWoolRushUntilByPlayer, playerId)
+                        getAbilityMenuStatus(SheepQuestState.activeWoolRushUntil(), null, playerId),
+                        isAbilityActive(SheepQuestState.activeWoolRushUntil(), playerId)
                                 ? "&eClick: Extend"
                                 : "&aClick: Activate"),
                 woolRushGlint));
@@ -14065,8 +12924,8 @@ public final class SheepMergeManager {
                         "&7Time: &f"
                                 + formatDuration(getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS)),
                         currentQuestPoints >= jackpotCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getAbilityMenuStatus(activeJackpotShearsUntilByPlayer, null, playerId),
-                        isAbilityActive(activeJackpotShearsUntilByPlayer, playerId)
+                        getAbilityMenuStatus(SheepQuestState.activeJackpotShearsUntil(), null, playerId),
+                        isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), playerId)
                                 ? "&eClick: Extend"
                                 : "&aClick: Activate"),
                 jackpotGlint));
@@ -14079,8 +12938,10 @@ public final class SheepMergeManager {
                         "&bBoost: &fauto-merges carried sheep",
                         "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
                         currentQuestPoints >= autoMergeCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getCountAbilityMenuStatus(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer, playerId),
-                        getCountAbilityToggleActionLine(activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer,
+                        getCountAbilityMenuStatus(SheepQuestState.activeAutoMergeUses(),
+                                SheepQuestState.autoMergeEnabled(), playerId),
+                        getCountAbilityToggleActionLine(SheepQuestState.activeAutoMergeUses(),
+                                SheepQuestState.autoMergeEnabled(),
                                 playerId)),
                 autoMergeGlint));
 
@@ -14092,8 +12953,10 @@ public final class SheepMergeManager {
                         "&bBoost: &fshears every ready sheep",
                         "&7Uses: &f" + getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
                         currentQuestPoints >= autoShearCost ? "&aReady to buy" : "&cNeed more quest points",
-                        getCountAbilityMenuStatus(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer, playerId),
-                        getCountAbilityToggleActionLine(activeAutoShearUsesByPlayer, autoShearEnabledByPlayer,
+                        getCountAbilityMenuStatus(SheepQuestState.activeAutoShearUses(),
+                                SheepQuestState.autoShearEnabled(), playerId),
+                        getCountAbilityToggleActionLine(SheepQuestState.activeAutoShearUses(),
+                                SheepQuestState.autoShearEnabled(),
                                 playerId)),
                 autoShearGlint));
 
@@ -14121,8 +12984,9 @@ public final class SheepMergeManager {
         }
         switch (slot) {
             case QUEST_ABILITY_LUCKY_BURST_SLOT -> {
-                if (toggleCountAbilityEnabled(player, activeLuckyBurstUsesByPlayer, luckyBurstEnabledByPlayer)) {
-                    boolean enabled = luckyBurstEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+                if (toggleCountAbilityEnabled(player, SheepQuestState.activeLuckyBurstUses(),
+                        SheepQuestState.luckyBurstEnabled())) {
+                    boolean enabled = SheepQuestState.luckyBurstEnabled().getOrDefault(player.getUniqueId(), true);
                     player.sendMessage(action("Lucky Burst "
                             + (enabled ? "enabled." : "disabled.")));
                     break;
@@ -14133,8 +12997,8 @@ public final class SheepMergeManager {
                 }
                 if (activateCountQuestAbility(
                         player,
-                        activeLuckyBurstUsesByPlayer,
-                        luckyBurstEnabledByPlayer,
+                        SheepQuestState.activeLuckyBurstUses(),
+                        SheepQuestState.luckyBurstEnabled(),
                         getQuestLuckyBurstCost(player),
                         getAbilityUseCount(player, QUEST_LUCKY_BURST_BASE_DURATION_MS),
                         Sound.BLOCK_BEACON_POWER_SELECT,
@@ -14159,18 +13023,18 @@ public final class SheepMergeManager {
                         "Activate any quest ability")) {
                     break;
                 }
-                boolean active = isAbilityActive(activeWoolRushUntilByPlayer, player.getUniqueId());
+                boolean active = isAbilityActive(SheepQuestState.activeWoolRushUntil(), player.getUniqueId());
                 boolean applied = active
                         ? extendQuestAbility(
                                 player,
-                                activeWoolRushUntilByPlayer,
+                                SheepQuestState.activeWoolRushUntil(),
                                 getQuestWoolRushCost(player),
                                 getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
                                 Sound.ENTITY_ENDER_DRAGON_FLAP,
                                 org.bukkit.Particle.CLOUD)
                         : activateQuestAbility(
                                 player,
-                                activeWoolRushUntilByPlayer,
+                                SheepQuestState.activeWoolRushUntil(),
                                 getQuestWoolRushCost(player),
                                 getAbilityDurationMs(player, QUEST_WOOL_RUSH_BASE_DURATION_MS),
                                 Sound.ENTITY_ENDER_DRAGON_FLAP,
@@ -14197,18 +13061,18 @@ public final class SheepMergeManager {
                         "Activate any quest ability")) {
                     break;
                 }
-                boolean active = isAbilityActive(activeJackpotShearsUntilByPlayer, player.getUniqueId());
+                boolean active = isAbilityActive(SheepQuestState.activeJackpotShearsUntil(), player.getUniqueId());
                 boolean applied = active
                         ? extendQuestAbility(
                                 player,
-                                activeJackpotShearsUntilByPlayer,
+                                SheepQuestState.activeJackpotShearsUntil(),
                                 getQuestJackpotCost(player),
                                 getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
                                 Sound.ENTITY_PLAYER_LEVELUP,
                                 org.bukkit.Particle.CRIT)
                         : activateQuestAbility(
                                 player,
-                                activeJackpotShearsUntilByPlayer,
+                                SheepQuestState.activeJackpotShearsUntil(),
                                 getQuestJackpotCost(player),
                                 getAbilityDurationMs(player, QUEST_JACKPOT_SHEARS_BASE_DURATION_MS),
                                 Sound.ENTITY_PLAYER_LEVELUP,
@@ -14230,8 +13094,9 @@ public final class SheepMergeManager {
                 }
             }
             case QUEST_ABILITY_AUTO_MERGE_SLOT -> {
-                if (toggleCountAbilityEnabled(player, activeAutoMergeUsesByPlayer, autoMergeEnabledByPlayer)) {
-                    boolean enabled = autoMergeEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+                if (toggleCountAbilityEnabled(player, SheepQuestState.activeAutoMergeUses(),
+                        SheepQuestState.autoMergeEnabled())) {
+                    boolean enabled = SheepQuestState.autoMergeEnabled().getOrDefault(player.getUniqueId(), true);
                     player.sendMessage(action("Merge Assist "
                             + (enabled ? "enabled." : "disabled.")));
                     break;
@@ -14242,14 +13107,14 @@ public final class SheepMergeManager {
                 }
                 if (activateCountQuestAbility(
                         player,
-                        activeAutoMergeUsesByPlayer,
-                        autoMergeEnabledByPlayer,
+                        SheepQuestState.activeAutoMergeUses(),
+                        SheepQuestState.autoMergeEnabled(),
                         getQuestAutoMergeCost(player),
                         getAbilityUseCount(player, QUEST_AUTO_MERGE_BASE_DURATION_MS),
                         Sound.BLOCK_PISTON_EXTEND,
                         org.bukkit.Particle.ENCHANTMENT_TABLE)) {
                     markTutorialAbilityUsed(player);
-                    nextAutoMergeAtByPlayer.put(player.getUniqueId(), 0L);
+                    SheepQuestState.nextAutoMergeAt().put(player.getUniqueId(), 0L);
                     spawnParticle(player,
                             org.bukkit.Particle.WAX_ON,
                             player.getLocation().add(0, 2.0, 0),
@@ -14265,8 +13130,9 @@ public final class SheepMergeManager {
                 }
             }
             case QUEST_ABILITY_AUTO_SHEAR_SLOT -> {
-                if (toggleCountAbilityEnabled(player, activeAutoShearUsesByPlayer, autoShearEnabledByPlayer)) {
-                    boolean enabled = autoShearEnabledByPlayer.getOrDefault(player.getUniqueId(), true);
+                if (toggleCountAbilityEnabled(player, SheepQuestState.activeAutoShearUses(),
+                        SheepQuestState.autoShearEnabled())) {
+                    boolean enabled = SheepQuestState.autoShearEnabled().getOrDefault(player.getUniqueId(), true);
                     player.sendMessage(action("Shear All Sheep "
                             + (enabled ? "enabled." : "disabled.")));
                     break;
@@ -14277,14 +13143,14 @@ public final class SheepMergeManager {
                 }
                 if (activateCountQuestAbility(
                         player,
-                        activeAutoShearUsesByPlayer,
-                        autoShearEnabledByPlayer,
+                        SheepQuestState.activeAutoShearUses(),
+                        SheepQuestState.autoShearEnabled(),
                         getQuestAutoShearCost(player),
                         getAbilityUseCount(player, QUEST_AUTO_SHEAR_BASE_DURATION_MS),
                         Sound.ENTITY_SHEEP_SHEAR,
                         org.bukkit.Particle.WAX_OFF)) {
                     markTutorialAbilityUsed(player);
-                    nextAutoShearAtByPlayer.put(player.getUniqueId(), 0L);
+                    SheepQuestState.nextAutoShearAt().put(player.getUniqueId(), 0L);
                     spawnParticle(player,
                             org.bukkit.Particle.WAX_OFF,
                             player.getLocation().add(0, 2.0, 0),
@@ -14526,7 +13392,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        eggSpeedLevelByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepEconomyState.setEggSpeedLevel(player.getUniqueId(), currentLevel + 1);
         resetEggTimer(player);
         saveData();
         return true;
@@ -14548,7 +13414,7 @@ public final class SheepMergeManager {
             return false;
         }
         int newLevel = currentLevel + 1;
-        woolRegenLevelByPlayer.put(player.getUniqueId(), newLevel);
+        SheepEconomyState.setWoolRegenLevel(player.getUniqueId(), newLevel);
         applyWoolRegenReductionToActiveCooldowns(player, currentLevel, newLevel);
         saveData();
         return true;
@@ -14604,7 +13470,7 @@ public final class SheepMergeManager {
         if (!trySpendPoints(player, cost)) {
             return false;
         }
-        higherTierChanceLevelByPlayer.put(player.getUniqueId(), currentLevel + 1);
+        SheepEconomyState.setHigherTierChanceLevel(player.getUniqueId(), currentLevel + 1);
         saveData();
         return true;
     }
@@ -14614,7 +13480,7 @@ public final class SheepMergeManager {
         if (ownerId == null) {
             return 0;
         }
-        return woolRegenLevelByPlayer.getOrDefault(ownerId, 0);
+        return SheepEconomyState.getWoolRegenLevel(ownerId);
     }
 
     private static int getWoolCooldownPercentAtLevel(Player player, int level) {
@@ -14679,7 +13545,7 @@ public final class SheepMergeManager {
         if (world == null) {
             return 0;
         }
-        return liveSheepCountByWorld.getOrDefault(world.getUID(), countLiveSheep(world));
+        return SheepEntityRuntimeState.getLiveSheepCount(world.getUID(), countLiveSheep(world));
     }
 
     public static boolean isWorldAtLimit(World world) {
@@ -14702,14 +13568,14 @@ public final class SheepMergeManager {
             knownFarmWorlds.add(world.getUID());
             refreshLiveSheepCount(world);
         }
-        liveSheepCountByWorld.keySet().removeIf(worldId -> !knownFarmWorlds.contains(worldId));
+        SheepEntityRuntimeState.retainLiveSheepCounts(knownFarmWorlds);
     }
 
     public static void refreshLiveSheepCount(World world) {
         if (world == null || !isSheepFarmWorld(world)) {
             return;
         }
-        liveSheepCountByWorld.put(world.getUID(), countLiveSheep(world));
+        SheepEntityRuntimeState.setLiveSheepCount(world.getUID(), countLiveSheep(world));
     }
 
     private static int countLiveSheep(World world) {
@@ -14723,14 +13589,15 @@ public final class SheepMergeManager {
     }
 
     public static void savePlayerInventory(Player player) {
-        if (player == null || savedInventories.containsKey(player.getUniqueId())) {
+        if (player == null || SheepRuntimeUiState.savedInventories().containsKey(player.getUniqueId())) {
             return;
         }
         ItemStack[] contents = InventoryDataUtils.cloneItemStackArray(player.getInventory().getContents());
         ItemStack[] armor = InventoryDataUtils.cloneItemStackArray(player.getInventory().getArmorContents());
         ItemStack offhand = player.getInventory().getItemInOffHand() == null ? null
                 : player.getInventory().getItemInOffHand().clone();
-        savedInventories.put(player.getUniqueId(), new InventoryDataUtils.Snapshot(contents, armor, offhand));
+        SheepRuntimeUiState.savedInventories().put(
+                player.getUniqueId(), new InventoryDataUtils.Snapshot(contents, armor, offhand));
         saveData();
     }
 
@@ -14738,7 +13605,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        InventoryDataUtils.Snapshot snapshot = savedInventories.remove(player.getUniqueId());
+        InventoryDataUtils.Snapshot snapshot = SheepRuntimeUiState.savedInventories().remove(player.getUniqueId());
         if (snapshot == null) {
             return;
         }
@@ -14750,7 +13617,7 @@ public final class SheepMergeManager {
     }
 
     public static boolean hasSavedInventory(Player player) {
-        return player != null && savedInventories.containsKey(player.getUniqueId());
+        return player != null && SheepRuntimeUiState.savedInventories().containsKey(player.getUniqueId());
     }
 
     public static void restoreSavedStateOutsideFarm(Player player) {
@@ -14768,7 +13635,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        if (!savedInventories.containsKey(playerId)) {
+        if (!SheepRuntimeUiState.savedInventories().containsKey(playerId)) {
             return;
         }
 
@@ -14778,7 +13645,7 @@ public final class SheepMergeManager {
         }
 
         // The player already has non-farm items; discard stale pending snapshot.
-        savedInventories.remove(playerId);
+        SheepRuntimeUiState.savedInventories().remove(playerId);
         saveData();
     }
 
@@ -14787,7 +13654,7 @@ public final class SheepMergeManager {
             return;
         }
         UUID playerId = player.getUniqueId();
-        if (!savedScoreboards.containsKey(playerId)) {
+        if (!SheepRuntimeUiState.savedScoreboards().containsKey(playerId)) {
             return;
         }
 
@@ -14809,7 +13676,7 @@ public final class SheepMergeManager {
 
         // Current scoreboard is not the SheepMerge sidebar; keep it and discard stale
         // pending snapshot.
-        savedScoreboards.remove(playerId);
+        SheepRuntimeUiState.savedScoreboards().remove(playerId);
     }
 
     private static boolean hasAnyForcedFarmLoadoutItem(Player player) {
@@ -14848,15 +13715,15 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        if (!savedScoreboards.containsKey(player.getUniqueId())) {
-            savedScoreboards.put(player.getUniqueId(), player.getScoreboard());
+        if (!SheepRuntimeUiState.savedScoreboards().containsKey(player.getUniqueId())) {
+            SheepRuntimeUiState.savedScoreboards().put(player.getUniqueId(), player.getScoreboard());
         }
 
         Scoreboard scoreboard = player.getServer().getScoreboardManager().getNewScoreboard();
         Objective objective = scoreboard.registerNewObjective("sheepmerge_points", "dummy", "Sheep Merge Coins");
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
         renderPointsScoreboard(player, scoreboard, objective);
-        lastPointsScoreboardUpdateAtByPlayer.put(player.getUniqueId(), System.currentTimeMillis());
+        SheepRuntimeUiState.lastPointsScoreboardUpdates().put(player.getUniqueId(), System.currentTimeMillis());
         player.setScoreboard(scoreboard);
     }
 
@@ -14866,7 +13733,7 @@ public final class SheepMergeManager {
         }
         long now = System.currentTimeMillis();
         UUID playerId = player.getUniqueId();
-        long lastUpdatedAt = lastPointsScoreboardUpdateAtByPlayer.getOrDefault(playerId, 0L);
+        long lastUpdatedAt = SheepRuntimeUiState.lastPointsScoreboardUpdates().getOrDefault(playerId, 0L);
         if (now - lastUpdatedAt < SCOREBOARD_UPDATE_INTERVAL_MS) {
             return;
         }
@@ -14877,7 +13744,7 @@ public final class SheepMergeManager {
             return;
         }
         renderPointsScoreboard(player, scoreboard, objective);
-        lastPointsScoreboardUpdateAtByPlayer.put(playerId, now);
+        SheepRuntimeUiState.lastPointsScoreboardUpdates().put(playerId, now);
     }
 
     public static void recordVisitedOtherFarm(Player visitor, UUID ownerId) {
@@ -14888,10 +13755,9 @@ public final class SheepMergeManager {
         if (ownerId == null || ownerId.equals(visitorId)) {
             return;
         }
-        int updated = addSaturated(lifetimeOtherFarmVisitsByPlayer.getOrDefault(visitorId, 0), 1);
-        lifetimeOtherFarmVisitsByPlayer.put(visitorId, updated);
+        SheepLifetimeProgressState.incrementLifetimeOtherFarmVisits(visitorId);
         if (SOCIALS_AUTHOR_UUID.equals(ownerId)) {
-            visitedOwnerFarmByPlayer.put(visitorId, true);
+            SheepLifetimeProgressState.setVisitedOwnerFarm(visitorId, true);
         }
         evaluateAchievementProgress(visitor, true);
         saveData();
@@ -14944,30 +13810,30 @@ public final class SheepMergeManager {
             long questResetSeconds = Math.max(0L, (getQuestResetRemainingMs(player) + 999L) / 1000L);
             lines.add(makeScoreboardSpacer(lines.size() + 1));
             lines.add(color("&a&lQuests &8(&f" + questResetSeconds + "s&8)"));
-            lines.add(getQuestScoreLine("Shear", questShearsByPlayer.getOrDefault(playerId, 0),
+            lines.add(getQuestScoreLine("Shear", SheepQuestState.questShears().getOrDefault(playerId, 0),
                     getQuestTarget(player, QUEST_SHEARS_TARGET),
-                    questShearsCompleteByPlayer.getOrDefault(playerId, false)));
-            lines.add(getQuestScoreLine("Spawn", questSpawnsByPlayer.getOrDefault(playerId, 0),
+                    SheepQuestState.questShearsComplete().getOrDefault(playerId, false)));
+            lines.add(getQuestScoreLine("Spawn", SheepQuestState.questSpawns().getOrDefault(playerId, 0),
                     getQuestTarget(player, QUEST_SPAWNS_TARGET),
-                    questSpawnsCompleteByPlayer.getOrDefault(playerId, false)));
-            lines.add(getQuestScoreLine("Merge", questMergesByPlayer.getOrDefault(playerId, 0),
+                    SheepQuestState.questSpawnsComplete().getOrDefault(playerId, false)));
+            lines.add(getQuestScoreLine("Merge", SheepQuestState.questMerges().getOrDefault(playerId, 0),
                     getQuestTarget(player, QUEST_MERGES_TARGET),
-                    questMergesCompleteByPlayer.getOrDefault(playerId, false)));
+                    SheepQuestState.questMergesComplete().getOrDefault(playerId, false)));
         }
 
         if (!compact && shouldShowScoreboardAbilityStatus(player)) {
             lines.add(makeScoreboardSpacer(lines.size() + 1));
             lines.add(color("&d&lAbilities"));
-            lines.add(getCountAbilityScoreLine("Lucky", activeLuckyBurstUsesByPlayer,
-                    luckyBurstEnabledByPlayer, playerId));
-            lines.add(getAbilityScoreLine("Wool", activeWoolRushUntilByPlayer,
-                    pausedWoolRushRemainingMsByPlayer, playerId));
-            lines.add(getAbilityScoreLine("Jackpot", activeJackpotShearsUntilByPlayer,
-                    pausedJackpotShearsRemainingMsByPlayer, playerId));
-            lines.add(getCountAbilityScoreLine("Merge", activeAutoMergeUsesByPlayer,
-                    autoMergeEnabledByPlayer, playerId));
-            lines.add(getCountAbilityScoreLine("Shear", activeAutoShearUsesByPlayer,
-                    autoShearEnabledByPlayer, playerId));
+            lines.add(getCountAbilityScoreLine("Lucky", SheepQuestState.activeLuckyBurstUses(),
+                    SheepQuestState.luckyBurstEnabled(), playerId));
+            lines.add(getAbilityScoreLine("Wool", SheepQuestState.activeWoolRushUntil(),
+                    SheepQuestState.pausedWoolRushRemaining(), playerId));
+            lines.add(getAbilityScoreLine("Jackpot", SheepQuestState.activeJackpotShearsUntil(),
+                    SheepQuestState.pausedJackpotShearsRemaining(), playerId));
+            lines.add(getCountAbilityScoreLine("Merge", SheepQuestState.activeAutoMergeUses(),
+                    SheepQuestState.autoMergeEnabled(), playerId));
+            lines.add(getCountAbilityScoreLine("Shear", SheepQuestState.activeAutoShearUses(),
+                    SheepQuestState.autoShearEnabled(), playerId));
         }
 
         int score = Math.min(15, lines.size());
@@ -14995,7 +13861,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        Scoreboard previous = savedScoreboards.remove(player.getUniqueId());
+        Scoreboard previous = SheepRuntimeUiState.savedScoreboards().remove(player.getUniqueId());
         if (previous != null) {
             player.setScoreboard(previous);
         }
@@ -15014,8 +13880,8 @@ public final class SheepMergeManager {
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             UUID playerId = player.getUniqueId();
             boolean wasInSheepWorld = isSheepFarmWorld(player.getWorld());
-            boolean hadSavedInventory = savedInventories.containsKey(playerId);
-            boolean hadSavedScoreboard = savedScoreboards.containsKey(playerId);
+            boolean hadSavedInventory = SheepRuntimeUiState.savedInventories().containsKey(playerId);
+            boolean hadSavedScoreboard = SheepRuntimeUiState.savedScoreboards().containsKey(playerId);
 
             if (hadSavedInventory) {
                 restorePlayerInventory(player);
@@ -15038,7 +13904,7 @@ public final class SheepMergeManager {
             }
             player.setPlayerListName(null);
         }
-        savedScoreboards.clear();
+        SheepRuntimeUiState.savedScoreboards().clear();
         EGG_MODULE.clearSavedExperienceCache();
     }
 
@@ -15139,70 +14005,14 @@ public final class SheepMergeManager {
             if (dataConfig == null) {
                 dataConfig = YamlConfiguration.loadConfiguration(dataFile);
             }
-            dataConfig.set("points", null);
-            dataConfig.set("extraLimit", null);
-            dataConfig.set("eggSpeed", null);
-            dataConfig.set("woolRegen", null);
-            dataConfig.set("higherTierChance", null);
-            dataConfig.set("prestigeLevel", null);
-            dataConfig.set("prestigePoints", null);
-            dataConfig.set("prestigeDoublePoints", null);
-            dataConfig.set("prestigeHigherMax", null);
-            dataConfig.set("prestigeStartEggs", null);
-            dataConfig.set("prestigeEggCap", null);
-            dataConfig.set("prestigeBaseSpawnTier", null);
-            dataConfig.set("prestigeQuestReward", null);
-            dataConfig.set("prestigeRefundCooldown", null);
-            dataConfig.set("highestAnnouncedTier", null);
-            dataConfig.set("highestAnnouncedRainbowTier", null);
+            SheepEconomyState.clearPersistedKeys(dataConfig);
+            SheepPrestigeState.clearPersistedKeys(dataConfig);
             dataConfig.set("prestigeExpandFarm", null);
-            dataConfig.set("shearShop", null);
-            dataConfig.set("shearWoolSave", null);
-            dataConfig.set("shearTierBoost", null);
-            dataConfig.set("tutorialCompleted", null);
-            dataConfig.set("tutorialBypassed", null);
-            dataConfig.set("tutorialShears", null);
-            dataConfig.set("tutorialSpawns", null);
-            dataConfig.set("tutorialMerges", null);
-            dataConfig.set("tutorialUpgradeOpened", null);
-            dataConfig.set("tutorialQuestOpened", null);
-            dataConfig.set("tutorialQuestUpgradesOpened", null);
-            dataConfig.set("tutorialPrestigeOpened", null);
-            dataConfig.set("tutorialAbilityUsed", null);
-            dataConfig.set("tutorialShearUpgraded", null);
-            dataConfig.set("tutorialRegularUpgradesBought", null);
-            dataConfig.set("tutorialPrestigedOnce", null);
-            dataConfig.set("tutorialShearShopOpened", null);
-            dataConfig.set("farmVisitEnabled", null);
-            dataConfig.set("soundEffectsEnabled", null);
-            dataConfig.set("sheepSoundsEnabled", null);
-            dataConfig.set("particleEffectsEnabled", null);
-            dataConfig.set("farmVisitBlockedUsers", null);
-            dataConfig.set("questPoints", null);
-            dataConfig.set("questReset", null);
-            dataConfig.set("questUpgradeDuration", null);
-            dataConfig.set("questUpgradePower", null);
-            dataConfig.set("activeLuckyBurstUntil", null);
-            dataConfig.set("activeLuckyBurstUses", null);
-            dataConfig.set("luckyBurstEnabled", null);
-            dataConfig.set("activeWoolRushUntil", null);
-            dataConfig.set("activeJackpotShearsUntil", null);
-            dataConfig.set("activeAutoMergeUntil", null);
-            dataConfig.set("activeAutoMergeUses", null);
-            dataConfig.set("autoMergeEnabled", null);
-            dataConfig.set("activeAutoShearUntil", null);
-            dataConfig.set("activeAutoShearUses", null);
-            dataConfig.set("autoShearEnabled", null);
-            dataConfig.set("pausedLuckyBurstRemaining", null);
-            dataConfig.set("pausedWoolRushRemaining", null);
-            dataConfig.set("pausedJackpotShearsRemaining", null);
-            dataConfig.set("pausedAutoMergeRemaining", null);
-            dataConfig.set("pausedAutoShearRemaining", null);
-            dataConfig.set("comboDecayUpgrade", null);
-            dataConfig.set("comboMaxUpgrade", null);
-            dataConfig.set("comboGainUpgrade", null);
+            SheepUpgradeState.clearPersistedKeys(dataConfig);
+            SheepVisitAccessState.clearPersistedKeys(dataConfig);
+            SheepEffectPreferences.clearPersistedKeys(dataConfig);
+            SheepQuestState.clearPersistedKeys(dataConfig);
             dataConfig.set("automationPoints", null);
-            dataConfig.set("achievementAutomationPointsGranted", null);
             dataConfig.set("automationAutoBuy", null);
             dataConfig.set("automationAutoAbility", null);
             dataConfig.set("automationSlowAutoMerge", null);
@@ -15215,391 +14025,40 @@ public final class SheepMergeManager {
             dataConfig.set("automationSlowAutoShearEnabled", null);
             dataConfig.set("automationAutoSpawnEnabled", null);
             dataConfig.set("automationAutoPrestigeEnabled", null);
-            dataConfig.set("scoreboardLayoutMode", null);
-            dataConfig.set("scoreboardShowAchievementPoints", null);
-            dataConfig.set("scoreboardShowQuestPoints", null);
-            dataConfig.set("scoreboardShowAutomationPoints", null);
-            dataConfig.set("scoreboardShowSacrificePoints", null);
-            dataConfig.set("scoreboardShowPrestigeStats", null);
-            dataConfig.set("scoreboardShowQuestProgress", null);
-            dataConfig.set("scoreboardShowAbilityStatus", null);
+            SheepUiPreferences.clearPersistedKeys(dataConfig);
             dataConfig.set("liveUpdate", null);
             dataConfig.set("dataSchemaVersion", null);
-            dataConfig.set("inventoryQuickAccess", null);
-            dataConfig.set("sacrificePoints", null);
-            dataConfig.set("sacrificeUnlocksBought", null);
-            dataConfig.set("sacrificeUnlockMask", null);
-            dataConfig.set("sacrificeUnlockPendingMask", null);
-            dataConfig.set("rebirthLevel", null);
-            dataConfig.set("rebirthPoints", null);
-            dataConfig.set("rebirthSkillUnlockMask", null);
-            dataConfig.set("rebirthSkillPendingMask", null);
-            dataConfig.set("rebirthRespecCooldown", null);
-            dataConfig.set("lifetimeShears", null);
-            dataConfig.set("lifetimeSpawns", null);
-            dataConfig.set("lifetimeMerges", null);
-            dataConfig.set("lifetimeOtherFarmVisits", null);
-            dataConfig.set("visitedOwnerFarm", null);
-            dataConfig.set("completedQuestCycles", null);
-            dataConfig.set("totalPrestigeLevelsEarned", null);
-            dataConfig.set("totalSacrificeUnlocksPurchased", null);
-            dataConfig.set("achievementUnlocked", null);
-            dataConfig.set("achievementMilestonesUnlocked", null);
+            SheepSacrificeProgression.clearPersistedKeys(dataConfig);
+            SheepRebirthState.clearPersistedKeys(dataConfig);
+            SheepLifetimeProgressState.clearPersistedKeys(dataConfig);
+            SheepAchievementState.clearPersistedKeys(dataConfig);
             dataConfig.set("farmSheep", null);
             dataConfig.set("tutorialSheep", null);
             dataConfig.set("pendingInventory", null);
-            for (Map.Entry<UUID, BigInteger> entry : pointsByPlayer.entrySet()) {
-                dataConfig.set("points." + entry.getKey().toString(), entry.getValue().toString());
-            }
-            for (Map.Entry<UUID, Integer> entry : extraLimitByPlayer.entrySet()) {
-                dataConfig.set("extraLimit." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : eggSpeedLevelByPlayer.entrySet()) {
-                dataConfig.set("eggSpeed." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : woolRegenLevelByPlayer.entrySet()) {
-                dataConfig.set("woolRegen." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : higherTierChanceLevelByPlayer.entrySet()) {
-                dataConfig.set("higherTierChance." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeLevelByPlayer.entrySet()) {
-                dataConfig.set("prestigeLevel." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigePointsByPlayer.entrySet()) {
-                dataConfig.set("prestigePoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeDoublePointsChanceByPlayer.entrySet()) {
-                dataConfig.set("prestigeDoublePoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeHigherMaxLevelByPlayer.entrySet()) {
-                dataConfig.set("prestigeHigherMax." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeStartEggsByPlayer.entrySet()) {
-                dataConfig.set("prestigeStartEggs." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeEggCapByPlayer.entrySet()) {
-                dataConfig.set("prestigeEggCap." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeBaseSpawnTierByPlayer.entrySet()) {
-                dataConfig.set("prestigeBaseSpawnTier." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : prestigeQuestRewardByPlayer.entrySet()) {
-                dataConfig.set("prestigeQuestReward." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : nextPrestigeRefundTimestampByPlayer.entrySet()) {
-                dataConfig.set("prestigeRefundCooldown." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : highestAnnouncedTierByPlayer.entrySet()) {
-                dataConfig.set("highestAnnouncedTier." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : highestAnnouncedRainbowTierByPlayer.entrySet()) {
-                dataConfig.set("highestAnnouncedRainbowTier." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : shearShopLevelByPlayer.entrySet()) {
-                dataConfig.set("shearShop." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : shearWoolSaveLevelByPlayer.entrySet()) {
-                dataConfig.set("shearWoolSave." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : shearTierBoostLevelByPlayer.entrySet()) {
-                dataConfig.set("shearTierBoost." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialCompletedByPlayer.entrySet()) {
-                dataConfig.set("tutorialCompleted." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialBypassedByPlayer.entrySet()) {
-                dataConfig.set("tutorialBypassed." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : tutorialShearsByPlayer.entrySet()) {
-                dataConfig.set("tutorialShears." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : tutorialSpawnsByPlayer.entrySet()) {
-                dataConfig.set("tutorialSpawns." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : tutorialMergesByPlayer.entrySet()) {
-                dataConfig.set("tutorialMerges." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialUpgradeOpenedByPlayer.entrySet()) {
-                dataConfig.set("tutorialUpgradeOpened." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialQuestOpenedByPlayer.entrySet()) {
-                dataConfig.set("tutorialQuestOpened." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialQuestUpgradesOpenedByPlayer.entrySet()) {
-                dataConfig.set("tutorialQuestUpgradesOpened." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialPrestigeOpenedByPlayer.entrySet()) {
-                dataConfig.set("tutorialPrestigeOpened." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialAbilityUsedByPlayer.entrySet()) {
-                dataConfig.set("tutorialAbilityUsed." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialShearUpgradedByPlayer.entrySet()) {
-                dataConfig.set("tutorialShearUpgraded." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialRegularUpgradesBoughtByPlayer.entrySet()) {
-                dataConfig.set("tutorialRegularUpgradesBought." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialShearTaskRewardGrantedByPlayer.entrySet()) {
-                dataConfig.set("tutorialShearTaskRewardGranted." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialPrestigePrepRewardGrantedByPlayer.entrySet()) {
-                dataConfig.set("tutorialPrestigePrepRewardGranted." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialPrestigedOnceByPlayer.entrySet()) {
-                dataConfig.set("tutorialPrestigedOnce." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : tutorialShearShopOpenedByPlayer.entrySet()) {
-                dataConfig.set("tutorialShearShopOpened." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : farmVisitEnabledByPlayer.entrySet()) {
-                dataConfig.set("farmVisitEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : soundEffectsEnabledByPlayer.entrySet()) {
-                dataConfig.set("soundEffectsEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : sheepSoundsEnabledByPlayer.entrySet()) {
-                dataConfig.set("sheepSoundsEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : particleEffectsEnabledByPlayer.entrySet()) {
-                dataConfig.set("particleEffectsEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Set<UUID>> entry : farmVisitBlockedUsersByPlayer.entrySet()) {
-                Set<UUID> blockedUsers = entry.getValue();
-                if (blockedUsers == null || blockedUsers.isEmpty()) {
-                    continue;
-                }
-                List<String> blockedIds = new ArrayList<>();
-                for (UUID blockedId : blockedUsers) {
-                    if (blockedId != null) {
-                        blockedIds.add(blockedId.toString());
-                    }
-                }
-                if (!blockedIds.isEmpty()) {
-                    dataConfig.set("farmVisitBlockedUsers." + entry.getKey().toString(), blockedIds);
-                }
-            }
-            for (Map.Entry<UUID, Integer> entry : questPointsByPlayer.entrySet()) {
-                dataConfig.set("questPoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : nextQuestResetTimestampByPlayer.entrySet()) {
-                dataConfig.set("questReset." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : questUpgradeDurationByPlayer.entrySet()) {
-                dataConfig.set("questUpgradeDuration." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : questUpgradePowerByPlayer.entrySet()) {
-                dataConfig.set("questUpgradePower." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : activeLuckyBurstUntilByPlayer.entrySet()) {
-                dataConfig.set("activeLuckyBurstUntil." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : activeLuckyBurstUsesByPlayer.entrySet()) {
-                dataConfig.set("activeLuckyBurstUses." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : luckyBurstEnabledByPlayer.entrySet()) {
-                dataConfig.set("luckyBurstEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : activeWoolRushUntilByPlayer.entrySet()) {
-                dataConfig.set("activeWoolRushUntil." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : activeJackpotShearsUntilByPlayer.entrySet()) {
-                dataConfig.set("activeJackpotShearsUntil." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : activeAutoMergeUntilByPlayer.entrySet()) {
-                dataConfig.set("activeAutoMergeUntil." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : activeAutoMergeUsesByPlayer.entrySet()) {
-                dataConfig.set("activeAutoMergeUses." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : autoMergeEnabledByPlayer.entrySet()) {
-                dataConfig.set("autoMergeEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : activeAutoShearUntilByPlayer.entrySet()) {
-                dataConfig.set("activeAutoShearUntil." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : activeAutoShearUsesByPlayer.entrySet()) {
-                dataConfig.set("activeAutoShearUses." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : autoShearEnabledByPlayer.entrySet()) {
-                dataConfig.set("autoShearEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : pausedLuckyBurstRemainingMsByPlayer.entrySet()) {
-                dataConfig.set("pausedLuckyBurstRemaining." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : pausedWoolRushRemainingMsByPlayer.entrySet()) {
-                dataConfig.set("pausedWoolRushRemaining." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : pausedJackpotShearsRemainingMsByPlayer.entrySet()) {
-                dataConfig.set("pausedJackpotShearsRemaining." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : pausedAutoMergeRemainingMsByPlayer.entrySet()) {
-                dataConfig.set("pausedAutoMergeRemaining." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Long> entry : pausedAutoShearRemainingMsByPlayer.entrySet()) {
-                dataConfig.set("pausedAutoShearRemaining." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : comboDecayUpgradeByPlayer.entrySet()) {
-                dataConfig.set("comboDecayUpgrade." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : comboMaxUpgradeByPlayer.entrySet()) {
-                dataConfig.set("comboMaxUpgrade." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : comboGainUpgradeByPlayer.entrySet()) {
-                dataConfig.set("comboGainUpgrade." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationPointsByPlayer.entrySet()) {
-                dataConfig.set("automationPoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : achievementAutomationPointsGrantedByPlayer.entrySet()) {
-                dataConfig.set("achievementAutomationPointsGranted." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationAutoBuyUpgradeByPlayer.entrySet()) {
-                dataConfig.set("automationAutoBuy." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationAutoAbilityUpgradeByPlayer.entrySet()) {
-                dataConfig.set("automationAutoAbility." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationSlowAutoMergeUpgradeByPlayer.entrySet()) {
-                dataConfig.set("automationSlowAutoMerge." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationSlowAutoShearUpgradeByPlayer.entrySet()) {
-                dataConfig.set("automationSlowAutoShear." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationAutoSpawnUpgradeByPlayer.entrySet()) {
-                dataConfig.set("automationAutoSpawn." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : automationAutoPrestigeUpgradeByPlayer.entrySet()) {
-                dataConfig.set("automationAutoPrestige." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : automationAutoBuyEnabledByPlayer.entrySet()) {
-                dataConfig.set("automationAutoBuyEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : automationAutoAbilityEnabledByPlayer.entrySet()) {
-                dataConfig.set("automationAutoAbilityEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : automationSlowAutoMergeEnabledByPlayer.entrySet()) {
-                dataConfig.set("automationSlowAutoMergeEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : automationSlowAutoShearEnabledByPlayer.entrySet()) {
-                dataConfig.set("automationSlowAutoShearEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : automationAutoSpawnEnabledByPlayer.entrySet()) {
-                dataConfig.set("automationAutoSpawnEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : automationAutoPrestigeEnabledByPlayer.entrySet()) {
-                dataConfig.set("automationAutoPrestigeEnabled." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : scoreboardLayoutModeByPlayer.entrySet()) {
-                dataConfig.set("scoreboardLayoutMode." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowAchievementPointsByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowAchievementPoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowQuestPointsByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowQuestPoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowAutomationPointsByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowAutomationPoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowSacrificePointsByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowSacrificePoints." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowPrestigeStatsByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowPrestigeStats." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowQuestProgressByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowQuestProgress." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Boolean> entry : scoreboardShowAbilityStatusByPlayer.entrySet()) {
-                dataConfig.set("scoreboardShowAbilityStatus." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, List<String>> entry : inventoryQuickAccessByPlayer.entrySet()) {
-                if (entry.getValue() == null || entry.getValue().isEmpty()) {
-                    continue;
-                }
-                dataConfig.set("inventoryQuickAccess." + entry.getKey().toString(),
-                        new ArrayList<>(entry.getValue()));
-            }
-            dataConfig.set("inventoryQuickAccessCastingEnabled", null);
-            for (Map.Entry<UUID, Boolean> entry : inventoryQuickAccessCastingEnabledByPlayer.entrySet()) {
-                if (entry.getValue() == null || entry.getValue()) {
-                    continue;
-                }
-                dataConfig.set("inventoryQuickAccessCastingEnabled." + entry.getKey().toString(), false);
-            }
-            for (Map.Entry<UUID, BigInteger> entry : sacrificePointsByPlayer.entrySet()) {
-                dataConfig.set("sacrificePoints." + entry.getKey().toString(), entry.getValue().toString());
-            }
-            sacrificeUnlockState.saveTo(dataConfig);
-            for (Map.Entry<UUID, Integer> entry : rebirthLevelByPlayer.entrySet()) {
-                dataConfig.set("rebirthLevel." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : rebirthPointsByPlayer.entrySet()) {
-                dataConfig.set("rebirthPoints." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
+            SheepEconomyState.saveTo(dataConfig);
+            SheepPrestigeState.saveTo(dataConfig);
+            SheepUpgradeState.saveTo(dataConfig);
+            SheepTutorialState.saveTo(dataConfig);
+            SheepVisitAccessState.saveTo(dataConfig);
+            SheepEffectPreferences.saveTo(dataConfig);
+            SheepQuestState.saveTo(dataConfig);
+            SheepComboState.saveTo(dataConfig);
+            SheepAutomationState.saveTo(dataConfig);
+            SheepUiPreferences.saveTo(dataConfig);
+            SheepSacrificeProgression.saveTo(dataConfig);
             int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
-            for (Map.Entry<UUID, Integer> entry : rebirthSkillUnlockMaskByPlayer.entrySet()) {
-                dataConfig.set("rebirthSkillUnlockMask." + entry.getKey().toString(),
-                        entry.getValue() & rebirthTreeMask);
-            }
-            for (Map.Entry<UUID, Integer> entry : rebirthSkillPendingMaskByPlayer.entrySet()) {
-                dataConfig.set("rebirthSkillPendingMask." + entry.getKey().toString(),
-                        entry.getValue() & rebirthTreeMask);
-            }
-            for (Map.Entry<UUID, Long> entry : nextRebirthRespecTimestampByPlayer.entrySet()) {
-                dataConfig.set("rebirthRespecCooldown." + entry.getKey().toString(), entry.getValue());
-            }
-            for (Map.Entry<UUID, Integer> entry : lifetimeShearsByPlayer.entrySet()) {
-                dataConfig.set("lifetimeShears." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : lifetimeSpawnsByPlayer.entrySet()) {
-                dataConfig.set("lifetimeSpawns." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : lifetimeMergesByPlayer.entrySet()) {
-                dataConfig.set("lifetimeMerges." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : lifetimeOtherFarmVisitsByPlayer.entrySet()) {
-                dataConfig.set("lifetimeOtherFarmVisits." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Boolean> entry : visitedOwnerFarmByPlayer.entrySet()) {
-                if (entry.getValue() == null || !entry.getValue()) {
-                    continue;
-                }
-                dataConfig.set("visitedOwnerFarm." + entry.getKey().toString(), true);
-            }
-            for (Map.Entry<UUID, Integer> entry : completedQuestCyclesByPlayer.entrySet()) {
-                dataConfig.set("completedQuestCycles." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : totalPrestigeLevelsEarnedByPlayer.entrySet()) {
-                dataConfig.set("totalPrestigeLevelsEarned." + entry.getKey().toString(), Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Integer> entry : totalSacrificeUnlocksPurchasedByPlayer.entrySet()) {
-                dataConfig.set("totalSacrificeUnlocksPurchased." + entry.getKey().toString(),
-                        Math.max(0, entry.getValue()));
-            }
-            for (Map.Entry<UUID, Set<String>> entry : unlockedAchievementIdsByPlayer.entrySet()) {
-                if (entry.getValue() == null || entry.getValue().isEmpty()) {
-                    continue;
-                }
-                dataConfig.set("achievementUnlocked." + entry.getKey(), new ArrayList<>(entry.getValue()));
-            }
-            for (Map.Entry<UUID, Set<String>> entry : unlockedAchievementMilestoneIdsByPlayer.entrySet()) {
-                if (entry.getValue() == null || entry.getValue().isEmpty()) {
-                    continue;
-                }
-                dataConfig.set("achievementMilestonesUnlocked." + entry.getKey(), new ArrayList<>(entry.getValue()));
-            }
-            dataConfig.set("liveUpdate.enabled", liveUpdateEnabled);
-            dataConfig.set("liveUpdate.stagedVersion", stagedLiveUpdateVersion == null ? "" : stagedLiveUpdateVersion);
-            dataConfig.set("liveUpdate.lastStatus",
-                    lastLiveUpdateStatus == null ? "Not checked yet." : lastLiveUpdateStatus);
-            dataConfig.set("liveUpdate.lastCheckAt", Math.max(0L, lastLiveUpdateCheckAt));
-            dataConfig.set("dataSchemaVersion", Math.max(0, dataSchemaVersion));
+            SheepRebirthState.saveTo(dataConfig, rebirthTreeMask);
+            SheepLifetimeProgressState.saveTo(dataConfig);
+            SheepAchievementState.saveTo(dataConfig);
+            dataConfig.set("liveUpdate.enabled", SheepLiveUpdateState.isLiveUpdateEnabled());
+            dataConfig.set("liveUpdate.stagedVersion", SheepLiveUpdateState.getStagedLiveUpdateVersion());
+            dataConfig.set("liveUpdate.lastStatus", SheepLiveUpdateState.getLastLiveUpdateStatus());
+            dataConfig.set("liveUpdate.lastCheckAt", Math.max(0L, SheepLiveUpdateState.getLastLiveUpdateCheckAt()));
+            dataConfig.set("dataSchemaVersion", Math.max(0, SheepLiveUpdateState.getDataSchemaVersion()));
             saveSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
             saveSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
-            for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : savedInventories.entrySet()) {
+            for (Map.Entry<UUID, InventoryDataUtils.Snapshot> entry : SheepRuntimeUiState.savedInventories()
+                    .entrySet()) {
                 String basePath = "pendingInventory." + entry.getKey();
                 InventoryDataUtils.Snapshot snapshot = entry.getValue();
                 dataConfig.set(basePath + ".contents", InventoryDataUtils.serializeInventoryList(snapshot.contents()));
@@ -15623,1223 +14082,49 @@ public final class SheepMergeManager {
             return;
         }
         dataConfig = YamlConfiguration.loadConfiguration(dataFile);
-        if (dataConfig.isConfigurationSection("points")) {
-            dataConfig.getConfigurationSection("points").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    String path = "points." + key;
-                    String raw = dataConfig.getString(path, null);
-                    BigInteger parsed;
-                    if (raw != null && !raw.isBlank()) {
-                        parsed = new BigInteger(raw.trim());
-                    } else {
-                        parsed = BigInteger.valueOf(Math.max(0L, dataConfig.getLong(path, 0L)));
-                    }
-                    pointsByPlayer.put(uuid, parsed.max(BigInteger.ZERO));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("extraLimit")) {
-            dataConfig.getConfigurationSection("extraLimit").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    extraLimitByPlayer.put(uuid, dataConfig.getInt("extraLimit." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("eggSpeed")) {
-            dataConfig.getConfigurationSection("eggSpeed").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    eggSpeedLevelByPlayer.put(uuid, dataConfig.getInt("eggSpeed." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("woolRegen")) {
-            dataConfig.getConfigurationSection("woolRegen").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    woolRegenLevelByPlayer.put(uuid, dataConfig.getInt("woolRegen." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("higherTierChance")) {
-            dataConfig.getConfigurationSection("higherTierChance").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    higherTierChanceLevelByPlayer.put(uuid, dataConfig.getInt("higherTierChance." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeLevel")) {
-            dataConfig.getConfigurationSection("prestigeLevel").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeLevelByPlayer.put(uuid, dataConfig.getInt("prestigeLevel." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigePoints")) {
-            dataConfig.getConfigurationSection("prestigePoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigePointsByPlayer.put(uuid, dataConfig.getInt("prestigePoints." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeDoublePoints")) {
-            dataConfig.getConfigurationSection("prestigeDoublePoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeDoublePointsChanceByPlayer.put(uuid,
-                            Math.max(0,
-                                    Math.min(PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
-                                            dataConfig.getInt("prestigeDoublePoints." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeHigherMax")) {
-            dataConfig.getConfigurationSection("prestigeHigherMax").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeHigherMaxLevelByPlayer.put(uuid, dataConfig.getInt("prestigeHigherMax." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeStartEggs")) {
-            dataConfig.getConfigurationSection("prestigeStartEggs").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeStartEggsByPlayer.put(uuid, dataConfig.getInt("prestigeStartEggs." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeEggCap")) {
-            dataConfig.getConfigurationSection("prestigeEggCap").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeEggCapByPlayer.put(uuid, dataConfig.getInt("prestigeEggCap." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeBaseSpawnTier")) {
-            dataConfig.getConfigurationSection("prestigeBaseSpawnTier").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeBaseSpawnTierByPlayer.put(
-                            uuid,
-                            Math.min(SheepTier.RAINBOW.getLevel(),
-                                    dataConfig.getInt("prestigeBaseSpawnTier." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("prestigeQuestReward")) {
-            dataConfig.getConfigurationSection("prestigeQuestReward").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    prestigeQuestRewardByPlayer.put(uuid, dataConfig.getInt("prestigeQuestReward." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
+        SheepEconomyState.loadFrom(dataConfig);
+        SheepPrestigeState.loadFrom(
+                dataConfig,
+                PRESTIGE_DOUBLE_POINTS_MAX_LEVEL,
+                SheepTier.RAINBOW.getLevel());
         loadSheepSnapshots("farmSheep", savedFarmSheepByPlayer);
         loadSheepSnapshots("tutorialSheep", savedTutorialSheepByPlayer);
-        if (dataConfig.isConfigurationSection("prestigeRefundCooldown")) {
-            dataConfig.getConfigurationSection("prestigeRefundCooldown").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    nextPrestigeRefundTimestampByPlayer.put(
-                            uuid,
-                            Math.max(0L, dataConfig.getLong("prestigeRefundCooldown." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("highestAnnouncedTier")) {
-            dataConfig.getConfigurationSection("highestAnnouncedTier").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    int loaded = dataConfig.getInt("highestAnnouncedTier." + key, SheepTier.WHITE.getLevel());
-                    highestAnnouncedTierByPlayer.put(
-                            uuid,
-                            Math.max(SheepTier.WHITE.getLevel(), Math.min(SheepTier.RAINBOW.getLevel(), loaded)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("highestAnnouncedRainbowTier")) {
-            dataConfig.getConfigurationSection("highestAnnouncedRainbowTier").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    int loaded = dataConfig.getInt("highestAnnouncedRainbowTier." + key, 0);
-                    highestAnnouncedRainbowTierByPlayer.put(uuid, Math.max(0, loaded));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("shearShop")) {
-            dataConfig.getConfigurationSection("shearShop").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    shearShopLevelByPlayer.put(uuid, dataConfig.getInt("shearShop." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("shearWoolSave")) {
-            dataConfig.getConfigurationSection("shearWoolSave").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    shearWoolSaveLevelByPlayer.put(uuid, dataConfig.getInt("shearWoolSave." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("shearTierBoost")) {
-            dataConfig.getConfigurationSection("shearTierBoost").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    shearTierBoostLevelByPlayer.put(uuid, dataConfig.getInt("shearTierBoost." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialCompleted")) {
-            dataConfig.getConfigurationSection("tutorialCompleted").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialCompletedByPlayer.put(uuid, dataConfig.getBoolean("tutorialCompleted." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialBypassed")) {
-            dataConfig.getConfigurationSection("tutorialBypassed").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialBypassedByPlayer.put(uuid, dataConfig.getBoolean("tutorialBypassed." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialShears")) {
-            dataConfig.getConfigurationSection("tutorialShears").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialShearsByPlayer.put(uuid, dataConfig.getInt("tutorialShears." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialSpawns")) {
-            dataConfig.getConfigurationSection("tutorialSpawns").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialSpawnsByPlayer.put(uuid, dataConfig.getInt("tutorialSpawns." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialMerges")) {
-            dataConfig.getConfigurationSection("tutorialMerges").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialMergesByPlayer.put(uuid, dataConfig.getInt("tutorialMerges." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialUpgradeOpened")) {
-            dataConfig.getConfigurationSection("tutorialUpgradeOpened").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialUpgradeOpenedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialUpgradeOpened." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialQuestOpened")) {
-            dataConfig.getConfigurationSection("tutorialQuestOpened").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialQuestOpenedByPlayer.put(uuid, dataConfig.getBoolean("tutorialQuestOpened." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialQuestUpgradesOpened")) {
-            dataConfig.getConfigurationSection("tutorialQuestUpgradesOpened").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialQuestUpgradesOpenedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialQuestUpgradesOpened." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialPrestigeOpened")) {
-            dataConfig.getConfigurationSection("tutorialPrestigeOpened").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialPrestigeOpenedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialPrestigeOpened." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialAbilityUsed")) {
-            dataConfig.getConfigurationSection("tutorialAbilityUsed").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialAbilityUsedByPlayer.put(uuid, dataConfig.getBoolean("tutorialAbilityUsed." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialShearUpgraded")) {
-            dataConfig.getConfigurationSection("tutorialShearUpgraded").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialShearUpgradedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialShearUpgraded." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialRegularUpgradesBought")) {
-            dataConfig.getConfigurationSection("tutorialRegularUpgradesBought").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialRegularUpgradesBoughtByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialRegularUpgradesBought." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialShearTaskRewardGranted")) {
-            dataConfig.getConfigurationSection("tutorialShearTaskRewardGranted").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialShearTaskRewardGrantedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialShearTaskRewardGranted." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialPrestigePrepRewardGranted")) {
-            dataConfig.getConfigurationSection("tutorialPrestigePrepRewardGranted").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialPrestigePrepRewardGrantedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialPrestigePrepRewardGranted." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialPrestigedOnce")) {
-            dataConfig.getConfigurationSection("tutorialPrestigedOnce").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialPrestigedOnceByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialPrestigedOnce." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("tutorialShearShopOpened")) {
-            dataConfig.getConfigurationSection("tutorialShearShopOpened").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    tutorialShearShopOpenedByPlayer.put(uuid,
-                            dataConfig.getBoolean("tutorialShearShopOpened." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("farmVisitEnabled")) {
-            dataConfig.getConfigurationSection("farmVisitEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    farmVisitEnabledByPlayer.put(uuid, dataConfig.getBoolean("farmVisitEnabled." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("soundEffectsEnabled")) {
-            dataConfig.getConfigurationSection("soundEffectsEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    boolean enabled = dataConfig.getBoolean("soundEffectsEnabled." + key, true);
-                    if (!enabled) {
-                        soundEffectsEnabledByPlayer.put(uuid, false);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("sheepSoundsEnabled")) {
-            dataConfig.getConfigurationSection("sheepSoundsEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    boolean enabled = dataConfig.getBoolean("sheepSoundsEnabled." + key, true);
-                    if (!enabled) {
-                        sheepSoundsEnabledByPlayer.put(uuid, false);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("particleEffectsEnabled")) {
-            dataConfig.getConfigurationSection("particleEffectsEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    boolean enabled = dataConfig.getBoolean("particleEffectsEnabled." + key, true);
-                    if (!enabled) {
-                        particleEffectsEnabledByPlayer.put(uuid, false);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("farmVisitBlockedUsers")) {
-            dataConfig.getConfigurationSection("farmVisitBlockedUsers").getKeys(false).forEach(key -> {
-                try {
-                    UUID ownerId = UUID.fromString(key);
-                    List<String> loaded = dataConfig.getStringList("farmVisitBlockedUsers." + key);
-                    if (loaded == null || loaded.isEmpty()) {
-                        return;
-                    }
-                    Set<UUID> blocked = new LinkedHashSet<>();
-                    for (String raw : loaded) {
-                        if (raw == null || raw.isBlank()) {
-                            continue;
-                        }
-                        try {
-                            blocked.add(UUID.fromString(raw));
-                        } catch (IllegalArgumentException ignored) {
-                            // Ignore invalid UUIDs.
-                        }
-                    }
-                    if (!blocked.isEmpty()) {
-                        farmVisitBlockedUsersByPlayer.put(ownerId, blocked);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("questPoints")) {
-            dataConfig.getConfigurationSection("questPoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    questPointsByPlayer.put(uuid, dataConfig.getInt("questPoints." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("questReset")) {
-            dataConfig.getConfigurationSection("questReset").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    nextQuestResetTimestampByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("questReset." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("questUpgradeDuration")) {
-            dataConfig.getConfigurationSection("questUpgradeDuration").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    questUpgradeDurationByPlayer.put(uuid, dataConfig.getInt("questUpgradeDuration." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("questUpgradePower")) {
-            dataConfig.getConfigurationSection("questUpgradePower").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    questUpgradePowerByPlayer.put(uuid, dataConfig.getInt("questUpgradePower." + key, 0));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeLuckyBurstUntil")) {
-            dataConfig.getConfigurationSection("activeLuckyBurstUntil").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeLuckyBurstUntilByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("activeLuckyBurstUntil." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeLuckyBurstUses")) {
-            dataConfig.getConfigurationSection("activeLuckyBurstUses").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeLuckyBurstUsesByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("activeLuckyBurstUses." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("luckyBurstEnabled")) {
-            dataConfig.getConfigurationSection("luckyBurstEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    luckyBurstEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("luckyBurstEnabled." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeWoolRushUntil")) {
-            dataConfig.getConfigurationSection("activeWoolRushUntil").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeWoolRushUntilByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("activeWoolRushUntil." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeJackpotShearsUntil")) {
-            dataConfig.getConfigurationSection("activeJackpotShearsUntil").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeJackpotShearsUntilByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("activeJackpotShearsUntil." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeAutoMergeUntil")) {
-            dataConfig.getConfigurationSection("activeAutoMergeUntil").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeAutoMergeUntilByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("activeAutoMergeUntil." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeAutoMergeUses")) {
-            dataConfig.getConfigurationSection("activeAutoMergeUses").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeAutoMergeUsesByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("activeAutoMergeUses." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("autoMergeEnabled")) {
-            dataConfig.getConfigurationSection("autoMergeEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    autoMergeEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("autoMergeEnabled." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeAutoShearUntil")) {
-            dataConfig.getConfigurationSection("activeAutoShearUntil").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeAutoShearUntilByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("activeAutoShearUntil." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("activeAutoShearUses")) {
-            dataConfig.getConfigurationSection("activeAutoShearUses").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    activeAutoShearUsesByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("activeAutoShearUses." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("autoShearEnabled")) {
-            dataConfig.getConfigurationSection("autoShearEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    autoShearEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("autoShearEnabled." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("pausedLuckyBurstRemaining")) {
-            dataConfig.getConfigurationSection("pausedLuckyBurstRemaining").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    pausedLuckyBurstRemainingMsByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("pausedLuckyBurstRemaining." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("pausedWoolRushRemaining")) {
-            dataConfig.getConfigurationSection("pausedWoolRushRemaining").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    pausedWoolRushRemainingMsByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("pausedWoolRushRemaining." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("pausedJackpotShearsRemaining")) {
-            dataConfig.getConfigurationSection("pausedJackpotShearsRemaining").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    pausedJackpotShearsRemainingMsByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("pausedJackpotShearsRemaining." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("pausedAutoMergeRemaining")) {
-            dataConfig.getConfigurationSection("pausedAutoMergeRemaining").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    pausedAutoMergeRemainingMsByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("pausedAutoMergeRemaining." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("pausedAutoShearRemaining")) {
-            dataConfig.getConfigurationSection("pausedAutoShearRemaining").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    pausedAutoShearRemainingMsByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("pausedAutoShearRemaining." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("comboDecayUpgrade")) {
-            dataConfig.getConfigurationSection("comboDecayUpgrade").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    comboDecayUpgradeByPlayer.put(uuid,
-                            Math.max(0,
-                                    Math.min(COMBO_DECAY_MAX_LEVEL, dataConfig.getInt("comboDecayUpgrade." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("comboMaxUpgrade")) {
-            dataConfig.getConfigurationSection("comboMaxUpgrade").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    comboMaxUpgradeByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("comboMaxUpgrade." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("comboGainUpgrade")) {
-            dataConfig.getConfigurationSection("comboGainUpgrade").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    comboGainUpgradeByPlayer.put(uuid,
-                            Math.max(0,
-                                    Math.min(COMBO_GAIN_MAX_LEVEL, dataConfig.getInt("comboGainUpgrade." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationPoints")) {
-            dataConfig.getConfigurationSection("automationPoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationPointsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("automationPoints." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("achievementAutomationPointsGranted")) {
-            dataConfig.getConfigurationSection("achievementAutomationPointsGranted").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    achievementAutomationPointsGrantedByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("achievementAutomationPointsGranted." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoBuy")) {
-            dataConfig.getConfigurationSection("automationAutoBuy").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoBuyUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_AUTO_BUY_MAX_LEVEL,
-                                    dataConfig.getInt("automationAutoBuy." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoAbility")) {
-            dataConfig.getConfigurationSection("automationAutoAbility").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoAbilityUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
-                                    dataConfig.getInt("automationAutoAbility." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationSlowAutoMerge")) {
-            dataConfig.getConfigurationSection("automationSlowAutoMerge").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationSlowAutoMergeUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
-                                    dataConfig.getInt("automationSlowAutoMerge." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationSlowAutoShear")) {
-            dataConfig.getConfigurationSection("automationSlowAutoShear").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationSlowAutoShearUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
-                                    dataConfig.getInt("automationSlowAutoShear." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoSpawn")) {
-            dataConfig.getConfigurationSection("automationAutoSpawn").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoSpawnUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
-                                    dataConfig.getInt("automationAutoSpawn." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoPrestige")) {
-            dataConfig.getConfigurationSection("automationAutoPrestige").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoPrestigeUpgradeByPlayer.put(uuid,
-                            Math.max(0, Math.min(AUTOMATION_SINGLE_LEVEL_MAX,
-                                    dataConfig.getInt("automationAutoPrestige." + key, 0))));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoBuyEnabled")) {
-            dataConfig.getConfigurationSection("automationAutoBuyEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoBuyEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("automationAutoBuyEnabled." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoAbilityEnabled")) {
-            dataConfig.getConfigurationSection("automationAutoAbilityEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoAbilityEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("automationAutoAbilityEnabled." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationSlowAutoMergeEnabled")) {
-            dataConfig.getConfigurationSection("automationSlowAutoMergeEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationSlowAutoMergeEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("automationSlowAutoMergeEnabled." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationSlowAutoShearEnabled")) {
-            dataConfig.getConfigurationSection("automationSlowAutoShearEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationSlowAutoShearEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("automationSlowAutoShearEnabled." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoSpawnEnabled")) {
-            dataConfig.getConfigurationSection("automationAutoSpawnEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoSpawnEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("automationAutoSpawnEnabled." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("automationAutoPrestigeEnabled")) {
-            dataConfig.getConfigurationSection("automationAutoPrestigeEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    automationAutoPrestigeEnabledByPlayer.put(uuid,
-                            dataConfig.getBoolean("automationAutoPrestigeEnabled." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardLayoutMode")) {
-            dataConfig.getConfigurationSection("scoreboardLayoutMode").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    int layoutMode = dataConfig.getInt("scoreboardLayoutMode." + key, 0);
-                    scoreboardLayoutModeByPlayer.put(uuid, Math.max(0, Math.min(1, layoutMode)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowQuestPoints")) {
-            dataConfig.getConfigurationSection("scoreboardShowQuestPoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowQuestPointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowQuestPoints." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowAchievementPoints")) {
-            dataConfig.getConfigurationSection("scoreboardShowAchievementPoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowAchievementPointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowAchievementPoints." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowAutomationPoints")) {
-            dataConfig.getConfigurationSection("scoreboardShowAutomationPoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowAutomationPointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowAutomationPoints." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowSacrificePoints")) {
-            dataConfig.getConfigurationSection("scoreboardShowSacrificePoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowSacrificePointsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowSacrificePoints." + key, false));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowPrestigeStats")) {
-            dataConfig.getConfigurationSection("scoreboardShowPrestigeStats").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowPrestigeStatsByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowPrestigeStats." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowQuestProgress")) {
-            dataConfig.getConfigurationSection("scoreboardShowQuestProgress").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowQuestProgressByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowQuestProgress." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("scoreboardShowAbilityStatus")) {
-            dataConfig.getConfigurationSection("scoreboardShowAbilityStatus").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    scoreboardShowAbilityStatusByPlayer.put(uuid,
-                            dataConfig.getBoolean("scoreboardShowAbilityStatus." + key, true));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("inventoryQuickAccess")) {
-            dataConfig.getConfigurationSection("inventoryQuickAccess").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    List<String> loaded = dataConfig.getStringList("inventoryQuickAccess." + key);
-                    if (loaded == null || loaded.isEmpty()) {
-                        return;
-                    }
-                    List<String> normalized = new ArrayList<>();
-                    for (String actionId : loaded) {
-                        if (actionId == null || actionId.isBlank()
-                                || getQuickAccessDefinition(actionId) == null
-                                || normalized.contains(actionId)) {
-                            continue;
-                        }
-                        normalized.add(actionId);
-                        if (normalized.size() >= INVENTORY_QUICK_ACCESS_MAX_ITEMS) {
-                            break;
-                        }
-                    }
-                    if (!normalized.isEmpty()) {
-                        inventoryQuickAccessByPlayer.put(uuid, normalized);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("inventoryQuickAccessCastingEnabled")) {
-            dataConfig.getConfigurationSection("inventoryQuickAccessCastingEnabled").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    boolean enabled = dataConfig.getBoolean("inventoryQuickAccessCastingEnabled." + key, true);
-                    if (!enabled) {
-                        inventoryQuickAccessCastingEnabledByPlayer.put(uuid, false);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("sacrificePoints")) {
-            dataConfig.getConfigurationSection("sacrificePoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    String path = "sacrificePoints." + key;
-                    String raw = dataConfig.getString(path, null);
-                    BigInteger parsed;
-                    if (raw != null && !raw.isBlank()) {
-                        parsed = new BigInteger(raw.trim());
-                    } else {
-                        parsed = BigInteger.valueOf(Math.max(0L, dataConfig.getLong(path, 0L)));
-                    }
-                    sacrificePointsByPlayer.put(uuid, parsed.max(BigInteger.ZERO));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        sacrificeUnlockState.loadFrom(dataConfig);
-        if (dataConfig.isConfigurationSection("rebirthLevel")) {
-            dataConfig.getConfigurationSection("rebirthLevel").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    rebirthLevelByPlayer.put(uuid, Math.max(0, dataConfig.getInt("rebirthLevel." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("rebirthPoints")) {
-            dataConfig.getConfigurationSection("rebirthPoints").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    rebirthPointsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("rebirthPoints." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("rebirthSkillUnlockMask")) {
-            int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
-            dataConfig.getConfigurationSection("rebirthSkillUnlockMask").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    rebirthSkillUnlockMaskByPlayer.put(uuid,
-                            dataConfig.getInt("rebirthSkillUnlockMask." + key, 0) & rebirthTreeMask);
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("rebirthSkillPendingMask")) {
-            int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
-            dataConfig.getConfigurationSection("rebirthSkillPendingMask").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    rebirthSkillPendingMaskByPlayer.put(uuid,
-                            dataConfig.getInt("rebirthSkillPendingMask." + key, 0) & rebirthTreeMask);
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("rebirthRespecCooldown")) {
-            dataConfig.getConfigurationSection("rebirthRespecCooldown").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    nextRebirthRespecTimestampByPlayer.put(uuid,
-                            Math.max(0L, dataConfig.getLong("rebirthRespecCooldown." + key, 0L)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("lifetimeShears")) {
-            dataConfig.getConfigurationSection("lifetimeShears").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    lifetimeShearsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeShears." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("lifetimeSpawns")) {
-            dataConfig.getConfigurationSection("lifetimeSpawns").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    lifetimeSpawnsByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeSpawns." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("lifetimeMerges")) {
-            dataConfig.getConfigurationSection("lifetimeMerges").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    lifetimeMergesByPlayer.put(uuid, Math.max(0, dataConfig.getInt("lifetimeMerges." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("lifetimeOtherFarmVisits")) {
-            dataConfig.getConfigurationSection("lifetimeOtherFarmVisits").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    lifetimeOtherFarmVisitsByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("lifetimeOtherFarmVisits." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("visitedOwnerFarm")) {
-            dataConfig.getConfigurationSection("visitedOwnerFarm").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    if (dataConfig.getBoolean("visitedOwnerFarm." + key, false)) {
-                        visitedOwnerFarmByPlayer.put(uuid, true);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("completedQuestCycles")) {
-            dataConfig.getConfigurationSection("completedQuestCycles").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    completedQuestCyclesByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("completedQuestCycles." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("totalPrestigeLevelsEarned")) {
-            dataConfig.getConfigurationSection("totalPrestigeLevelsEarned").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    totalPrestigeLevelsEarnedByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("totalPrestigeLevelsEarned." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("totalSacrificeUnlocksPurchased")) {
-            dataConfig.getConfigurationSection("totalSacrificeUnlocksPurchased").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    totalSacrificeUnlocksPurchasedByPlayer.put(uuid,
-                            Math.max(0, dataConfig.getInt("totalSacrificeUnlocksPurchased." + key, 0)));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("achievementUnlocked")) {
-            dataConfig.getConfigurationSection("achievementUnlocked").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    List<String> loaded = dataConfig.getStringList("achievementUnlocked." + key);
-                    if (loaded == null || loaded.isEmpty()) {
-                        return;
-                    }
-                    Set<String> normalized = new LinkedHashSet<>();
-                    for (String id : loaded) {
-                        if (getAchievementDefinition(id) != null) {
-                            normalized.add(id);
-                        }
-                    }
-                    if (!normalized.isEmpty()) {
-                        unlockedAchievementIdsByPlayer.put(uuid, normalized);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        if (dataConfig.isConfigurationSection("achievementMilestonesUnlocked")) {
-            dataConfig.getConfigurationSection("achievementMilestonesUnlocked").getKeys(false).forEach(key -> {
-                try {
-                    UUID uuid = UUID.fromString(key);
-                    List<String> loaded = dataConfig.getStringList("achievementMilestonesUnlocked." + key);
-                    if (loaded == null || loaded.isEmpty()) {
-                        return;
-                    }
-                    Set<String> normalized = new LinkedHashSet<>();
-                    for (String id : loaded) {
-                        if (getAchievementMilestoneDefinition(id) != null) {
-                            normalized.add(id);
-                        }
-                    }
-                    if (!normalized.isEmpty()) {
-                        unlockedAchievementMilestoneIdsByPlayer.put(uuid, normalized);
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore invalid UUIDs.
-                }
-            });
-        }
-        rebirthSkillPendingMaskByPlayer
-                .replaceAll((uuid, pendingMask) -> pendingMask & getRebirthSkillUnlockMask(uuid));
-        liveUpdateEnabled = !dataConfig.contains("liveUpdate.enabled")
-                || dataConfig.getBoolean("liveUpdate.enabled", true);
-        stagedLiveUpdateVersion = dataConfig.getString("liveUpdate.stagedVersion", "");
-        lastLiveUpdateStatus = normalizeLiveUpdateStatus(
-                dataConfig.getString("liveUpdate.lastStatus", "Not checked yet."));
-        lastLiveUpdateCheckAt = Math.max(0L, dataConfig.getLong("liveUpdate.lastCheckAt", 0L));
-        dataSchemaVersion = Math.max(0, dataConfig.getInt("dataSchemaVersion", 0));
+        SheepUpgradeState.loadFrom(
+                dataConfig,
+                SheepTier.WHITE.getLevel(),
+                SheepTier.RAINBOW.getLevel());
+        SheepTutorialState.loadFrom(dataConfig);
+        SheepVisitAccessState.loadFrom(dataConfig);
+        SheepEffectPreferences.loadFrom(dataConfig);
+        SheepQuestState.loadFrom(dataConfig);
+        SheepComboState.loadFrom(dataConfig, COMBO_DECAY_MAX_LEVEL, COMBO_GAIN_MAX_LEVEL);
+        SheepAutomationState.loadFrom(
+                dataConfig,
+                AUTOMATION_AUTO_BUY_MAX_LEVEL,
+                AUTOMATION_AUTO_ABILITY_MAX_LEVEL,
+                AUTOMATION_SLOW_AUTO_MERGE_MAX_LEVEL,
+                AUTOMATION_SLOW_AUTO_SHEAR_MAX_LEVEL,
+                AUTOMATION_AUTO_SPAWN_MAX_LEVEL,
+                AUTOMATION_SINGLE_LEVEL_MAX);
+        SheepUiPreferences.loadFrom(dataConfig, INVENTORY_QUICK_ACCESS_MAX_ITEMS,
+                actionId -> getQuickAccessDefinition(actionId) != null);
+        SheepSacrificeProgression.loadFrom(dataConfig);
+        int rebirthTreeMask = (1 << REBIRTH_SKILL_NODES.size()) - 1;
+        SheepRebirthState.loadFrom(dataConfig, rebirthTreeMask);
+        SheepLifetimeProgressState.loadFrom(dataConfig);
+        SheepAchievementState.loadFrom(dataConfig,
+                id -> getAchievementDefinition(id) != null,
+                id -> getAchievementMilestoneDefinition(id) != null);
+        SheepLiveUpdateState.loadPersistedState(
+                !dataConfig.contains("liveUpdate.enabled") || dataConfig.getBoolean("liveUpdate.enabled", true),
+                dataConfig.getString("liveUpdate.stagedVersion", ""),
+                dataConfig.getString("liveUpdate.lastStatus", "Not checked yet."),
+                dataConfig.getLong("liveUpdate.lastCheckAt", 0L),
+                dataConfig.getInt("dataSchemaVersion", 0));
         Set<UUID> playersToClamp = new HashSet<>();
-        playersToClamp.addAll(extraLimitByPlayer.keySet());
-        playersToClamp.addAll(eggSpeedLevelByPlayer.keySet());
-        playersToClamp.addAll(woolRegenLevelByPlayer.keySet());
-        playersToClamp.addAll(higherTierChanceLevelByPlayer.keySet());
-        playersToClamp.addAll(prestigeHigherMaxLevelByPlayer.keySet());
-        playersToClamp.addAll(sacrificeUnlockState.getTrackedPlayerIds());
+        playersToClamp.addAll(SheepEconomyState.getUpgradeTrackedPlayerIds());
+        playersToClamp.addAll(SheepPrestigeState.getHigherMaxTrackedPlayerIds());
+        playersToClamp.addAll(SheepSacrificeProgression.getUnlockTrackedPlayerIds());
         for (UUID playerId : playersToClamp) {
             clampUpgradeLevelsToCurrentCaps(playerId);
         }
@@ -16853,7 +14138,7 @@ public final class SheepMergeManager {
                     ItemStack[] armor = InventoryDataUtils
                             .deserializeInventoryList(dataConfig.getList(basePath + ".armor"));
                     ItemStack offhand = dataConfig.getItemStack(basePath + ".offhand");
-                    savedInventories.put(uuid,
+                    SheepRuntimeUiState.savedInventories().put(uuid,
                             new InventoryDataUtils.Snapshot(contents, armor, offhand == null ? null : offhand.clone()));
                 } catch (IllegalArgumentException ignored) {
                     // Ignore invalid UUIDs.
@@ -16870,21 +14155,21 @@ public final class SheepMergeManager {
         sheep.setGravity(false);
         sheep.setInvulnerable(true);
         sheep.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
-        carriedSheepByPlayer.put(player.getUniqueId(), sheep);
+        SheepEntityRuntimeState.putCarriedSheep(player.getUniqueId(), sheep);
         updateCarriedSheepPosition(player);
     }
 
     public static boolean hasPickedUpSheep(Player player) {
-        return player != null && carriedSheepByPlayer.containsKey(player.getUniqueId());
+        return player != null && SheepEntityRuntimeState.hasCarriedSheep(player.getUniqueId());
     }
 
     public static Sheep getPickedUpSheep(Player player) {
         if (player == null) {
             return null;
         }
-        Sheep sheep = carriedSheepByPlayer.get(player.getUniqueId());
+        Sheep sheep = SheepEntityRuntimeState.getCarriedSheep(player.getUniqueId());
         if (sheep != null && !sheep.isValid()) {
-            carriedSheepByPlayer.remove(player.getUniqueId());
+            SheepEntityRuntimeState.removeCarriedSheep(player.getUniqueId());
             return null;
         }
         return sheep;
@@ -16912,7 +14197,7 @@ public final class SheepMergeManager {
 
         sheep.teleport(dropLocation);
         sheep.setVelocity(forward.multiply(0.2D).setY(0.15D));
-        carriedSheepByPlayer.remove(player.getUniqueId());
+        SheepEntityRuntimeState.removeCarriedSheep(player.getUniqueId());
         return true;
     }
 
@@ -16945,7 +14230,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        Sheep sheep = carriedSheepByPlayer.remove(player.getUniqueId());
+        Sheep sheep = SheepEntityRuntimeState.removeCarriedSheep(player.getUniqueId());
         if (sheep != null && sheep.isValid()) {
             sheep.setGravity(true);
             sheep.setAI(true);
