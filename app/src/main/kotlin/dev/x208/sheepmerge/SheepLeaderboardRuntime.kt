@@ -44,11 +44,11 @@ object SheepLeaderboardRuntime {
         val plugin = SheepMergeManager.leaderboardPlugin()
         if (plugin?.server == null) return names
         Bukkit.getOnlinePlayers().forEach { online ->
-            online.name.takeIf(String::isNotBlank)?.let { names[online.uniqueId] = it }
+            normalizePlayerName(online.name)?.let { names[online.uniqueId] = it }
         }
         playerIds?.forEach { playerId ->
             if (!names.containsKey(playerId)) {
-                Bukkit.getOfflinePlayer(playerId).name?.takeIf(String::isNotBlank)?.let { names[playerId] = it }
+                normalizePlayerName(Bukkit.getOfflinePlayer(playerId).name)?.let { names[playerId] = it }
             }
         }
         return names
@@ -56,8 +56,11 @@ object SheepLeaderboardRuntime {
 
     private fun safeName(playerId: UUID?, names: Map<UUID, String>?): String {
         if (playerId == null) return "unknown"
-        return names?.get(playerId)?.takeIf(String::isNotBlank) ?: playerId.toString().substring(0, 8)
+        return normalizePlayerName(names?.get(playerId)) ?: "Unknown Player"
     }
+
+    private fun normalizePlayerName(name: String?): String? =
+        name?.trim()?.takeIf(String::isNotEmpty)?.take(16)
 
     private fun sortedEntries(points: Map<UUID, BigInteger>, names: Map<UUID, String>) =
         points.entries.sortedWith { left, right ->
