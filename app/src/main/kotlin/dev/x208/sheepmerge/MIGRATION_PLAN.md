@@ -25,14 +25,15 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
   - Domain/listener conversion:
     - `SheepTier`
     - `SheepEggModule`
+    - `SheepMergeWorldListener`
     - `SheepFarmWorldProtectionListener`
     - `SheepFarmWorldCleanupListener`
 - Remaining Java footprint:
-  - ~22.5k LOC total
   - Main blockers by size:
-    - `SheepMergeManager.java` (~16.6k)
-    - `SheepFarmWorldCommand.java` (~2.5k)
-    - `bstats/Metrics.java` (~848)
+    - `SheepMergeManager.java`
+    - `SheepFarmWorldCommand.java`
+    - `SheepFarmGameListener.java`
+    - `bstats/Metrics.java`
 
 ## Migration Phases (Updated)
 
