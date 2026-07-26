@@ -269,7 +269,10 @@ object LiveUpdateCoordinator {
         }
 
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
-        val client = HttpClient.newBuilder().connectTimeout(timeout).build()
+        val client = HttpClient.newBuilder()
+            .connectTimeout(timeout)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
         val latestRequestBuilder = HttpRequest.newBuilder()
             .uri(URI.create("$GITHUB_API_BASE/repos/$owner/$repo/releases/latest"))
             .timeout(timeout)
@@ -449,7 +452,10 @@ object LiveUpdateCoordinator {
 
     private fun downloadManifest(configuration: SheepMergeConfiguration, url: String, fallbackTag: String): LiveUpdateManifest? {
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
-        val client = HttpClient.newBuilder().connectTimeout(timeout).build()
+        val client = HttpClient.newBuilder()
+            .connectTimeout(timeout)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
         val requestBuilder = HttpRequest.newBuilder().uri(URI.create(url)).timeout(timeout).GET()
         applyGitHubHeaders(requestBuilder, configuration)
         val request = requestBuilder.build()
@@ -541,7 +547,10 @@ object LiveUpdateCoordinator {
 
     private fun stageBinaryJar(plugin: SheepMergePlugin, configuration: SheepMergeConfiguration, asset: ReleaseAsset): Boolean {
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
-        val client = HttpClient.newBuilder().connectTimeout(timeout).build()
+        val client = HttpClient.newBuilder()
+            .connectTimeout(timeout)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
         val requestBuilder = HttpRequest.newBuilder().uri(URI.create(asset.downloadUrl)).timeout(timeout).GET()
         applyGitHubHeaders(requestBuilder, configuration)
         val request = requestBuilder.build()
