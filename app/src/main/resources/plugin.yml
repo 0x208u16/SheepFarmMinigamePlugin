@@ -7,7 +7,7 @@
 ---  # Denotes the start of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
 name: SheepMerge
 main: dev.x208.sheepmerge.SheepMergePlugin
-version: 1.0.26
+version: 1.0.27
 api-version: "1.20"
 commands:
   sheepmerge:
