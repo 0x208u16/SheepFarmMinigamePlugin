@@ -29,11 +29,12 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
     - `SheepFarmGameListener`
     - `SheepFarmWorldProtectionListener`
     - `SheepFarmWorldCleanupListener`
+  - bStats layer converted to Kotlin:
+    - `bstats/Metrics`
 - Remaining Java footprint:
   - Main blockers by size:
     - `SheepMergeManager.java`
     - `SheepFarmWorldCommand.java`
-    - `bstats/Metrics.java`
 
 ## Migration Phases (Updated)
 
