@@ -5964,6 +5964,7 @@ public final class SheepMergeManager {
         prestigeLevelByPlayer.remove(playerId);
         prestigePointsByPlayer.remove(playerId);
         clearPrestigeReminder(player);
+        clearMergeReminder(player);
 
         runPrestigeResetEffects(player, true);
         if (!hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
@@ -8997,11 +8998,17 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        lastPrestigeReminderTimestampByPlayer.remove(player.getUniqueId());
+        UUID playerId = player.getUniqueId();
+        lastPrestigeReminderTimestampByPlayer.remove(playerId);
+        prestigeTitleReminderShownByPlayer.remove(playerId);
     }
 
     public static void tickPrestigeReminder(Player player) {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        if (getRebirthLevel(player) > 0) {
+            clearPrestigeReminder(player);
             return;
         }
         if (getPlayerPointsBig(player).compareTo(getPrestigeCostBig(player)) < 0) {
@@ -9296,6 +9303,10 @@ public final class SheepMergeManager {
 
     public static void tickMergeReminder(Player player) {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        if (getRebirthLevel(player) > 0) {
+            clearMergeReminder(player);
             return;
         }
         UUID playerId = player.getUniqueId();
