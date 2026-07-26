@@ -557,11 +557,11 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_ABILITIES_SLOT = 20;
     public static final int SCOREBOARD_ACHIEVEMENT_POINTS_SLOT = 22;
     public static final int SCOREBOARD_BACK_SLOT = 26;
-    public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 10;
-    public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 12;
+    public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 10;
+    public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 12;
     public static final int UNIVERSAL_LAYOUT_VISIT_SLOT = 14;
-    public static final int UNIVERSAL_LAYOUT_SOUND_SLOT = 20;
-    public static final int UNIVERSAL_LAYOUT_PARTICLE_SLOT = 24;
+    public static final int UNIVERSAL_LAYOUT_SOUND_SLOT = 16;
+    public static final int UNIVERSAL_LAYOUT_PARTICLE_SLOT = 18;
     public static final int UNIVERSAL_LAYOUT_BACK_SLOT = 22;
     public static final int SCOREBOARD_LAYOUT_DETAILED_SLOT = 11;
     public static final int SCOREBOARD_LAYOUT_COMPACT_SLOT = 15;
@@ -11828,8 +11828,15 @@ public final class SheepMergeManager {
                 Material.NETHER_STAR,
                 "Settings Hub",
                 List.of(
-                        "Scoreboard, inventory, sound, particle, and visits",
+                        "Inventory, scoreboard, visits, sound, and particles",
                         "Use the items below to open a section")));
+        inventory.setItem(UNIVERSAL_LAYOUT_INVENTORY_SLOT, MenuItemFactory.create(
+                Material.CHEST,
+                "Inventory Layout",
+                List.of(
+                        "Quick access selected: " + getInventoryQuickAccessActions(player.getUniqueId()).size()
+                                + " / " + INVENTORY_QUICK_ACCESS_MAX_ITEMS,
+                        "Click: Open")));
         inventory.setItem(UNIVERSAL_LAYOUT_SCOREBOARD_SLOT, MenuItemFactory.create(
                 Material.BOOK,
                 "Scoreboard Settings",
@@ -11837,12 +11844,12 @@ public final class SheepMergeManager {
                         "Sections: points, quests, automation, sacrifice",
                         "Layout: " + (getScoreboardLayoutMode(player) == 0 ? "Detailed" : "Compact"),
                         "Click: Open")));
-        inventory.setItem(UNIVERSAL_LAYOUT_INVENTORY_SLOT, MenuItemFactory.create(
-                Material.CHEST,
-                "Inventory Layout",
+        inventory.setItem(UNIVERSAL_LAYOUT_VISIT_SLOT, MenuItemFactory.create(
+                Material.OAK_DOOR,
+                "Visit Access & Blocks",
                 List.of(
-                        "Quick access selected: " + getInventoryQuickAccessActions(player.getUniqueId()).size()
-                                + " / " + INVENTORY_QUICK_ACCESS_MAX_ITEMS,
+                        "Visit access: " + (isFarmVisitable(player.getUniqueId()) ? "Open" : "Closed"),
+                        "Blocked visitors: " + getBlockedFarmVisitorCount(player.getUniqueId()),
                         "Click: Open")));
         inventory.setItem(UNIVERSAL_LAYOUT_SOUND_SLOT, MenuItemFactory.create(
                 Material.MUSIC_DISC_PIGSTEP,
@@ -11855,13 +11862,6 @@ public final class SheepMergeManager {
                 "Particle Effects",
                 List.of(
                         "Status: " + (areParticleEffectsEnabled(player) ? "Enabled" : "Disabled"),
-                        "Click: Open")));
-        inventory.setItem(UNIVERSAL_LAYOUT_VISIT_SLOT, MenuItemFactory.create(
-                Material.OAK_DOOR,
-                "Visit Access & Blocks",
-                List.of(
-                        "Visit access: " + (isFarmVisitable(player.getUniqueId()) ? "Open" : "Closed"),
-                        "Blocked visitors: " + getBlockedFarmVisitorCount(player.getUniqueId()),
                         "Click: Open")));
         inventory.setItem(UNIVERSAL_LAYOUT_BACK_SLOT, MenuItemFactory.create(
                 Material.ARROW,
