@@ -302,7 +302,6 @@ public final class SheepMergeManager {
     private static final int BASE_EGG_CAP = 10;
     private static final int PRESTIGE_EGG_CAP_STEP = 10;
     private static final int PRESTIGE_MAX_LEVEL = Integer.MAX_VALUE;
-    private static final int PRESTIGE_QUEST_REWARD_MAX_LEVEL = 36;
     private static final double PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL = 0.25D;
     private static final long PRESTIGE_REFUND_COOLDOWN_MS = 30L * 60L * 1000L;
     private static final long REBIRTH_RESPEC_COOLDOWN_MS = 30L * 60L * 1000L;
@@ -10595,9 +10594,6 @@ public final class SheepMergeManager {
             return false;
         }
         int currentLevel = getPrestigeQuestRewardLevel(player);
-        if (currentLevel >= PRESTIGE_QUEST_REWARD_MAX_LEVEL) {
-            return false;
-        }
         int cost = getPrestigeQuestRewardCost(player);
         if (!trySpendPrestigePoints(player, cost)) {
             return false;
@@ -11114,13 +11110,11 @@ public final class SheepMergeManager {
                 Material.BOOK,
                 "Quest Reward Boost",
                 List.of(
-                        "Level: " + questRewardLevel + " / " + PRESTIGE_QUEST_REWARD_MAX_LEVEL,
+                        "Level: " + questRewardLevel,
                         "Quest rewards: +"
                                 + (int) Math.round(questRewardLevel * PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL * 100)
                                 + "%",
-                        questRewardLevel >= PRESTIGE_QUEST_REWARD_MAX_LEVEL
-                                ? "MAXED"
-                                : "Cost: " + formatPoints(getPrestigeQuestRewardCost(player)) + " prestige points",
+                        "Cost: " + formatPoints(getPrestigeQuestRewardCost(player)) + " prestige points",
                         "Click to purchase")));
 
         long refundRemaining = getPrestigeRefundRemainingMs(player);
@@ -12893,13 +12887,11 @@ public final class SheepMergeManager {
                 Material.BOOK,
                 "Quest Reward Boost",
                 List.of(
-                        "Level: " + questRewardLevel + " / " + PRESTIGE_QUEST_REWARD_MAX_LEVEL,
+                        "Level: " + questRewardLevel,
                         "Quest rewards: +"
                                 + (int) Math.round(questRewardLevel * PRESTIGE_QUEST_REWARD_BONUS_PER_LEVEL * 100)
                                 + "%",
-                        questRewardLevel >= PRESTIGE_QUEST_REWARD_MAX_LEVEL
-                                ? "MAXED"
-                                : "Cost: " + formatPoints(getPrestigeQuestRewardCost(player)) + " prestige points",
+                        "Cost: " + formatPoints(getPrestigeQuestRewardCost(player)) + " prestige points",
                         "Click to purchase")));
 
         long refundRemaining = getPrestigeRefundRemainingMs(player);
@@ -13009,10 +13001,6 @@ public final class SheepMergeManager {
             case PRESTIGE_QUEST_REWARD_SLOT -> {
                 if (blockTutorialMenuPurchase(player, TutorialStep.PRESTIGE_ONCE,
                         "Upgrade Menu -> Prestige Menu -> Prestige Reset")) {
-                    break;
-                }
-                if (getPrestigeQuestRewardLevel(player) >= PRESTIGE_QUEST_REWARD_MAX_LEVEL) {
-                    player.sendMessage(warning("Quest reward boost maxed."));
                     break;
                 }
                 if (upgradePrestigeQuestReward(player)) {
