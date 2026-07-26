@@ -37,8 +37,11 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
     - persisted progression/economy state objects
     - `SheepRuntimeUiState`
     - `SheepEntityRuntimeState`
+    - leaderboard refresh and persisted location state
+  - Leaderboard migration finalized; compiler-confirmed dead Java remnants from extracted subsystems cleaned
 - Remaining Java footprint:
   - `SheepMergeManager.java`
+  - Full manager migration remains intentionally incomplete after this bounded cleanup stage
 
 ## Migration Phases (Updated)
 
