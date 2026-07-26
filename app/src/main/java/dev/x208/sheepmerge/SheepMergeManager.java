@@ -7661,6 +7661,69 @@ public final class SheepMergeManager {
         return lines;
     }
 
+    public static int getTopPointsPageCount(int pageSize) {
+        int safePageSize = Math.max(1, pageSize);
+        int totalEntries = pointsByPlayer.size();
+        if (totalEntries <= 0) {
+            return 1;
+        }
+        return (int) Math.ceil(totalEntries / (double) safePageSize);
+    }
+
+    public static List<String> getTopPointsLines(int pageSize, int pageNumber) {
+        List<String> lines = new ArrayList<>();
+        final int safePageSize = Math.max(1, pageSize);
+        final int safePageNumber = Math.max(1, pageNumber);
+
+        List<Map.Entry<UUID, BigInteger>> entries = pointsByPlayer.entrySet().stream()
+                .sorted((left, right) -> {
+                    int pointsCompare = right.getValue().compareTo(left.getValue());
+                    if (pointsCompare != 0) {
+                        return pointsCompare;
+                    }
+
+                    String leftName = Bukkit.getOfflinePlayer(left.getKey()).getName();
+                    String rightName = Bukkit.getOfflinePlayer(right.getKey()).getName();
+                    String leftSafeName = leftName == null || leftName.isBlank()
+                            ? left.getKey().toString().substring(0, 8)
+                            : leftName;
+                    String rightSafeName = rightName == null || rightName.isBlank()
+                            ? right.getKey().toString().substring(0, 8)
+                            : rightName;
+
+                    int nameCompare = leftSafeName.compareToIgnoreCase(rightSafeName);
+                    if (nameCompare != 0) {
+                        return nameCompare;
+                    }
+                    return left.getKey().compareTo(right.getKey());
+                })
+                .toList();
+
+        if (entries.isEmpty()) {
+            lines.add("No scores yet.");
+            return lines;
+        }
+
+        int startIndex = (safePageNumber - 1) * safePageSize;
+        if (startIndex >= entries.size()) {
+            lines.add("No scores on this page.");
+            return lines;
+        }
+
+        int endIndex = Math.min(startIndex + safePageSize, entries.size());
+        for (int index = startIndex; index < endIndex; index++) {
+            Map.Entry<UUID, BigInteger> entry = entries.get(index);
+            String name = Bukkit.getOfflinePlayer(entry.getKey()).getName();
+            if (name == null || name.isBlank()) {
+                name = entry.getKey().toString().substring(0, 8);
+            }
+            int rank = index + 1;
+            lines.add(rank + ". " + name + " - " + formatPoints(entry.getValue()));
+        }
+
+        return lines;
+    }
+
     public static boolean spawnOrMoveTopPointsDisplay(Player player) {
         if (player == null || player.getWorld() == null) {
             return false;

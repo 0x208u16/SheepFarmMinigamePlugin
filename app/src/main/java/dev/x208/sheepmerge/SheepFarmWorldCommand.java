@@ -162,7 +162,7 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             new UpgradeCommandModule(this::handleUpgradeCommand, this::tabCompleteNone),
             new PrestigeCommandModule(this::handlePrestigeCommand, this::tabCompleteNone),
             new ShopCommandModule(this::handleShopCommand, this::tabCompleteNone),
-            new TopCommandModule(this::handleTopCommand, this::tabCompleteNone),
+            new TopCommandModule(this::handleTopCommand, this::tabCompleteTop),
             new VisitCommandModule(this::handleVisitCommand, this::tabCompleteVisit),
             new KickCommandModule(this::handleKickCommand, this::tabCompleteKick),
             new StatusCommandModule(this::handleStatusCommand, this::tabCompleteNone),
@@ -213,7 +213,8 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge upgrade") + ": open upgrade menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge prestige") + ": open prestige menu");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge shop") + ": open shop menu");
-        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge top") + ": show top players by Coins");
+        player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge top [page]")
+                + ": show top players by Coins (10 per page)");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge status") + ": view your current stats");
         player.sendMessage(ChatColor.GRAY + "- " + label("/sheepmerge visit <player>") + ": visit another open farm");
         player.sendMessage(
@@ -541,9 +542,42 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleTopCommand(Player player, String[] args) {
-        if (args.length == 1 && args[0].equalsIgnoreCase("top")) {
-            player.sendMessage(adminHeader("Top Players"));
-            for (String line : SheepMergeManager.getTopPointsLines(10)) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("top")) {
+            final int pageSize = 10;
+            int page = 1;
+
+            if (args.length >= 2) {
+                if (isHelpFlag(args[1])) {
+                    player.sendMessage(error("Usage: /sheepmerge top [page]"));
+                    return true;
+                }
+                try {
+                    page = Integer.parseInt(args[1]);
+                } catch (NumberFormatException exception) {
+                    player.sendMessage(error("Invalid page number. Usage: /sheepmerge top [page]"));
+                    return true;
+                }
+            }
+
+            if (args.length > 2) {
+                player.sendMessage(error("Usage: /sheepmerge top [page]"));
+                return true;
+            }
+
+            if (page < 1) {
+                player.sendMessage(error("Page number must be 1 or higher."));
+                return true;
+            }
+
+            int totalPages = SheepMergeManager.getTopPointsPageCount(pageSize);
+            if (page > totalPages) {
+                player.sendMessage(error("Page out of range. Available pages: 1-" + totalPages + "."));
+                return true;
+            }
+
+            player.sendMessage(adminHeader("Top Players") + ChatColor.DARK_GRAY + " ("
+                    + ChatColor.GRAY + "Page " + page + "/" + totalPages + ChatColor.DARK_GRAY + ")");
+            for (String line : SheepMergeManager.getTopPointsLines(pageSize, page)) {
                 player.sendMessage(ChatColor.GRAY + line);
             }
             return true;
@@ -1577,6 +1611,13 @@ public class SheepFarmWorldCommand implements CommandExecutor, TabCompleter {
             return filterSuggestions(appendHelpFlags(List.of("[world]", "remove"), args[4]), args[4]);
         }
 
+        return List.of();
+    }
+
+    private List<String> tabCompleteTop(CommandSender sender, String[] args) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("top")) {
+            return filterSuggestions(appendHelpFlags(List.of("<page>", "1", "2", "3"), args[1]), args[1]);
+        }
         return List.of();
     }
 
