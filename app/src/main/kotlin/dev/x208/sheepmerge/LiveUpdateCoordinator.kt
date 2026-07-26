@@ -22,6 +22,10 @@ object LiveUpdateCoordinator {
     private const val GITHUB_API_VERSION = "2022-11-28"
     private const val GITHUB_USER_AGENT = "SheepMerge-LiveUpdate"
     private const val GITHUB_WEB_BASE = "https://github.com"
+    private const val LEGACY_GITHUB_OWNER = "x208"
+    private const val LEGACY_GITHUB_REPO = "SheepMerge"
+    private const val CURRENT_GITHUB_OWNER = "0x208u16"
+    private const val CURRENT_GITHUB_REPO = "SheepFarmMinigamePlugin"
 
     private val tagPattern = Pattern.compile("\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
     private val assetPattern = Pattern.compile(
@@ -152,8 +156,9 @@ object LiveUpdateCoordinator {
     }
 
     private fun fetchLatestRelease(configuration: SheepMergeConfiguration): ReleaseFetchResult {
-        val owner = configuration.liveUpdateGitHubOwner.trim()
-        val repo = configuration.liveUpdateGitHubRepo.trim()
+        val configuredOwner = configuration.liveUpdateGitHubOwner.trim()
+        val configuredRepo = configuration.liveUpdateGitHubRepo.trim()
+        val (owner, repo) = resolveGitHubRepo(configuredOwner, configuredRepo)
         if (owner.isBlank() || repo.isBlank()) {
             return ReleaseFetchResult(errorMessage = "Live update GitHub owner/repo is not configured.")
         }
@@ -193,6 +198,15 @@ object LiveUpdateCoordinator {
         }
 
         return httpFailure(owner, repo, latestResponse)
+    }
+
+    private fun resolveGitHubRepo(owner: String, repo: String): Pair<String, String> {
+        if (owner.equals(LEGACY_GITHUB_OWNER, ignoreCase = true)
+            && repo.equals(LEGACY_GITHUB_REPO, ignoreCase = true)
+        ) {
+            return CURRENT_GITHUB_OWNER to CURRENT_GITHUB_REPO
+        }
+        return owner to repo
     }
 
     private fun fetchLatestReleaseFromWeb(

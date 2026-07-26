@@ -83,8 +83,8 @@ class SheepMergeConfiguration private constructor(configuration: FileConfigurati
     val prestigeLevelBaseCost: Int = getInt(configuration, "gameplay.prestige.levelBaseCost", 500, 1)
 
     val liveUpdateCheckIntervalTicks: Long = getLong(configuration, "liveUpdates.checkIntervalTicks", 72000L, 1200L)
-    val liveUpdateGitHubOwner: String = getString(configuration, "liveUpdates.github.owner", "x208")
-    val liveUpdateGitHubRepo: String = getString(configuration, "liveUpdates.github.repo", "SheepMerge")
+    val liveUpdateGitHubOwner: String = getString(configuration, "liveUpdates.github.owner", "0x208u16")
+    val liveUpdateGitHubRepo: String = getString(configuration, "liveUpdates.github.repo", "SheepFarmMinigamePlugin")
     val liveUpdateManifestAssetName: String = getString(configuration, "liveUpdates.github.manifestAssetName", "live-update.yml")
     val liveUpdateApiTimeoutMs: Long = getLong(configuration, "liveUpdates.github.apiTimeoutMs", 10000L, 1000L)
     val liveUpdateGitHubToken: String = getString(configuration, "liveUpdates.github.token", "")
