@@ -162,7 +162,6 @@ class SheepMergeWorldListener : Listener {
                     10
                 )
             } else {
-                player.sendMessage(SheepMergeManager.action("Welcome back to your farm!"))
             }
         } else if (fromTutorialWorld && toManagedWorld && !toTutorialWorld) {
             player.inventory.clear()
