@@ -160,6 +160,8 @@ public class SheepMergeWorldListener implements Listener {
                         10,
                         50,
                         10);
+            } else {
+                player.sendMessage(SheepMergeManager.action("Welcome back to your farm!"));
             }
         } else if (fromTutorialWorld && toManagedWorld && !toTutorialWorld) {
             player.getInventory().clear();
