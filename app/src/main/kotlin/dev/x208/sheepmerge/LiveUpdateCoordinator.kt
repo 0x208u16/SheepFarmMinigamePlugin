@@ -355,6 +355,12 @@ object LiveUpdateCoordinator {
                 )
             )
         }
+        assets.add(
+            ReleaseAsset(
+                "SheepMerge.jar",
+                "$GITHUB_WEB_BASE/$owner/$repo/releases/download/$tagName/SheepMerge.jar"
+            )
+        )
 
         return ReleaseFetchResult(release = tagName to assets)
     }
@@ -413,19 +419,22 @@ object LiveUpdateCoordinator {
         val manifest = manifestAsset?.let { downloadManifest(configuration, it.downloadUrl, tagName) }
             ?: LiveUpdateManifest(tagName, SheepMergeManager.getCurrentDataSchemaVersion(), true, false, null, "Release $tagName", false)
 
-        val selectedJar = selectJarAsset(assets, manifest)
+        val jarCandidates = selectJarAssets(assets, manifest)
         val updateDir = File(plugin.dataFolder, "live-update")
         if (!updateDir.exists()) {
             updateDir.mkdirs()
         }
         File(updateDir, "staged-manifest.yml").writeText(buildManifestYaml(manifest))
 
-        if (selectedJar != null) {
-            stageBinaryJar(plugin, configuration, selectedJar)
+        val stagedJarName = stageBinaryJarCandidates(plugin, configuration, jarCandidates)
+        if (manifest.requiresBinarySwap && stagedJarName == null) {
+            val message = "Unable to stage update $tagName because no downloadable plugin jar asset was found."
+            SheepMergeManager.recordLiveUpdateCheck(message)
+            return message
         }
 
         val message = if (manifest.requiresBinarySwap) {
-            "Staged update $tagName for next server handoff/restart."
+            "Staged update $tagName (${stagedJarName ?: "plugin jar"}) for next server handoff/restart."
         } else {
             "Staged live-safe update $tagName. Use /sheepmerge liveupdate apply to apply migrations."
         }
@@ -477,15 +486,55 @@ object LiveUpdateCoordinator {
         return yaml.saveToString()
     }
 
-    private fun selectJarAsset(assets: List<ReleaseAsset>, manifest: LiveUpdateManifest): ReleaseAsset? {
+    private fun selectJarAssets(assets: List<ReleaseAsset>, manifest: LiveUpdateManifest): List<ReleaseAsset> {
+        if (assets.isEmpty()) {
+            return emptyList()
+        }
+
+        val ordered = mutableListOf<ReleaseAsset>()
+        val seen = HashSet<String>()
+
+        fun addCandidate(candidate: ReleaseAsset?) {
+            if (candidate == null) {
+                return
+            }
+            if (seen.add(candidate.name.lowercase())) {
+                ordered.add(candidate)
+            }
+        }
+
         val manifestAssetName = manifest.binaryAssetName
         if (!manifestAssetName.isNullOrBlank()) {
-            return assets.firstOrNull { it.name.equals(manifestAssetName, ignoreCase = true) }
+            addCandidate(assets.firstOrNull { it.name.equals(manifestAssetName, ignoreCase = true) })
         }
-        return assets.firstOrNull { it.name.startsWith("SheepMerge", ignoreCase = true) && it.name.endsWith(".jar", ignoreCase = true) }
+
+        addCandidate(assets.firstOrNull { it.name.equals("SheepMerge.jar", ignoreCase = true) })
+
+        for (asset in assets) {
+            if (asset.name.startsWith("SheepMerge", ignoreCase = true)
+                && asset.name.endsWith(".jar", ignoreCase = true)
+            ) {
+                addCandidate(asset)
+            }
+        }
+
+        return ordered
     }
 
-    private fun stageBinaryJar(plugin: SheepMergePlugin, configuration: SheepMergeConfiguration, asset: ReleaseAsset) {
+    private fun stageBinaryJarCandidates(
+        plugin: SheepMergePlugin,
+        configuration: SheepMergeConfiguration,
+        candidates: List<ReleaseAsset>
+    ): String? {
+        for (candidate in candidates) {
+            if (stageBinaryJar(plugin, configuration, candidate)) {
+                return candidate.name
+            }
+        }
+        return null
+    }
+
+    private fun stageBinaryJar(plugin: SheepMergePlugin, configuration: SheepMergeConfiguration, asset: ReleaseAsset): Boolean {
         val timeout = Duration.ofMillis(configuration.liveUpdateApiTimeoutMs)
         val client = HttpClient.newBuilder().connectTimeout(timeout).build()
         val requestBuilder = HttpRequest.newBuilder().uri(URI.create(asset.downloadUrl)).timeout(timeout).GET()
@@ -493,10 +542,13 @@ object LiveUpdateCoordinator {
         val request = requestBuilder.build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
         if (response.statusCode() !in 200..299) {
-            return
+            return false
         }
         response.body().use { input ->
             val jarBytes = input.readBytes()
+            if (jarBytes.isEmpty()) {
+                return false
+            }
 
             val liveUpdateDir = File(plugin.dataFolder, "live-update")
             if (!liveUpdateDir.exists()) {
@@ -512,6 +564,7 @@ object LiveUpdateCoordinator {
             val target = File(updateFolder, asset.name)
             Files.write(target.toPath(), jarBytes)
         }
+        return true
     }
 
     private fun resolveActivePluginJar(plugin: SheepMergePlugin): File? {
