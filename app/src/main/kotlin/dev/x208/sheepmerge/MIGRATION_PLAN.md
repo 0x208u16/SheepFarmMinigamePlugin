@@ -26,13 +26,13 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
     - `SheepTier`
     - `SheepEggModule`
     - `SheepMergeWorldListener`
+    - `SheepFarmGameListener`
     - `SheepFarmWorldProtectionListener`
     - `SheepFarmWorldCleanupListener`
 - Remaining Java footprint:
   - Main blockers by size:
     - `SheepMergeManager.java`
     - `SheepFarmWorldCommand.java`
-    - `SheepFarmGameListener.java`
     - `bstats/Metrics.java`
 
 ## Migration Phases (Updated)
@@ -50,7 +50,7 @@ This plugin can be migrated to Kotlin incrementally while staying compatible wit
 3. Listener Layer
 - Convert listeners one by one while preserving event priorities and cancellation behavior:
   - `SheepMergeWorldListener`
-  - `SheepFarmGameListener`
+  - `SheepFarmGameListener` (done)
   - `SheepFarmWorldProtectionListener`
   - `SheepFarmWorldCleanupListener`
 
