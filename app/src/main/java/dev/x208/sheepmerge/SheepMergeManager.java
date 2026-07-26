@@ -553,12 +553,12 @@ public final class SheepMergeManager {
     public static final int SCOREBOARD_ABILITIES_SLOT = 20;
     public static final int SCOREBOARD_ACHIEVEMENT_POINTS_SLOT = 22;
     public static final int SCOREBOARD_BACK_SLOT = 26;
-    public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 11;
-    public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 15;
-    public static final int UNIVERSAL_LAYOUT_SOUND_SLOT = 29;
-    public static final int UNIVERSAL_LAYOUT_PARTICLE_SLOT = 31;
-    public static final int UNIVERSAL_LAYOUT_VISIT_SLOT = 33;
-    public static final int UNIVERSAL_LAYOUT_BACK_SLOT = 49;
+    public static final int UNIVERSAL_LAYOUT_SCOREBOARD_SLOT = 10;
+    public static final int UNIVERSAL_LAYOUT_INVENTORY_SLOT = 12;
+    public static final int UNIVERSAL_LAYOUT_VISIT_SLOT = 14;
+    public static final int UNIVERSAL_LAYOUT_SOUND_SLOT = 20;
+    public static final int UNIVERSAL_LAYOUT_PARTICLE_SLOT = 24;
+    public static final int UNIVERSAL_LAYOUT_BACK_SLOT = 22;
     public static final int SCOREBOARD_LAYOUT_DETAILED_SLOT = 11;
     public static final int SCOREBOARD_LAYOUT_COMPACT_SLOT = 15;
     public static final int SCOREBOARD_LAYOUT_BACK_SLOT = 26;
@@ -11763,7 +11763,7 @@ public final class SheepMergeManager {
         if (player == null) {
             return;
         }
-        Inventory inventory = Bukkit.createInventory(null, 54, SETTINGS_MENU_TITLE);
+        Inventory inventory = Bukkit.createInventory(null, 27, SETTINGS_MENU_TITLE);
         inventory.setItem(4, MenuItemFactory.create(
                 Material.NETHER_STAR,
                 "Settings Hub",
