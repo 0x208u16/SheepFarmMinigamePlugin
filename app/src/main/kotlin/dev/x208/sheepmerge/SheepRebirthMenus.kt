@@ -142,7 +142,7 @@ internal object SheepRebirthMenus {
         if (SheepMergeManager.rebirthMenuHasSkill(player, clicked.id())) {
             player.sendMessage(SheepMergeManager.warning("That rebirth skill is already unlocked permanently."))
         } else if (SheepMergeManager.rebirthMenuTryUnlock(player, clicked.id())) {
-            SheepMergeManager.progressionPlayUpgradeSound(player)
+            SheepMergeManager.progressionPlaySkillUnlockSound(player)
             player.sendMessage(SheepMergeManager.action("Rebirth skill unlocked."))
         } else player.sendMessage(SheepMergeManager.warning("Cannot unlock this skill yet."))
         openRebirthTreeMenu(player)

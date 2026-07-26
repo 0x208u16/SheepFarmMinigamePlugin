@@ -5152,6 +5152,10 @@ public final class SheepMergeManager {
         playSound(player, sound, volume, pitch);
     }
 
+    static void progressionPlaySkillUnlockSound(Player player) {
+        playSound(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.15f);
+    }
+
     static boolean questHasQuestMaster(Player player) {
         return hasQuestMaster(player);
     }
