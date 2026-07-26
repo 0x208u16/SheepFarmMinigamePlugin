@@ -276,6 +276,7 @@ class SheepMergePlugin : JavaPlugin {
 
     override fun onDisable() {
         SheepMergeManager.restoreAllPlayerStates()
+        LiveUpdateCoordinator.applyStagedBinaryOnShutdown(this)
         SheepMergeManager.saveData()
         SheepFarmWorldCleanupListener.cleanupFarmWorldsOnShutdown()
         log.info("Thanks for using $NAME!")

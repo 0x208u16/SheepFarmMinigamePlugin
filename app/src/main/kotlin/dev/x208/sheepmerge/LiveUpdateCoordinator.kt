@@ -22,6 +22,7 @@ object LiveUpdateCoordinator {
     private const val GITHUB_API_VERSION = "2022-11-28"
     private const val GITHUB_USER_AGENT = "SheepMerge-LiveUpdate"
     private const val GITHUB_WEB_BASE = "https://github.com"
+    private const val STAGED_PLUGIN_BINARY_NAME = "staged-plugin.jar"
     private const val LEGACY_GITHUB_OWNER = "x208"
     private const val LEGACY_GITHUB_REPO = "SheepMerge"
     private const val CURRENT_GITHUB_OWNER = "0x208u16"
@@ -117,6 +118,36 @@ object LiveUpdateCoordinator {
 
         SheepMergeManager.clearStagedLiveUpdate("Applied staged live update manifest ${manifest.tagName} on startup.")
         deleteStagedManifest(manifestFile)
+    }
+
+    @JvmStatic
+    fun applyStagedBinaryOnShutdown(plugin: SheepMergePlugin?) {
+        if (plugin == null) {
+            return
+        }
+
+        val stagedBinary = File(File(plugin.dataFolder, "live-update"), STAGED_PLUGIN_BINARY_NAME)
+        if (!stagedBinary.exists() || !stagedBinary.isFile) {
+            return
+        }
+
+        val pluginBinary = resolveActivePluginJar(plugin)
+        if (pluginBinary == null || !pluginBinary.exists()) {
+            SheepMergeManager.recordLiveUpdateCheck("Staged plugin binary found, but active plugin jar path could not be resolved.")
+            return
+        }
+
+        try {
+            Files.copy(stagedBinary.toPath(), pluginBinary.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            val label = SheepMergeManager.getStagedLiveUpdateVersion().ifBlank { "next release" }
+            SheepMergeManager.recordLiveUpdateCheck(
+                "Copied staged plugin binary ($label) over active jar during shutdown. Restart to run the updated plugin."
+            )
+        } catch (exception: Exception) {
+            SheepMergeManager.recordLiveUpdateCheck(
+                "Failed to copy staged plugin binary during shutdown: ${exception.message ?: exception.javaClass.simpleName}"
+            )
+        }
     }
 
     @JvmStatic
@@ -465,12 +496,30 @@ object LiveUpdateCoordinator {
             return
         }
         response.body().use { input ->
+            val jarBytes = input.readBytes()
+
+            val liveUpdateDir = File(plugin.dataFolder, "live-update")
+            if (!liveUpdateDir.exists()) {
+                liveUpdateDir.mkdirs()
+            }
+            val stagedBinary = File(liveUpdateDir, STAGED_PLUGIN_BINARY_NAME)
+            Files.write(stagedBinary.toPath(), jarBytes)
+
             val updateFolder = plugin.server.updateFolderFile
             if (!updateFolder.exists()) {
                 updateFolder.mkdirs()
             }
             val target = File(updateFolder, asset.name)
-            Files.copy(input, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Files.write(target.toPath(), jarBytes)
+        }
+    }
+
+    private fun resolveActivePluginJar(plugin: SheepMergePlugin): File? {
+        return try {
+            val location = plugin.javaClass.protectionDomain?.codeSource?.location ?: return null
+            File(location.toURI())
+        } catch (_: Exception) {
+            null
         }
     }
 
