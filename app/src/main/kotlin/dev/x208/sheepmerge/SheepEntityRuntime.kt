@@ -74,6 +74,7 @@ object SheepEntityRuntime {
         if (sheep == null || tier == null) return
         sheep.removeWhenFarAway = false
         sheep.isPersistent = true
+        sheep.isSilent = true
         sheep.color = tier.color ?: DyeColor.WHITE
         sheep.persistentDataContainer.set(tierKey, PersistentDataType.INTEGER, tier.level)
         if (tier == SheepTier.RAINBOW) {
@@ -230,6 +231,7 @@ object SheepEntityRuntime {
             !SheepMergeManager.isSheepFarmWorld(sheep.world)
         ) return
 
+        sheep.isSilent = true
         applyRescueMotionIfNeeded(sheep)
         val tier = getTier(sheep)
         if (tier == SheepTier.RAINBOW) {
