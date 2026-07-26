@@ -1273,7 +1273,7 @@ public final class SheepMergeManager {
 
     public static void recordLiveUpdateCheck(String status) {
         lastLiveUpdateCheckAt = System.currentTimeMillis();
-        lastLiveUpdateStatus = status == null || status.isBlank() ? "Checked." : status;
+        lastLiveUpdateStatus = normalizeLiveUpdateStatus(status == null || status.isBlank() ? "Checked." : status);
         saveData();
     }
 
@@ -1284,7 +1284,8 @@ public final class SheepMergeManager {
 
     public static void recordLiveUpdateApply(String status) {
         lastLiveUpdateCheckAt = System.currentTimeMillis();
-        lastLiveUpdateStatus = status == null || status.isBlank() ? "Applied staged live update." : status;
+        lastLiveUpdateStatus = normalizeLiveUpdateStatus(
+                status == null || status.isBlank() ? "Applied staged live update." : status);
         if (dataSchemaVersion >= CURRENT_DATA_SCHEMA_VERSION) {
             stagedLiveUpdateVersion = "";
         }
@@ -1305,8 +1306,15 @@ public final class SheepMergeManager {
         lines.add(ChatColor.GRAY + "Last Check: " + ChatColor.AQUA + checkedAt);
         lines.add(ChatColor.GRAY + "Status: " + ChatColor.WHITE
                 + (lastLiveUpdateStatus == null || lastLiveUpdateStatus.isBlank() ? "Not checked yet."
-                        : lastLiveUpdateStatus));
+                        : normalizeLiveUpdateStatus(lastLiveUpdateStatus)));
         return lines;
+    }
+
+    private static String normalizeLiveUpdateStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return status;
+        }
+        return status.replace("x208/SheepMerge", "0x208u16/SheepFarmMinigamePlugin");
     }
 
     public static int getFarmRadius() {
@@ -16653,7 +16661,8 @@ public final class SheepMergeManager {
         liveUpdateEnabled = !dataConfig.contains("liveUpdate.enabled")
                 || dataConfig.getBoolean("liveUpdate.enabled", true);
         stagedLiveUpdateVersion = dataConfig.getString("liveUpdate.stagedVersion", "");
-        lastLiveUpdateStatus = dataConfig.getString("liveUpdate.lastStatus", "Not checked yet.");
+        lastLiveUpdateStatus = normalizeLiveUpdateStatus(
+                dataConfig.getString("liveUpdate.lastStatus", "Not checked yet."));
         lastLiveUpdateCheckAt = Math.max(0L, dataConfig.getLong("liveUpdate.lastCheckAt", 0L));
         dataSchemaVersion = Math.max(0, dataConfig.getInt("dataSchemaVersion", 0));
         Set<UUID> playersToClamp = new HashSet<>();
