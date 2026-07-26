@@ -446,6 +446,7 @@ class SheepFarmGameListener : Listener {
         SheepMergeManager.clearPickedUpSheep(player)
         SheepMergeManager.clearMergeReminder(player)
         SheepMergeManager.clearPrestigeReminder(player)
+        SheepMergeManager.clearRebirthReminder(player)
         SheepMergeManager.clearComboRuntime(player)
     }
 
@@ -459,12 +460,14 @@ class SheepFarmGameListener : Listener {
             SheepMergeManager.clearPickedUpSheep(player)
             SheepMergeManager.clearMergeReminder(player)
             SheepMergeManager.clearPrestigeReminder(player)
+            SheepMergeManager.clearRebirthReminder(player)
             SheepMergeManager.clearComboRuntime(player)
             return
         }
         SheepMergeManager.clearPickedUpSheep(player)
         SheepMergeManager.clearMergeReminder(player)
         SheepMergeManager.clearPrestigeReminder(player)
+        SheepMergeManager.clearRebirthReminder(player)
         SheepMergeManager.clearComboRuntime(player)
     }
 

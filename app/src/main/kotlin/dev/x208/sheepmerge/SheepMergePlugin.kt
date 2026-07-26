@@ -239,6 +239,7 @@ class SheepMergePlugin : JavaPlugin {
             SheepMergeManager.enforceFarmLoadout(player)
             SheepMergeManager.tickTutorialReminder(player)
             SheepMergeManager.tickPrestigeReminder(player)
+            SheepMergeManager.tickRebirthReminder(player)
             SheepMergeManager.tickMergeReminder(player)
             SheepMergeManager.tickQuestSystem(player)
             SheepMergeManager.tickActiveAbilities(player)

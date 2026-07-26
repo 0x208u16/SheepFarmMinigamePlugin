@@ -117,6 +117,8 @@ public final class SheepMergeManager {
     private static final Map<UUID, Long> lastTutorialReminderTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialTaskTitleTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialTaskTitleStepByPlayer = new HashMap<>();
+    private static final Map<UUID, Long> lastRebirthReminderTimestampByPlayer = new HashMap<>();
+    private static final Map<UUID, Boolean> rebirthTitleReminderShownByPlayer = new HashMap<>();
     private static final Map<UUID, Long> lastTutorialStatusFeedTimestampByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialProgressFeedLineByPlayer = new HashMap<>();
     private static final Map<UUID, String> lastTutorialStepFeedLineByPlayer = new HashMap<>();
@@ -131,11 +133,13 @@ public final class SheepMergeManager {
     private static final Map<UUID, Integer> questShearsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questSpawnsByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questMergesByPlayer = new HashMap<>();
+
     private static final Map<UUID, Boolean> questShearsCompleteByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> questSpawnsCompleteByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> questMergesCompleteByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questUpgradeDurationByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> questUpgradePowerByPlayer = new HashMap<>();
+
     private static final Map<UUID, Long> activeLuckyBurstUntilByPlayer = new HashMap<>();
     private static final Map<UUID, Integer> activeLuckyBurstUsesByPlayer = new HashMap<>();
     private static final Map<UUID, Boolean> luckyBurstEnabledByPlayer = new HashMap<>();
@@ -5965,6 +5969,7 @@ public final class SheepMergeManager {
         prestigePointsByPlayer.remove(playerId);
         clearPrestigeReminder(player);
         clearMergeReminder(player);
+        clearRebirthReminder(player);
 
         runPrestigeResetEffects(player, true);
         if (!hasActiveRebirthSkill(playerId, REBIRTH_SKILL_KEEP_SACRIFICE_AFTER_REBIRTH)) {
@@ -6701,6 +6706,8 @@ public final class SheepMergeManager {
         highestAnnouncedTierByPlayer.remove(id);
         highestAnnouncedRainbowTierByPlayer.remove(id);
         lastPrestigeReminderTimestampByPlayer.remove(id);
+        lastRebirthReminderTimestampByPlayer.remove(id);
+        rebirthTitleReminderShownByPlayer.remove(id);
         shearShopLevelByPlayer.remove(id);
         shearWoolSaveLevelByPlayer.remove(id);
         shearTierBoostLevelByPlayer.remove(id);
@@ -8553,6 +8560,8 @@ public final class SheepMergeManager {
         automationSlowAutoShearEnabledByPlayer.clear();
         automationAutoSpawnEnabledByPlayer.clear();
         automationAutoPrestigeEnabledByPlayer.clear();
+        lastRebirthReminderTimestampByPlayer.clear();
+        rebirthTitleReminderShownByPlayer.clear();
         scoreboardLayoutModeByPlayer.clear();
         scoreboardShowAchievementPointsByPlayer.clear();
         scoreboardShowQuestPointsByPlayer.clear();
@@ -9003,6 +9012,15 @@ public final class SheepMergeManager {
         prestigeTitleReminderShownByPlayer.remove(playerId);
     }
 
+    public static void clearRebirthReminder(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        lastRebirthReminderTimestampByPlayer.remove(playerId);
+        rebirthTitleReminderShownByPlayer.remove(playerId);
+    }
+
     public static void tickPrestigeReminder(Player player) {
         if (player == null || !isSheepFarmWorld(player.getWorld())) {
             return;
@@ -9035,6 +9053,37 @@ public final class SheepMergeManager {
             player.sendMessage(hint("Prestige ready. Use /sheepmerge prestige"));
         }
         lastPrestigeReminderTimestampByPlayer.put(playerId, now);
+    }
+
+    public static void tickRebirthReminder(Player player) {
+        if (player == null || !isSheepFarmWorld(player.getWorld())) {
+            return;
+        }
+        int affordableRebirths = getAffordableRebirthLevels(player);
+        if (affordableRebirths <= 0) {
+            clearRebirthReminder(player);
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long lastReminder = lastRebirthReminderTimestampByPlayer.getOrDefault(playerId, 0L);
+        if (now - lastReminder < 20_000L) {
+            return;
+        }
+
+        if (!rebirthTitleReminderShownByPlayer.getOrDefault(playerId, false)) {
+            player.sendTitle(
+                    color("&dRebirth ready"),
+                    color("&7Open the rebirth menu"),
+                    10,
+                    60,
+                    10);
+            rebirthTitleReminderShownByPlayer.put(playerId, true);
+        } else {
+            player.sendMessage(hint("Rebirth ready. Open the rebirth menu from /sheepmerge upgrade."));
+        }
+        lastRebirthReminderTimestampByPlayer.put(playerId, now);
     }
 
     public static void recordSheepMerge(Player player, SheepTier mergedFromTier, int woolReadySourceSheep) {
@@ -13733,6 +13782,7 @@ public final class SheepMergeManager {
                         affordable > 0
                                 ? "&dReward: +" + formatPoints(reward) + " rebirth points"
                                 : "&dReward: +0 rebirth points",
+                        "&6Required prestige levels: &f" + nextCost,
                         "&7Cost scaling: +10 prestige levels per rebirth",
                         "&cConsumes prestige levels and prestige points",
                         "&cResets prestige upgrades",

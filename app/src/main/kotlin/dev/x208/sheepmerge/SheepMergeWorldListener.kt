@@ -182,6 +182,7 @@ class SheepMergeWorldListener : Listener {
             SheepMergeManager.clearPickedUpSheep(player)
             SheepMergeManager.clearMergeReminder(player)
             SheepMergeManager.clearPrestigeReminder(player)
+            SheepMergeManager.clearRebirthReminder(player)
             SheepMergeManager.clearComboRuntime(player)
             SheepMergeManager.clearVisitFarmBossBar(player)
         } else if (fromManagedWorld && toManagedWorld) {
