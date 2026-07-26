@@ -30,7 +30,7 @@ object LiveUpdateCoordinator {
 
     private val tagPattern = Pattern.compile("\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
     private val assetPattern = Pattern.compile(
-        "\\{[^{}]*\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"[^{}]*\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"[^{}]*}",
+        "\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+\\.jar|live-update\\.yml)\\\".*?\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"",
         Pattern.DOTALL
     )
     private val releaseTagHrefPattern = Pattern.compile("/[^/]+/[^/]+/releases/tag/([^\"?#]+)")
