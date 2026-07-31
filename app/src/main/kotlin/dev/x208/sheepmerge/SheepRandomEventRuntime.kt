@@ -36,7 +36,7 @@ internal object SheepRandomEventRuntime {
         "&7Your menu item is the &bNether Star &7in hotbar slot 9. Right-click it to open Sheep Merge Menu.",
         "&7Eggs are shown as your XP level. The XP bar shows time until the next egg.",
         "&7Spawn eggs are in hotbar slot 8. No eggs? Wait for the timer or raise egg speed.",
-        "&7Merge faster: sneak-right-click a sheep to carry it, then right-click a same-tier sheep.",
+        "&7Merge faster: crouch-right-click a sheep to carry it, then right-click a same-tier sheep.",
         "&7Shearing and merging together are your main point income. Keep both loops active.",
         "&7Rainbow sheep can merge with matching rainbow tier to push rainbow tiers higher forever.",
         "&7Shear Shop boosts shear value and adds procs like Wool Keeper and Tier Booster.",

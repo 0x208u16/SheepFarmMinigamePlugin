@@ -124,7 +124,7 @@ class SheepFarmGameListener : Listener {
             return
         }
 
-        // Sneak-right-click is used for pickup, so do not shear in that case.
+        // Crouch-right-click is used for pickup, so do not shear in that case.
         if (event.player.isSneaking) {
             event.isCancelled = true
             return
@@ -267,6 +267,7 @@ class SheepFarmGameListener : Listener {
 
         val item = player.inventory.itemInMainHand
         val attemptingShearOnly = item.type == Material.SHEARS
+            && !player.isSneaking
             && !SheepMergeManager.hasPickedUpSheep(player)
         if (attemptingShearOnly) {
             return

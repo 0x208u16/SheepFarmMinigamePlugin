@@ -93,7 +93,7 @@ internal object SheepTutorialRuntime {
         sendTitle(player, "&eSheepMerge Tutorial", "&fFollow the steps to unlock your farm")
         player.sendMessage(SheepMergeManager.hint("Step 1: Spawn $spawnTarget sheep."))
         player.sendMessage(SheepMergeManager.hint("Step 2: Shear $shearTarget sheep."))
-        player.sendMessage(SheepMergeManager.hint("Step 3: Merge $mergeTarget pair (SHIFT + RIGHT-CLICK)."))
+        player.sendMessage(SheepMergeManager.hint("Step 3: Merge $mergeTarget pair (CROUCH + RIGHT-CLICK)."))
         player.sendMessage(SheepMergeManager.hint("Step 4: Menus -> Upgrades, Quests, Shear Shop, Prestige."))
         player.sendMessage(SheepMergeManager.accent("Tip: /sheepmerge status shows your current step."))
         sendStatusFeed(player)
@@ -293,7 +293,7 @@ internal object SheepTutorialRuntime {
         return when (val step = currentStep(player)) {
             Step.SPAWN -> "Spawn sheep (${spawnCount(player)}/$spawnTarget)"
             Step.SHEAR -> "Shear sheep (${shearCount(player)}/$shearTarget)"
-            Step.MERGE -> "Merge same-tier sheep (SHIFT + RIGHT-CLICK) (${mergeCount(player)}/$mergeTarget)"
+            Step.MERGE -> "Merge same-tier sheep (CROUCH + RIGHT-CLICK) (${mergeCount(player)}/$mergeTarget)"
             else -> taskLabel(step)
         }
     }

@@ -3416,13 +3416,13 @@ public final class SheepMergeManager {
         if (!SheepRuntimeUiState.mergeTitleReminderShown().getOrDefault(playerId, false)) {
             player.sendTitle(
                     color("&eMerge sheep"),
-                    color("&7Sneak-right-click one sheep, then right-click the same tier"),
+                    color("&7Crouch-right-click one sheep, then right-click the same tier"),
                     10,
                     60,
                     10);
             SheepRuntimeUiState.mergeTitleReminderShown().put(playerId, true);
         } else {
-            player.sendMessage(hint("Merge sheep. Sneak-right-click one sheep, then right-click the same tier."));
+            player.sendMessage(hint("Merge sheep. Crouch-right-click one sheep, then right-click the same tier."));
         }
         SheepRuntimeUiState.lastMergeReminderTimestamps().put(playerId, now);
     }
