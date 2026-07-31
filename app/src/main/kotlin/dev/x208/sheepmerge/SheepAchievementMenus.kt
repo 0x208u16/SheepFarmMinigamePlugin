@@ -142,7 +142,6 @@ internal object SheepAchievementMenus {
         val lore = listOf(
             "Objective: ${achievement.objective()}",
             achievement.reward(),
-            "Achievement points: +${achievement.achievementPoints()}",
             "${if (unlocked) "&a" else "&c"}Status: ${if (unlocked) "UNLOCKED" else "LOCKED"}",
             "Key: ${achievement.id()}"
         )
