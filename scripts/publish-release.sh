@@ -68,6 +68,45 @@ release_page_exists() {
   [[ "$page_status" == "200" ]]
 }
 
+github_api_patch_json() {
+  local url="$1"
+  local json_body="$2"
+  local body_file
+  local header_file
+  local response_file
+  local http_status
+  local curl_args
+
+  body_file="$(mktemp)"
+  header_file="$(mktemp)"
+  response_file="$(mktemp)"
+  printf '%s' "$json_body" > "$body_file"
+
+  curl_args=(
+    -sS
+    -L
+    -X PATCH
+    -H "Accept: application/vnd.github+json"
+    -H "X-GitHub-Api-Version: 2022-11-28"
+    -H "User-Agent: SheepMergePublishScript/1.0"
+    -H "Content-Type: application/json"
+  )
+
+  if [[ -n "$github_token" ]]; then
+    curl_args+=( -H "Authorization: Bearer ${github_token}" )
+  fi
+
+  http_status="$(curl "${curl_args[@]}" -D "$header_file" -o "$response_file" -w "%{http_code}" --data-binary @"$body_file" "$url" 2>/dev/null || true)"
+
+  GITHUB_HTTP_STATUS="$http_status"
+  GITHUB_RESPONSE_BODY="$(cat "$response_file")"
+  GITHUB_RESPONSE_HEADERS="$(cat "$header_file")"
+
+  rm -f "$body_file" "$header_file" "$response_file"
+
+  [[ "$http_status" =~ ^[0-9]{3}$ ]]
+}
+
 github_api_get() {
   local url="$1"
   local body_file
@@ -118,6 +157,74 @@ get_header_value() {
       }
     }
   ' <<< "$headers"
+}
+
+generate_commit_changelog() {
+  local tag="$1"
+  local previous_tag=""
+  local range=""
+  local changelog=""
+
+  previous_tag="$(git describe --tags --abbrev=0 --match 'v*' "${tag}^" 2>/dev/null || true)"
+  if [[ -n "$previous_tag" ]]; then
+    range="${previous_tag}..${tag}"
+  else
+    range="HEAD"
+  fi
+
+  changelog="$(git log --reverse --pretty=format:'- %s (%h)' "$range" 2>/dev/null || true)"
+  if [[ -z "$changelog" ]]; then
+    changelog='- No commit history available for this release.'
+  fi
+
+  printf '## Changes\n\n'
+  printf '%s\n' "$changelog"
+}
+
+update_release_changelog() {
+  local owner="$1"
+  local repo="$2"
+  local tag="$3"
+  local release_id=""
+  local changelog_body=""
+  local json_payload=""
+
+  if ! release_exists "$owner" "$repo" "$tag"; then
+    return 0
+  fi
+
+  changelog_body="$(generate_commit_changelog "$tag")"
+  release_id="$(python - <<'PY' "$GITHUB_RESPONSE_BODY"
+import json
+import sys
+payload = json.loads(sys.argv[1])
+print(payload.get('id', ''))
+PY
+)"
+
+  if [[ -z "$release_id" ]]; then
+    echo "Could not determine release ID for $tag; skipping changelog update." >&2
+    return 1
+  fi
+
+  json_payload="$(python - <<'PY' "$changelog_body"
+import json
+import sys
+print(json.dumps({'body': sys.argv[1]}))
+PY
+)"
+
+  if ! github_api_patch_json "https://api.github.com/repos/${owner}/${repo}/releases/${release_id}" "$json_payload"; then
+    echo "GitHub API returned an unexpected response while updating release changelog for $tag." >&2
+    return 1
+  fi
+
+  if [[ "$GITHUB_HTTP_STATUS" != "200" ]]; then
+    echo "Failed to update release changelog for $tag (HTTP $GITHUB_HTTP_STATUS)." >&2
+    return 1
+  fi
+
+  echo "Updated release changelog for $tag from git commits."
 }
 
 load_github_token() {
@@ -459,6 +566,10 @@ if [[ $do_push -eq 1 ]]; then
     fi
     echo "Check the GitHub Actions workflow for release failures." >&2
     exit 1
+  fi
+
+  if ! update_release_changelog "$github_owner" "$github_repo" "v$version"; then
+    echo "Published release v$version but could not update its changelog from git commits." >&2
   fi
 
   echo "Published release v$version and pushed branch commit successfully."

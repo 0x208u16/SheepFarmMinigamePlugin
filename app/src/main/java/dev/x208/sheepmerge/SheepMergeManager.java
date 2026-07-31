@@ -3243,6 +3243,13 @@ public final class SheepMergeManager {
             return;
         }
 
+        boolean tutorialInProgress = !hasUnlockedFarm(player) && isTutorialWorld(player.getWorld());
+        if (tutorialInProgress) {
+            player.sendMessage(hint("Prestige ready. Use /sheepmerge prestige"));
+            SheepPrestigeState.setLastReminderTimestamp(playerId, now);
+            return;
+        }
+
         if (!SheepPrestigeState.isTitleReminderShown(playerId)) {
             player.sendTitle(
                     color("&ePrestige ready"),
