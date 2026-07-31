@@ -17,7 +17,10 @@ class SheepFarmWorldProtectionListener : Listener {
     @EventHandler
     fun onBlockBreak(event: BlockBreakEvent) {
         val player: Player = event.player
-        val world: World = player.world
+        val world: World = event.block.world
+        if (!isProtectedWorld(world)) {
+            return
+        }
         if (SheepMergeManager.isFarmBuildWorld(world) && !player.isOp) {
             event.isCancelled = true
             player.sendMessage("Only operators can edit the farm build world.")
@@ -32,7 +35,10 @@ class SheepFarmWorldProtectionListener : Listener {
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
         val player: Player = event.player
-        val world: World = player.world
+        val world: World = event.block.world
+        if (!isProtectedWorld(world)) {
+            return
+        }
         if (SheepMergeManager.isFarmBuildWorld(world) && !player.isOp) {
             event.isCancelled = true
             player.sendMessage("Only operators can edit the farm build world.")
@@ -91,8 +97,10 @@ class SheepFarmWorldProtectionListener : Listener {
     }
 
     private fun isProtectedWorld(world: World?): Boolean {
-        return SheepMergeManager.isFarmBuildWorld(world)
-            || SheepMergeManager.isSheepFarmWorld(world)
-            || SheepMergeManager.isTutorialWorld(world)
+        return world != null && (
+            SheepMergeManager.isFarmBuildWorld(world)
+                || SheepMergeManager.isSheepFarmWorld(world)
+                || SheepMergeManager.isTutorialWorld(world)
+            )
     }
 }
