@@ -15,3 +15,7 @@ Required checks before finishing a change:
 
 GitHub Releases are published from tags in the form `vX.Y.Z`, while the plugin runtime version is stored in `plugin.yml` as `X.Y.Z`.
 Any code comparing release versions must normalize the optional `v` prefix.
+
+## Java to Kotlin Migration Rule
+
+Changes to code must be limited to code migration. Do not make changes irrelevant to the code migration.
